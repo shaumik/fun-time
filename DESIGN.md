@@ -1,93 +1,129 @@
 # NEON HEAT — design & monetization brief
 
-**One line:** A top-down arcade drift game where you bank drift combos while police heat
-escalates behind you. One-button drift, 60-second runs, garage progression.
+**One line:** A drift roguelite. Climb a ladder of city districts, each demanding a points
+quota banked before the checkpoint; clear one and you fit a chip from three; every third
+district is a named pursuit unit with its own mechanic.
 
 ---
 
 ## Why this concept
 
-Three constraints drove the pick.
+**The genre problem first.** A top-down drift game that is only score-attack has no reason
+to exist next to the hundred already on the platform. Polish alone does not differentiate —
+it has to be a different *kind* of game. The roguelite ladder is what makes it one, and it
+solves a concrete design failure at the same time: without a quota, nothing forces the
+player to drift, so the safe line is the boring line and the whole game is optional. The
+quota makes the risk mandatory.
 
-**1. No art team.** Hand-authored sprites made without an illustrator always read as
-amateur — that is the single most common reason a self-published CrazyGames title looks
-cheap. So the art direction is *rendering*, not *assets*: every pixel is generated at
-runtime from geometry, gradients, particles and a bloom pipeline. There are no image
-files in this project. Nothing can look like bad art because there is no art to be bad.
-The look is carried by:
+**The art constraint second.** Hand-drawn sprites made without an illustrator are the most
+common reason a self-published web game looks cheap. So there are no image files, and no
+audio files either. Everything is generated at runtime, and the polish comes from a
+rendering pipeline and a synthesiser rather than from assets. Nothing can look or sound
+amateur because there is nothing authored to be bad.
 
-- a real bright-pass → blur → additive-composite bloom chain (not `shadowBlur`)
-- pseudo-3D building extrusion driven off screen-space parallax
-- persistent skid decals, tyre smoke, wall sparks, boost plumes
-- camera that rotates to heading, zooms with speed, and shakes on impact
-- typography treated as a first-class HUD element
+**The platform third.** Driving is CrazyGames' strongest evergreen category behind .io, and
+unlike .io it needs no servers and no concurrency floor to feel alive.
 
-**2. Driving is CrazyGames' strongest evergreen category** — behind only .io, and unlike
-.io it needs no servers, no matchmaking, and no concurrency floor to feel alive.
-
-**3. The loop has to generate ad impressions honestly.** Run length is tuned to 45–90s,
-which puts a natural rewarded-video decision point (revive) and a natural interstitial
-point (run end) close together without either feeling like a paywall.
-
-## The loop
+## The run
 
 ```
-menu → run (45–90s) → crash → [revive? ad] → game over → [2× coins? ad] → garage → run
-                                                              └ every 3rd run: interstitial
+menu → district brief → drive (quota or boss) → clear → draft 1 of 3 chips → next district
+                             │                                                    │
+                             └── fail (wreck / miss quota / boss escapes) → game over
 ```
 
-**In-run.** Hold drift. While sliding above a threshold angle at speed, points accumulate
-into a *pending* bank with a rising multiplier. The bank is only paid out when you
-straighten up cleanly — crash while holding a big bank and you lose all of it. That
-tension is the whole game: every extra second of drift is a bet.
+**Districts** get longer, hungrier and hotter. Quota grows 1.38× per district while the
+player's build grows through chips — the two curves are meant to stay close, so a run ends
+when the build stops keeping up rather than at a fixed wall.
 
-**Heat.** Banking raises Heat. At each Heat tier the police spawn behind you and ram.
-Higher Heat multiplies every payout, so the correct play is always slightly more dangerous
-than the comfortable one. Heat is what turns a score-attack game into a chase.
+**The bet.** Drift points accrue into a *pending* bank that only pays out when you release
+the drift. Wreck while holding a fat bank and it is gone. Tying the payout to the button
+rather than to the physics settling is what makes the wager legible: you choose when to
+cash in.
 
-**Meta.** Coins buy cars (four distinct procedurally-drawn silhouettes and handling models)
-and four upgrade tracks — Grip, Nitro, Armor, Payout. Progression is what converts a
-one-session player into a D1 retained player, which is what actually moves revenue.
+**Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
+so the correct play is always slightly more dangerous than the comfortable one.
+
+**Chips.** Seventeen across four tags (Engine, Chain, Combo, Heat, Risk, Defence), stacking
+up to three deep. Effects are declarative — every chip writes into one flat modifier table
+the physics and scoring read each frame — so builds stack and interact without special
+cases anywhere in the engine.
+
+**Overclocked offers** pair a stronger chip with a permanent curse: narrower streets,
+heavier traffic, a hotter start, brittle chains, a dry nitro tank, a tighter camera. At most
+one per draft, never on district 1, and the cost is always stated on the card. A hidden cost
+is not a choice.
+
+**Bosses** every third district, damaged only by *banking* into them — the fight runs on the
+game's own verb rather than bolting on a new one.
+
+| Unit | Division | Mechanic |
+|---|---|---|
+| WARDEN | Heavy Interdiction | Telegraphed charges; salts the road behind it with spike strips. |
+| SIREN | Signals | Pulses every 7s, wiping any bank over 2,400. Punishes hoarding, not playing. |
+| REAPER | Pursuit Special | Faster than you, and it brings two escorts. |
+
+## Handling
+
+Turn authority falls off with speed and drifting buys it back, so fast corners *require* the
+slide. The slide itself is stabilised by a self-aligning torque that clamps the slip angle
+to ~34° — without it a drift has no equilibrium and simply winds up into a spin, which made
+the game unplayable in testing regardless of how good it looked.
+
+Road width, top speed and camera zoom are tuned together so crossing the full street takes
+about 0.9 seconds. An earlier build was at 0.4s, and no amount of skill made that readable.
 
 ## Monetization
 
 | Placement | Trigger | Notes |
 |---|---|---|
-| Rewarded — Revive | On crash, once per run | Highest-intent moment in the game. Offered only when the run is worth saving. |
-| Rewarded — 2× Coins | Game over screen | Pure upside, no loss framing. Highest opt-in rate of the three. |
-| Rewarded — Garage unlock boost | Garage, when short on coins | Converts stalled progression into an impression instead of a churn. |
-| Interstitial (midroll) | Every 3rd run end | CrazyGames caps frequency; 3 runs ≈ their guidance without feeling hostile. |
-| Banner | Menu + garage only | Never during play. |
+| Rewarded — Revive | On wreck, once per run | A player deep in a run they have invested chips in is the highest-intent moment the format has — far better than reviving a score chase. |
+| Rewarded — 2× Coins | Game over | Coins pay on districts cleared as well as score, so the double-up has a visible target. |
+| Interstitial | Every 3rd run end | Within CrazyGames' frequency guidance without feeling hostile. |
+| Banner | Menu and garage only | Never during play. |
 
-Integration goes through `Ads` in `src/game.js`, which calls the real CrazyGames SDK
-(`window.CrazyGames.SDK`) when present and falls back to a simulated ad overlay so the
-prototype demonstrates the full flow standalone.
+`Ads` in `src/game.js` calls the real CrazyGames SDK when hosted there and falls back to a
+simulated placement, so the whole flow is demonstrable standalone.
+
+Meta progression (coins, cars, four upgrade tracks) persists across runs and is separate
+from the per-run chip build — the roguelite layer resets, the garage layer does not.
+
+## Audio
+
+Fully synthesised, no files. A four-layer synthwave bed over an i–VI–III–VII vamp at 126 BPM,
+whose *arrangement* is the intensity dial: kick alone early, then snare and hats, then a
+square arpeggio and a wider filter as the run gets deeper and hotter. Gameplay voices are
+an engine (two detuned saws plus sub, pitch and filter tracking speed), tyre squeal
+(band-passed noise following slip), a two-tone siren driven by an LFO, and one-shots for
+banking, near misses, impacts, chip picks, curses and boss stingers.
 
 ## Art direction
 
-Committed single-theme — this is an arcade screen, not a document, so it does not follow
-the viewer's light/dark preference.
+Committed single-theme — this is an arcade screen, not a document, so it does not follow the
+viewer's light/dark preference.
 
 | Token | Value | Role |
 |---|---|---|
 | Void | `#05060E` | Ground. Near-black, biased blue. |
-| Asphalt | `#0D1120` | Road surface. |
-| Cyan | `#3DE8FF` | Primary accent — player, road edges, UI. |
-| Magenta | `#FF2E88` | Secondary — combo, city glow. |
-| Red | `#FF3355` | Police, danger, crash. Semantic only. |
-| Amber | `#FFB13D` | Coins, nitro. Semantic only. |
+| Asphalt | `#131A2C` | Road surface. |
+| Cyan | `#3DE8FF` | Primary accent — player, left barrier, UI. |
+| Magenta | `#FF2E88` | Secondary — combo, right barrier, city glow. |
+| Red | `#FF3355` | Pursuit, curses, danger. Semantic only. |
+| Amber | `#FFB13D` | Coins, nitro, rewarded offers. Semantic only. |
 | Ice | `#C6D2E8` | Text. Blue-biased grey, never pure. |
 
-Type is the racing-HUD vernacular: uppercase micro-labels at wide tracking sitting under
-oversized tabular numerals. No webfonts — the CSP on the hosted build blocks font CDNs,
-and a silent fallback would wreck the layout, so the stack is system-native with the
-weight and tracking doing the work.
+Rarity has its own fixed encoding — cyan common, magenta uncommon, amber rare, red
+overclocked — used identically on draft cards and the in-run build rail.
+
+No webfonts: the CSP on the hosted build blocks font CDNs and a silent fallback would wreck
+the HUD grid, so the stack is system-native with weight and tracking doing the work.
 
 ## Scope of this prototype
 
-Built: full physics and drift model, procedural track generation, traffic, police AI and
-heat tiers, combo banking, particles and decals, bloom pipeline, HUD, menu with attract-mode
-AI driver, game over with live ad flow, garage with four cars and four upgrade tracks,
-localStorage persistence, keyboard and touch input.
+Built: full drift model with self-aligning torque, procedural districts, quota and boss
+objectives, three boss archetypes with distinct mechanics, 17 chips and 6 curses with a
+weighted draft, traffic and pursuit AI, spike-strip hazards, off-screen threat indicators,
+particles and decals, bloom pipeline with adaptive quality, synthesised music and SFX,
+garage with four cars and four upgrade tracks, localStorage persistence, keyboard and touch.
 
-Not built: audio, leaderboards, daily rewards, the real SDK handshake (shimmed).
+Not built: leaderboards, daily rewards, a tutorial, and the real SDK handshake (shimmed).

@@ -1,11 +1,12 @@
 # NEON HEAT
 
-A top-down arcade drift game for web distribution. Hold the slide to build a combo,
-straighten up to bank it, and outrun the police heat your own greed summons.
+A drift **roguelite** for web distribution. Climb a ladder of city districts, each demanding
+a points quota banked before the checkpoint. Clear one and you fit a chip from three. Every
+third district is a named pursuit unit with its own mechanic.
 
-**80 KB total. Zero image assets.** Every pixel — the car, the city, the road, the light —
-is generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
-rather than a limitation, plus the monetization plan.
+**128 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
+generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
+rather than a limitation, plus the ladder design and monetization plan.
 
 ## Play
 
@@ -22,19 +23,27 @@ back to in-memory for the session).
 | <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Steer |
 | <kbd>Space</kbd> or <kbd>S</kbd> | Drift — hold to accrue, release to bank |
 | <kbd>Shift</kbd> or <kbd>W</kbd> | Nitro |
-| <kbd>Enter</kbd> / <kbd>Esc</kbd> | Start run / back to menu |
+| <kbd>Enter</kbd> | Start run / leave a district brief |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | Pick a chip at the draft |
+| <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
 Touch controls appear automatically on devices without hover.
 
 Turn authority drops as you go faster and drifting buys it back, so fast corners *require*
-the slide. That asymmetry is the whole handling model.
+the slide. A self-aligning torque clamps the slip angle so a slide holds an angle instead of
+winding up into a spin — that pair is the whole handling model.
+
+Points accrue into a *pending* bank while you hold the drift and only pay out when you
+release. Wreck while holding a fat bank and it is gone.
 
 ## Layout
 
 ```
 index.html        development shell (source of truth for markup)
-src/style.css     all UI — HUD, menus, garage, ad overlay
-src/game.js       engine: physics, track gen, AI, particles, renderer, post FX, meta
+src/style.css     all UI — HUD, briefs, draft, garage, ad overlay
+src/audio.js      synthesised music bed and SFX, no audio files
+src/chips.js      chips, curses and the weighted draft; pure data + a modifier table
+src/game.js       engine: physics, districts, bosses, AI, renderer, post FX, meta
 build.mjs         inlines the above into dist/
 dist/index.html   self-contained single file — this is what you zip for CrazyGames
 dist/mockup.html  body fragment for publishing as a shareable page
@@ -53,9 +62,14 @@ demonstrable standalone. Three rewarded placements and one interstitial are wire
 DESIGN.md for the frequency rules.
 
 Rendering demotes itself: sustained slow frames drop the wide bloom tap, window detail,
-grain and device pixel ratio in one step. `window.__NH` exposes game state, `QF` (quality
-flags) and `setQuality()` for tuning and automated playtests.
+grain and device pixel ratio in one step. Audio starts on the first key or pointer press, as
+browsers require.
+
+`window.__NH` exposes game state, `QF` (quality flags), `setQuality()` and the district
+lifecycle (`nextDistrict`, `beginDistrict`, `takeOffer`) for tuning and automated playtests.
+Balance was validated by driving the real input path with an in-page steering controller
+rather than by eye.
 
 ## Not built yet
 
-Audio, leaderboards, daily rewards, and the real SDK handshake (currently shimmed).
+Leaderboards, daily rewards, a tutorial, and the real SDK handshake (currently shimmed).

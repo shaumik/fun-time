@@ -10,11 +10,13 @@ const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const html = read('index.html');
 const css  = read('src/style.css');
-const js   = read('src/game.js');
+/* load order matters: game.js reads NHAudio and NHChips at definition time */
+const SCRIPTS = ['src/audio.js', 'src/chips.js', 'src/game.js'];
+const js = SCRIPTS.map(read).join('\n');
 
 const body = html
   .match(/<body>([\s\S]*?)<\/body>/)[1]
-  .replace(/\s*<script src="src\/game\.js"><\/script>/, '')
+  .replace(/\s*<script src="src\/[a-z]+\.js"><\/script>/g, '')
   .trim();
 
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
@@ -22,7 +24,8 @@ fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'dist/index.html'),
   html
     .replace('<link rel="stylesheet" href="src/style.css">', `<style>\n${css}\n</style>`)
-    .replace('<script src="src/game.js"></script>', `<script>\n${js}\n</script>`)
+    .replace(/<script src="src\/audio\.js"><\/script>\s*<script src="src\/chips\.js"><\/script>\s*<script src="src\/game\.js"><\/script>/,
+             `<script>\n${js}\n</script>`)
 );
 
 /* The hosted page wraps fragments in its own document shell, so this emits
@@ -77,38 +80,46 @@ ${body}
     <span>— click the canvas first</span>
   </p>
 
-  <h2>Why this one</h2>
-  <p>Hand-drawn sprites made without an illustrator are the single most common reason a
-  self-published web game looks cheap. So there are no image files here at all. Every pixel
-  is generated at runtime &mdash; the car, the city, the road, the light &mdash; and the polish comes
-  from a real bloom chain, particle work and camera behaviour rather than from artwork.
-  <b>Nothing can look amateur, because there is no art to be amateur.</b></p>
+  <h2>A drift roguelite, not another top-down racer</h2>
+  <p>A score-attack drift game has no reason to exist next to a hundred others. This one is
+  built as a <b>climb</b>: each district sets a quota you must bank before the checkpoint,
+  clearing it lets you fit one chip from three, and every third district is a named pursuit
+  unit with its own mechanic. The quota is what makes it a game rather than a toy &mdash;
+  without it, the safe line is the boring line, and nothing forces you to slide.</p>
 
   <div class="grid">
     <div class="card">
       <h3>The bet</h3>
-      <p>Drift points accrue into a pending bank that only pays out when you straighten up.
-      Crash while holding a big bank and you lose all of it. Every extra second of slide is
-      a wager you choose to keep making.</p>
+      <p>Drift points accrue into a pending bank that only pays out when you release. Wreck
+      while holding a fat bank and it is gone. Every extra second of slide is a wager, and the
+      quota is what makes you keep taking it.</p>
     </div>
     <div class="card">
-      <h3>The chase</h3>
-      <p>Banking raises Heat, and each Heat tier puts another police unit behind you &mdash; but
-      also multiplies every payout. The greedy line and the safe line are never the same line.</p>
+      <h3>The build</h3>
+      <p>Seventeen chips across four tags, stacking up to three deep. Some offers arrive
+      <b>Overclocked</b> &mdash; a stronger chip welded to a permanent curse: narrower streets,
+      heavier traffic, a hotter start, no nitro regen. The cost is always stated up front.</p>
     </div>
     <div class="card">
-      <h3>The money</h3>
-      <p>Runs last 45&ndash;90 seconds, which puts a rewarded revive and an interstitial close
-      together without either feeling like a wall. Coins buy cars and four upgrade tracks &mdash;
-      progression is what turns one session into a returning player.</p>
+      <h3>The bosses</h3>
+      <p>WARDEN rams and salts the road with spike strips. SIREN pulses, wiping any bank you
+      let grow too fat. REAPER is faster than you and brings escorts. You damage them by
+      banking &mdash; so the fight runs on the game's own verb.</p>
     </div>
     <div class="card">
-      <h3>The platform fit</h3>
-      <p>Driving is CrazyGames' strongest evergreen category after .io, and unlike .io it needs
-      no servers and no concurrency floor to feel alive. One input, works on desktop and phone,
-      no assets to download.</p>
+      <h3>The sound</h3>
+      <p>Every note is synthesised at runtime: a four-layer synthwave bed whose arrangement
+      layers in as the run gets deeper and hotter, plus engine, tyre, siren and impact voices.
+      No audio files, for the same reason there are no image files.</p>
     </div>
   </div>
+
+  <h2>How it makes money</h2>
+  <p>A ladder generates far better ad moments than a score chase. Rewarded revive lands when a
+  player is deep into a run they have invested chips in &mdash; the highest-intent moment the
+  format has. Coins pay out on districts cleared as well as score, so the rewarded double-up
+  has a visible target. An interstitial sits every third run end. Everything routes through
+  the CrazyGames SDK, with a simulated placement so the flow is demonstrable standalone.</p>
 </div>
 
 <script>

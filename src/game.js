@@ -28,7 +28,7 @@ const CL = {
 /* ---------------- persistence ---------------- */
 const Save = {
   key:'neonheat.v1',
-  data:{ best:0, coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
+  data:{ best:0, deepest:0, coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -92,13 +92,13 @@ function adTick(dt){
 /* ---------------- cars ---------------- */
 const CARS = [
   { id:'viper',   name:'Viper',   price:0,     len:46, wid:23, nose:.60, tail:.78,
-    col:'#3DE8FF', col2:'#0A5A72', power:660, grip:7.4, top:770, armor:0, stats:[3,3,3] },
+    col:'#3DE8FF', col2:'#0A5A72', power:560, grip:7.4, top:620, armor:0, stats:[3,3,3] },
   { id:'katana',  name:'Katana',  price:6500,  len:44, wid:21, nose:.48, tail:.60,
-    col:'#FF2E88', col2:'#6E0F3C', power:685, grip:9.0, top:780, armor:0, stats:[4,5,2] },
+    col:'#FF2E88', col2:'#6E0F3C', power:580, grip:9.0, top:630, armor:0, stats:[4,5,2] },
   { id:'brute',   name:'Brute',   price:22000, len:53, wid:27, nose:.82, tail:.92,
-    col:'#FFB13D', col2:'#6B3F08', power:625, grip:6.2, top:735, armor:1, stats:[2,2,5] },
+    col:'#FFB13D', col2:'#6B3F08', power:530, grip:6.2, top:590, armor:1, stats:[2,2,5] },
   { id:'phantom', name:'Phantom', price:60000, len:48, wid:22, nose:.44, tail:.54,
-    col:'#DCF6FF', col2:'#28536F', power:735, grip:8.2, top:870, armor:0, stats:[5,4,2] }
+    col:'#DCF6FF', col2:'#28536F', power:620, grip:8.2, top:700, armor:0, stats:[5,4,2] }
 ];
 const carById = id => CARS.find(c => c.id === id) || CARS[0];
 const STAT_LABELS = ['Speed', 'Grip', 'Bulk'];
@@ -118,7 +118,7 @@ function activeSpec(){
   return Object.assign({}, c, {
     grip:  c.grip + u.grip * 0.42,
     nitroMax: 1 + u.nitro * 0.22,
-    crashV: 300 + u.armor * 34 + c.armor * 90,
+    crashV: 430 + u.armor * 40 + c.armor * 110,
     payout: 1 + u.payout * 0.14
   });
 }
@@ -214,14 +214,19 @@ const IN = { steer:0, drift:0, nitro:0 };
 addEventListener('keydown', e => {
   keys[e.code] = 1;
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
+  NHAudio.resume();
   if (e.code === 'Enter') {
-    if (G.state === 'menu') startRun();
-    else if (G.state === 'over') startRun();
+    if (G.state === 'menu' || G.state === 'over') startRun();
+    else if (G.state === 'brief') beginDistrict();
   }
-  if (e.code === 'Escape' && G.state === 'play') toMenu();
+  if (G.state === 'draft' && /^Digit[123]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
+  if (e.code === 'KeyM') setMute(NHAudio.toggleMute());
+  if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
+
+addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
 
 const touchEl = document.getElementById('touch');
 if (matchMedia('(hover:none)').matches) touchEl.classList.add('on');
@@ -256,7 +261,7 @@ class Track {
     this.pts = [];
     this.ang = -Math.PI / 2;
     this.curv = 0; this.tCurv = 0;
-    this.hw = 155; this.tHw = 155;
+    this.hw = 280; this.tHw = 280;
     this.x = 0; this.y = 0; this.n = 0;
     for (let i = 0; i < 260; i++) this.extend();
   }
@@ -264,7 +269,7 @@ class Track {
     if (this.n % 24 === 0) {
       this.tCurv = Math.random() < 0.22 ? 0 : rnd(-0.062, 0.062);
     }
-    if (this.n % 46 === 0) this.tHw = rnd(155, 235);
+    if (this.n % 46 === 0) this.tHw = rnd(245, 345);
     this.curv = lerp(this.curv, this.tCurv, 0.07);
     this.hw   = lerp(this.hw, this.tHw, 0.05);
     this.ang += this.curv;
@@ -374,18 +379,21 @@ class Vehicle {
     this.dead = false; this.hitFlash = 0; this.offroad = 0;
     this.skidT = 0; this.smokeT = 0;
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
+    this.mods = null; this.topBonus = 0;
     this.inv = 0;
   }
   get speed(){ return hyp(this.vx, this.vy); }
 
   drive(dt, steerIn, throttle, driftIn, boostIn){
     const s = this.spec;
+    /* only the player carries chip modifiers; traffic and pursuit run stock */
+    const M = this.mods;
     this.steer = damp(this.steer, steerIn, 13, dt);
 
     /* Turn authority falls off with speed, and drifting buys it back.
        That asymmetry is the design: fast corners *require* the slide. */
     const sp = this.speed;
-    const rate = (2.0 + (driftIn ? 1.5 : 0))
+    const rate = (2.0 + (driftIn ? 0.9 : 0))
                * clamp(sp / 190, 0, 1)
                * lerp(1, 0.62, clamp(sp / 900, 0, 1));
     this.a += this.steer * rate * dt;
@@ -396,17 +404,23 @@ class Vehicle {
     let lon =  cs * this.vx + sn * this.vy;
     let lat = -sn * this.vx + cs * this.vy;
 
+    const cap = (s.nitroMax || 1) * (M ? M.nitroCap : 1);
     let acc = throttle * s.power;
-    if (boostIn && this.nitro > 0.02) { acc *= 1.75; this.boost = 1; this.nitro -= dt * 0.45; }
-    else { this.boost = 0; this.nitro = Math.min(s.nitroMax || 1, this.nitro + dt * 0.055); }
+    if (boostIn && this.nitro > 0.02) {
+      acc *= 1.75; this.boost = 1;
+      this.nitro -= dt * 0.45 * (M ? M.nitroDrain : 1);
+    } else {
+      this.boost = 0;
+      this.nitro = Math.min(cap, this.nitro + dt * 0.055 * (M ? M.nitroRegen : 1));
+    }
 
-    const top = s.top * (this.boost ? 1.22 : 1);
+    const top = s.top * (M ? M.topMul * (1 + this.topBonus) : 1) * (this.boost ? 1.15 : 1);
     lon += acc * dt;
     if (lon > top) lon = damp(lon, top, 3, dt);
     lon *= Math.exp(-(0.42 + this.offroad * 2.4) * dt);
 
     /* grip is what the whole game is built on: releasing it is the verb */
-    const grip = (driftIn ? 1.45 : s.grip) * (1 - this.offroad * 0.45);
+    const grip = (driftIn ? 2.4 : s.grip * (M ? M.gripMul : 1)) * (1 - this.offroad * 0.45);
     lat *= Math.exp(-grip * dt);
 
     this.vx = cs * lon - sn * lat;
@@ -415,8 +429,17 @@ class Vehicle {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    this.slip = Math.abs(Math.atan2(lat, Math.max(60, Math.abs(lon))));
-    this.drift = damp(this.drift, (this.slip > 0.20 && sp > 240) ? 1 : 0, 12, dt);
+    /* Self-aligning torque. Without it a slide has no equilibrium and simply
+       winds up into a spin — the car holds a stable angle instead, which is
+       what makes a drift something you can steer rather than survive. */
+    const phi = Math.atan2(lat, Math.max(60, Math.abs(lon)));
+    const maxSlip = driftIn ? 0.60 : 0.26;
+    const over = Math.abs(phi) - maxSlip;
+    if (over > 0) this.a += Math.sign(phi) * Math.min(over, 0.7) * 7.5 * dt;
+
+    this.slip = Math.abs(phi);
+    const thresh = M ? M.driftThresh : 0.20;
+    this.drift = damp(this.drift, (this.slip > thresh && sp > 200) ? 1 : 0, 12, dt);
 
     /* rear-wheel decals + smoke while sliding */
     if (this.drift > 0.4 && sp > 200) {
@@ -458,43 +481,88 @@ class Vehicle {
    GAME
    ============================================================ */
 const G = {
-  state:'menu',      // menu | play | crash | over | garage
+  state:'menu',      // menu | brief | play | draft | crash | over | garage
   ai:true,
   track:null, car:null, spec:null,
-  traffic:[], police:[],
+  traffic:[], police:[], boss:null, hazards:[],
   score:0, pending:0, chain:0, mult:1, sinceDrift:9,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1,
   crashT:0, slow:1, flash:0, revived:false,
-  shake:0, dist:0
+  shake:0, dist:0,
+  run:null, ghost:0, pulseWarn:0, offers:[]
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
 
+/* ---------------- the ladder ----------------
+   Districts get longer, hungrier and hotter. Every third is a boss, where
+   the quota is replaced by a pursuit unit you damage by banking into it. */
+const DISTRICTS = [
+  'Dockside', 'Sodium Row', 'The Spillway', 'Glasshouse', 'Nine Mile',
+  'Cathedral Hill', 'Ashfield', 'The Verge', 'Terminus'
+];
+const BOSSES = [
+  { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
+    blurb:'Rams hard and salts the road behind it.' },
+  { id:'siren',  name:'SIREN',   sub:'Signals Division',
+    blurb:'Pulses wipe a bank you have let grow too fat.' },
+  { id:'reaper', name:'REAPER',  sub:'Pursuit Special',
+    blurb:'Faster than you, and it brought friends.' }
+];
+
+function districtCfg(n){
+  const boss = n % 3 === 0;
+  const bi = Math.floor(n / 3) - 1;
+  return {
+    n, boss,
+    name: boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length],
+    bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
+    len: Math.round(420 + n * 34),
+    quota: Math.round(2600 * Math.pow(1.38, n - 1)),
+    bossHp: Math.round(6500 * Math.pow(1.55, Math.max(0, bi))),
+    heatFloor: Math.min(2, Math.floor((n - 1) / 3))
+  };
+}
+
+function newRun(){
+  return {
+    district: 0,
+    chips: [], curses: [],
+    M: NHChips.defaults(),
+    cfg: null, quota: 0, banked: 0, startIdx: 0,
+    cleared: 0, crumpleLeft: 0
+  };
+}
+
 function newWorld(ai){
   G.track = new Track();
   G.spec = activeSpec();
-  G.traffic = []; G.police = [];
+  G.traffic = []; G.police = []; G.boss = null; G.hazards = [];
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
+  G.car.mods = G.run ? G.run.M : NHChips.defaults();
   const st = G.track.at(6, 0);
   G.car.x = st.x; G.car.y = st.y; G.car.a = st.a;
   G.car.vx = Math.cos(st.a) * 300; G.car.vy = Math.sin(st.a) * 300;
   G.car.idx = 6; G.car.nitro = G.spec.nitroMax;
-  G.score = 0; G.pending = 0; G.chain = 0; G.mult = 1; G.sinceDrift = 9;
-  G.heat = 0; G.tier = 0; G.coinsRun = 0; G.topMult = 1;
-  G.slow = 1; G.flash = 0; G.shake = 0; G.revived = false; G.dist = 0;
+  G.pending = 0; G.chain = 0; G.mult = 1; G.sinceDrift = 9;
+  G.heat = 0; G.tier = 0; G.topMult = G.topMult || 1;
+  G.slow = 1; G.flash = 0; G.shake = 0; G.dist = 0;
+  G.ghost = 0; G.pulseWarn = 0;
   G.ai = !!ai;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   for (let i = 0; i < 9; i++) addTraffic(20 + i * 22);
 }
-const baseZoom = () => clamp(H / 420, 1.0, 2.3);
+const baseZoom = () => clamp(H / 640, 0.72, 1.5)
+  * (G.run ? G.run.M.zoomMul : 1);
+const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
-  const lat = rnd(-1, 1) * p.w * 0.60;
+  const lat = rnd(-1, 1) * roadHalf(p) * 0.60;
   const c = CARS[rint(0, CARS.length)];
   const spec = Object.assign({}, c, {
     col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330), nitroMax:1
@@ -506,17 +574,145 @@ function addTraffic(ahead){
   G.traffic.push(v);
 }
 
-function addPolice(){
-  const idx = Math.max(0, G.car.idx - 8);
+function addPolice(escort){
+  const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:700, grip:7.0, top:820, nitroMax:1
+    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660, nitroMax:1
   });
   const v = new Vehicle(spec, 'police');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
   v.vx = Math.cos(pos.a) * 420; v.vy = Math.sin(pos.a) * 420;
   G.police.push(v);
-  toast('Heat rising — units inbound', 'red');
+  if (!escort) toast('Heat rising — units inbound', 'red');
+}
+
+/* ---------------- bosses ----------------
+   A boss is a pursuit unit with a health bar that only your *banks* can
+   hurt. That keeps the fight on the game's actual verb — you cannot shoot
+   it, you can only out-drive it and cash in under pressure. */
+function addBoss(){
+  const cfg = G.run.cfg, def = cfg.bossDef;
+  const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
+  const spec = Object.assign({}, CARS[2], {
+    len:62, wid:32, nose:0.9, tail:0.95,
+    col:'#FF3355', col2:'#3A0A14',
+    power: def.id === 'reaper' ? 660 : 600,
+    grip:7.2, top: def.id === 'reaper' ? 720 : 665, nitroMax:1
+  });
+  const v = new Vehicle(spec, 'boss');
+  v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = pos.p.i;
+  v.vx = Math.cos(pos.a) * 460; v.vy = Math.sin(pos.a) * 460;
+  v.hp = cfg.bossHp; v.maxHp = cfg.bossHp;
+  v.def = def; v.atk = 3.2; v.charge = 0;
+  G.boss = v;
+
+  if (def.id === 'reaper') { addPolice(true); addPolice(true); }
+  NHAudio.boss();
+  toast(def.name + ' — ' + def.sub, 'red');
+}
+
+function bossDamage(amount){
+  const b = G.boss;
+  if (!b) return;
+  b.hp -= amount;
+  b.hitFlash = 1;
+  G.shake = Math.max(G.shake, 12);
+  NHAudio.bossHit();
+  for (let i = 0; i < 22; i++) {
+    const a = rnd(0, TAU), s = rnd(120, 460);
+    spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
+          rnd(0.25, 0.6), rnd(3, 8), '255,90,110', true, -6);
+  }
+  if (b.hp <= 0) {
+    for (let i = 0; i < 70; i++) {
+      const a = rnd(0, TAU), s = rnd(140, 700);
+      spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
+            rnd(0.4, 1.1), rnd(4, 12), i % 2 ? '255,170,80' : '255,70,90', true, -6);
+    }
+    G.flash = 1; G.shake = 30;
+    G.boss = null;
+    G.police.length = 0;
+    clearDistrict();
+  }
+}
+
+function stepBoss(dt){
+  const b = G.boss, car = G.car;
+  if (!b) return;
+  const loc = G.track.locate(b.x, b.y, b.idx);
+  b.idx = loc.i;
+  b.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
+
+  b.atk -= dt;
+  const st = steerToward(b, car.x + car.vx * 0.3, car.y + car.vy * 0.3);
+
+  if (b.def.id === 'warden') {
+    /* telegraphed charge, then a hazard dropped in its wake */
+    if (b.atk <= 0) { b.charge = 1.5; b.atk = 5.4; dropHazard(b); }
+    if (b.charge > 0) b.charge -= dt;
+  } else if (b.def.id === 'siren') {
+    if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
+    if (b.atk <= 0) {
+      b.atk = 7.0; G.pulseWarn = 0;
+      /* only punishes hoarding — bank little and often and it does nothing */
+      if (G.pending > 2400) {
+        G.pending = 0; G.chain = 0; G.mult = 1;
+        toast('Bank wiped', 'red');
+        NHAudio.curse();
+        G.flash = 0.6;
+      } else {
+        toast('Pulse — bank held', 'pink');
+      }
+      G.shake = Math.max(G.shake, 14);
+    }
+  } else if (b.def.id === 'reaper') {
+    if (b.atk <= 0) { b.atk = 4.4; b.charge = 1.1; }
+    if (b.charge > 0) b.charge -= dt;
+  }
+
+  b.drive(dt, st, 1, Math.abs(st) > 0.6 && b.speed > 420 ? 1 : 0, b.charge > 0 ? 1 : 0);
+  barrier(b, loc);
+
+  if (G.state === 'play' && !G.ai) {
+    const dx = b.x - car.x, dy = b.y - car.y, d = hyp(dx, dy);
+    if (d < (b.spec.len + car.spec.len) * 0.38 && car.inv <= 0) {
+      const nx = dx / (d || 1), ny = dy / (d || 1);
+      const power = b.charge > 0 ? 420 : 260;
+      car.vx -= nx * power; car.vy -= ny * power;
+      b.vx += nx * 90; b.vy += ny * 90;
+      G.shake = Math.max(G.shake, 22);
+      car.hitFlash = 1; car.inv = 0.5;
+      G.chain = Math.max(0, G.chain - 1.8);
+      NHAudio.hit(1.2);
+    }
+  }
+}
+
+/* road hazards dropped by the WARDEN — hitting one kills your chain */
+function dropHazard(b){
+  const pos = G.track.at(b.idx + 2, rnd(-0.7, 0.7) * roadHalf(G.track.pts[b.idx] || { w:150 }));
+  G.hazards.push({ x:pos.x, y:pos.y, a:pos.a, life:11, hit:0 });
+  if (G.hazards.length > 14) G.hazards.shift();
+}
+
+function stepHazards(dt){
+  const car = G.car;
+  for (let i = G.hazards.length - 1; i >= 0; i--) {
+    const h = G.hazards[i];
+    h.life -= dt;
+    if (h.life <= 0 || h.hit) { G.hazards.splice(i, 1); continue; }
+    if (G.state !== 'play' || G.ai || car.inv > 0) continue;
+    if (hyp(h.x - car.x, h.y - car.y) < 46) {
+      h.hit = 1;
+      G.chain = 0; G.pending = Math.floor(G.pending * 0.5);
+      car.vx *= 0.72; car.vy *= 0.72;
+      G.shake = Math.max(G.shake, 16);
+      car.hitFlash = 1;
+      NHAudio.hit(0.9);
+      toast('Spike strip', 'red');
+    }
+  }
 }
 
 /* -------- steering helper shared by AI, traffic and police -------- */
@@ -533,16 +729,16 @@ function autoDrive(v, dt, aggressive){
   const tgt = G.track.at(v.idx + look, v.lane || 0);
   const st = steerToward(v, tgt.x, tgt.y);
   /* the attract driver drifts through corners so the menu looks alive */
-  const wantDrift = aggressive && Math.abs(st) > 0.30 && v.speed > 320;
+  const wantDrift = aggressive && Math.abs(st) > 0.20 && v.speed > 300;
   v.driftHeld = wantDrift ? 1 : 0;
-  v.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
+  v.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
   v.drive(dt, st, 1, wantDrift ? 1 : 0, aggressive && Math.abs(st) < 0.2 ? 1 : 0);
   barrier(v, loc);
 }
 
 /* -------- barrier response -------- */
 function barrier(v, loc){
-  const lim = loc.p.w - v.spec.wid * 0.5;
+  const lim = roadHalf(loc.p) - v.spec.wid * 0.5;
   if (Math.abs(loc.lat) <= lim) return 0;
   const side = Math.sign(loc.lat);
   const p = loc.p;
@@ -562,11 +758,41 @@ function barrier(v, loc){
 /* -------- scoring -------- */
 function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; return; }
-  const gained = Math.floor(G.pending * (1 + G.tier * 0.35));
+  const M = G.run.M;
+  const heatMul = 1 + G.tier * 0.35 + (G.tier >= 2 ? M.heatBonus : 0);
+  const gained = Math.floor(G.pending * heatMul * M.bankMul);
+
   G.score += gained;
+  G.run.banked += gained;
   G.heat = Math.min(3.0, G.heat + gained / 14000);
-  toast('Banked +' + fmt(gained), 'gold');
+  NHAudio.bank(G.mult);
+
+  /* chips that trigger on the cash-in, not on the drift */
+  if (M.ghostOnBank) G.ghost = Math.max(G.ghost, M.ghostOnBank);
+  if (M.shockOnBank) {
+    for (const p of G.police) {
+      const d = hyp(p.x - G.car.x, p.y - G.car.y);
+      if (d < 420) {
+        const nx = (p.x - G.car.x) / (d || 1), ny = (p.y - G.car.y) / (d || 1);
+        p.vx += nx * 460; p.vy += ny * 460;
+        p.a += rnd(-1.6, 1.6);
+        p.hitFlash = 1;
+      }
+    }
+    for (let i = 0; i < 26; i++) {
+      const a = rnd(0, TAU), s = rnd(250, 620);
+      spawn(G.car.x, G.car.y, Math.cos(a) * s, Math.sin(a) * s,
+            rnd(0.2, 0.45), rnd(4, 9), '120,220,255', true, -8);
+    }
+  }
+
+  if (G.boss) { bossDamage(gained); toast('-' + fmt(gained) + ' integrity', 'red'); }
+  else toast('Banked +' + fmt(gained), 'gold');
+
   G.pending = 0; G.chain = 0; G.mult = 1;
+
+  /* quota districts clear the moment you meet the number */
+  if (!G.boss && G.run.cfg && !G.run.cfg.boss && G.run.banked >= G.run.quota) clearDistrict();
 }
 
 function toast(text, cls){
@@ -581,6 +807,21 @@ function toast(text, cls){
 /* -------- crash -------- */
 function crash(reason){
   if (G.state !== 'play' || G.car.inv > 0) return;
+
+  /* Crumple Zone spends a charge instead of ending the run */
+  if (G.run && G.run.crumpleLeft > 0) {
+    G.run.crumpleLeft--;
+    G.car.inv = 2.2;
+    G.car.hitFlash = 1;
+    G.pending = 0; G.chain = 0; G.mult = 1;
+    G.shake = 22; G.flash = 0.7;
+    G.car.vx *= 0.45; G.car.vy *= 0.45;
+    NHAudio.hit(1.4);
+    toast('Crumple zone spent', 'gold');
+    return;
+  }
+
+  NHAudio.crash();
   G.state = 'crash';
   G.crashT = 0;
   G.flash = 1;
@@ -612,7 +853,7 @@ function step(dt){
     readInput();
     const loc = T.locate(car.x, car.y, car.idx);
     car.idx = loc.i;
-    car.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
+    car.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
 
     if (G.ai) autoDrive(car, dt, true);
     else {
@@ -627,8 +868,10 @@ function step(dt){
                 rnd(0.2, 0.5), rnd(2, 5), '255,215,140', true, -4);
         }
         G.shake = Math.max(G.shake, Math.min(16, into / 22));
+        if (Math.random() < 0.25) NHAudio.spark();
         if (into > G.spec.crashV) { crash('wall'); return; }
-        G.chain = Math.max(0, G.chain - dt * 2.5);
+        if (G.run.M.brittle) { G.chain = 0; if (G.pending > 0) bank(); }
+        else G.chain = Math.max(0, G.chain - dt * 2.5);
       }
     }
     G.dist += car.speed * dt;
@@ -637,20 +880,40 @@ function step(dt){
        Points accrue only while the drift input is held, and pay out when it
        is released. Tying the payout to the button — not to the physics
        settling — is what makes the bet legible: you choose when to cash in. */
+    const M = G.run.M;
     const held = G.ai ? car.driftHeld : IN.drift;
-    const scoring = held && car.drift > 0.5 && car.speed > 250 && !car.offroad;
+    const scoring = held && car.drift > 0.5 && car.speed > 210 && !car.offroad;
     if (scoring) {
       G.sinceDrift = 0;
       G.chain += dt;
-      G.mult = Math.min(9.9, 1 + G.chain * 0.42);
+      /* Afterburn rewards spending nitro mid-slide instead of hoarding it */
+      if (car.boost && M.afterburn) G.chain += M.afterburn * dt;
+      G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
       G.topMult = Math.max(G.topMult, G.mult);
-      G.pending += car.speed * 0.30 * G.mult * dt;
+      G.pending += car.speed * 0.40 * G.mult * dt * M.accrueMul;
     } else {
       G.sinceDrift += dt;
-      if (G.sinceDrift > 0.42 && G.pending > 0) bank();
+      if (G.sinceDrift > M.chainGrace && G.pending > 0) bank();
     }
+
+    G.ghost = Math.max(0, G.ghost - dt);
     G.heat = Math.max(0, G.heat - dt * 0.038);
-    G.tier = Math.floor(G.heat);
+    G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
+    G.tier = Math.min(3, G.tier);
+
+    stepHazards(dt);
+    if (G.boss) stepBoss(dt);
+
+    /* reaching the checkpoint decides the district */
+    if (G.run.cfg) {
+      const travelled = car.idx - G.run.startIdx;
+      if (travelled >= G.run.cfg.len) {
+        if (G.run.cfg.boss) failDistrict('The unit got away');
+        else if (G.run.banked >= G.run.quota) clearDistrict();
+        else failDistrict('Quota missed');
+        return;
+      }
+    }
   }
 
   /* ---- traffic ---- */
@@ -662,30 +925,40 @@ function step(dt){
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
     const touchR = (t.spec.len + car.spec.len) * 0.36;
     if (playing && !G.ai) {
-      if (d < touchR) {
+      if (d < touchR && car.inv <= 0) {
+        /* You close on traffic at ~400, so a 210 threshold made any contact
+           fatal. Only a genuine high-speed impact ends the run; the rest
+           bumps, costs chain, and grants a moment of grace so one nudge
+           into a cluster cannot chain-kill. */
         const rel = hyp(t.vx - car.vx, t.vy - car.vy);
-        if (rel > 210) { crash('traffic'); return; }
+        if (rel > 380) { crash('traffic'); return; }
         const nx = dx / (d || 1), ny = dy / (d || 1);
-        car.vx -= nx * 130; car.vy -= ny * 130;
-        t.vx += nx * 130; t.vy += ny * 130;
-        G.shake = Math.max(G.shake, 11);
-        car.hitFlash = 1;
+        car.vx -= nx * 150; car.vy -= ny * 150;
+        t.vx += nx * 150; t.vy += ny * 150;
+        G.shake = Math.max(G.shake, 13);
+        car.hitFlash = 1; car.inv = 0.35;
+        NHAudio.hit(0.8);
         G.chain = Math.max(0, G.chain - 0.9);
-      } else if (d < 92 && !t.nearFlag && car.speed > 300) {
+      } else if (d < 105 && !t.nearFlag && car.speed > 260) {
         t.nearFlag = true;
+        const M = G.run.M;
         if (G.chain > 0.25) {
-          G.pending += 220 * G.mult;
+          const bonus = 220 * G.mult * M.nearMul;
+          G.pending += bonus;
           G.chain += 0.32;
-          toast('Near miss +' + fmt(220 * G.mult), 'pink');
+          toast('Near miss +' + fmt(bonus), 'pink');
+          NHAudio.nearMiss();
         }
+        if (M.nearNitro) car.nitro = Math.min(G.spec.nitroMax * M.nitroCap, car.nitro + M.nearNitro);
+        if (M.nearTop) car.topBonus += M.nearTop;
       }
       if (d > 140) t.nearFlag = false;
     }
   }
-  while (G.traffic.length < 10) addTraffic(rint(46, 118));
+  while (G.traffic.length < Math.round(8 * (G.run ? G.run.M.trafficMul : 1))) addTraffic(rint(46, 118));
 
   /* ---- police ---- */
-  if (playing && !G.ai) {
+  if (playing && !G.ai && !G.boss) {
     while (G.police.length < G.tier) addPolice();
     while (G.police.length > G.tier) G.police.pop();
   }
@@ -693,15 +966,19 @@ function step(dt){
     const p = G.police[i];
     const loc = T.locate(p.x, p.y, p.idx);
     p.idx = loc.i;
-    p.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
-    /* aim slightly ahead of the player so they cut the corner */
-    const st = steerToward(p, car.x + car.vx * 0.35, car.y + car.vy * 0.35);
+    p.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
+    /* aim slightly ahead of the player so they cut the corner —
+       unless Ghost Plates has them chasing a lost trail */
+    const lost = G.ghost > 0;
+    const st = lost
+      ? steerToward(p, G.track.at(p.idx + 8, 0).x, G.track.at(p.idx + 8, 0).y)
+      : steerToward(p, car.x + car.vx * 0.35, car.y + car.vy * 0.35);
     p.drive(dt, st, 1, Math.abs(st) > 0.6 && p.speed > 400 ? 1 : 0, 1);
     barrier(p, loc);
 
     if (playing && !G.ai) {
       const dx = p.x - car.x, dy = p.y - car.y, d = hyp(dx, dy);
-      if (d < (p.spec.len + car.spec.len) * 0.36) {
+      if (!lost && car.inv <= 0 && d < (p.spec.len + car.spec.len) * 0.36) {
         const nx = dx / (d || 1), ny = dy / (d || 1);
         car.vx -= nx * 240; car.vy -= ny * 240;
         p.vx += nx * 120; p.vy += ny * 120;
@@ -709,6 +986,7 @@ function step(dt){
         car.hitFlash = 1;
         G.chain = Math.max(0, G.chain - 1.6);
         G.heat = Math.max(0, G.heat - 0.25);
+        NHAudio.hit(1);
         toast('Rammed', 'red');
       }
     }
@@ -796,12 +1074,14 @@ function drawRoad(){
   ctx.beginPath();
   for (let i = a; i <= b; i++) {
     const p = pts[i];
-    const nx = -Math.sin(p.a) * p.w, ny = Math.cos(p.a) * p.w;
+    const hw = roadHalf(p);
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
     if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
   }
   for (let i = b; i >= a; i--) {
     const p = pts[i];
-    const nx = -Math.sin(p.a) * p.w, ny = Math.cos(p.a) * p.w;
+    const hw = roadHalf(p);
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
     ctx.lineTo(p.x - nx, p.y - ny);
   }
   ctx.closePath();
@@ -817,7 +1097,8 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * side, ny = Math.cos(p.a) * p.w * side;
+      const hw = roadHalf(p) * side;
+      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     ctx.strokeStyle = hexA(side < 0 ? CL.cyan : CL.magenta, 0.10);
@@ -834,7 +1115,7 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * f, ny = Math.cos(p.a) * p.w * f;
+      const nx = -Math.sin(p.a) * roadHalf(p) * f, ny = Math.cos(p.a) * roadHalf(p) * f;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     ctx.stroke();
@@ -854,7 +1135,8 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * side, ny = Math.cos(p.a) * p.w * side;
+      const hw = roadHalf(p) * side;
+      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     const col = side < 0 ? CL.cyan : CL.magenta;
@@ -897,6 +1179,29 @@ function drawParticles(){
     ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawHazards(){
+  for (const h of G.hazards) {
+    const fade = clamp(h.life / 1.6, 0, 1);
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.a);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = 'rgba(255,51,85,0.20)';
+    ctx.fillRect(-9, -46, 18, 92);
+    ctx.strokeStyle = CL.red;
+    ctx.lineWidth = 2.4;
+    ctx.strokeRect(-9, -46, 18, 92);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,51,85,0.55)';
+    ctx.beginPath();
+    for (let y = -42; y <= 42; y += 12) { ctx.moveTo(-9, y); ctx.lineTo(9, y - 6); }
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 }
 
 /* --- procedural car: the only "asset" in the game --- */
@@ -1020,7 +1325,7 @@ function drawVehicle(v, opt){
   }
 
   /* police bar */
-  if (v.kind === 'police') {
+  if (v.kind === 'police' || v.kind === 'boss') {
     const f = Math.sin(v.lamp) > 0;
     ctx.fillStyle = f ? 'rgba(80,140,255,0.95)' : 'rgba(255,50,70,0.95)';
     ctx.fillRect(-s.len * 0.08, -s.wid * 0.5, s.len * 0.1, s.wid);
@@ -1147,8 +1452,8 @@ function drawLamps(){
     const p = G.track.pts[i];
     if (!p.lamp) continue;
     for (const side of [-1, 1]) {
-      const x = p.x - Math.sin(p.a) * (p.w + 16) * side;
-      const y = p.y + Math.cos(p.a) * (p.w + 16) * side;
+      const x = p.x - Math.sin(p.a) * (roadHalf(p) + 16) * side;
+      const y = p.y + Math.cos(p.a) * (roadHalf(p) + 16) * side;
       blitGlow(side < 0 ? CL.cyan : CL.magenta, x, y, 46, 46, 0.30);
     }
   }
@@ -1203,6 +1508,50 @@ function bloom(){
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/* A chase you cannot see is just a random shove. Anything hunting you that
+   is off screen gets a chevron pinned to the edge, pointing at it. */
+function drawThreats(){
+  if (G.state !== 'play' && G.state !== 'crash') return;
+  const list = G.boss ? G.police.concat([G.boss]) : G.police;
+  if (!list.length) return;
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cx = W / 2, cy = H * 0.62, pad = W * 0.055;
+
+  for (const v of list) {
+    const [sx, sy] = w2s(v.x, v.y);
+    const inView = sx > pad && sx < W - pad && sy > pad && sy < H - pad;
+    if (inView) continue;
+
+    const dx = sx - cx, dy = sy - cy;
+    const ang = Math.atan2(dy, dx);
+    /* clamp onto the inset viewport rectangle */
+    const hw = W / 2 - pad, hh = H / 2 - pad;
+    const t = Math.min(hw / Math.abs(Math.cos(ang) || 1e-6), hh / Math.abs(Math.sin(ang) || 1e-6));
+    const px = cx + Math.cos(ang) * t, py = cy + Math.sin(ang) * t;
+
+    const dist = hyp(v.x - G.car.x, v.y - G.car.y);
+    const near = clamp(1 - dist / 1400, 0.18, 1);
+    const isBoss = v.kind === 'boss';
+    const size = (isBoss ? 16 : 12) * (0.8 + near * 0.5);
+
+    ctx.save();
+    ctx.translate(clamp(px, pad, W - pad), clamp(py, pad, H - pad));
+    ctx.rotate(ang);
+    ctx.globalAlpha = 0.35 + near * 0.6;
+    ctx.fillStyle = isBoss ? CL.red : '#FF6A80';
+    ctx.beginPath();
+    ctx.moveTo(size, 0);
+    ctx.lineTo(-size * 0.7, -size * 0.72);
+    ctx.lineTo(-size * 0.35, 0);
+    ctx.lineTo(-size * 0.7, size * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
 function post(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (plates.length) {
@@ -1227,13 +1576,16 @@ function render(){
   drawRoad();
   drawSkids();
   drawLamps();
+  drawHazards();
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const p of G.police) drawVehicle(p);
+  if (G.boss) drawVehicle(G.boss);
   drawVehicle(G.car);
   drawParticles();
 
   if (QF.city) drawCity();
   bloom();
+  drawThreats();
   post();
 }
 
@@ -1285,7 +1637,10 @@ const UI = {
   hud:$('hud'), score:$('score'), coins:$('coins'),
   combo:$('combo'), cmult:$('cmult'), cpts:$('cpts'), cfill:$('cfill'),
   heat:$('heat'), spd:$('spd'), nfill:$('nfill'), toasts:$('toasts'),
-  menu:$('menu'), over:$('over'), garage:$('garage')
+  menu:$('menu'), over:$('over'), garage:$('garage'),
+  brief:$('brief'), draft:$('draft'),
+  obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
+  objDist:$('objDist'), dchip:$('dchip'), build:$('build')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -1294,7 +1649,7 @@ function syncHUD(){
   shownScore = lerp(shownScore, G.score, 0.2);
   UI.score.textContent = fmt(shownScore);
   UI.coins.textContent = fmt(Save.data.coins + G.coinsRun);
-  UI.spd.textContent = Math.round(G.car.speed * 0.42);
+  UI.spd.textContent = Math.round(G.car.speed * 0.52);
   UI.nfill.style.width = clamp(G.car.nitro / (G.spec.nitroMax || 1), 0, 1) * 100 + '%';
 
   const active = G.pending > 0 || G.chain > 0.05;
@@ -1304,9 +1659,47 @@ function syncHUD(){
   UI.cpts.textContent = fmt(G.pending);
   UI.cfill.style.width = clamp(G.mult / 9.9, 0, 1) * 100 + '%';
 
-  UI.heat.classList.toggle('on', G.heat > 0.05);
+  UI.heat.classList.toggle('on', G.heat > 0.05 || G.tier > 0);
   UI.heat.classList.toggle('max', G.tier >= 3);
   heatPips.forEach((el, i) => el.classList.toggle('lit', i < G.tier));
+
+  /* objective rail: quota progress, or the boss's remaining integrity */
+  const run = G.run, cfg = run && run.cfg;
+  if (cfg) {
+    UI.dchip.textContent = 'District ' + cfg.n;
+    const bossing = !!G.boss;
+    UI.obj.classList.toggle('boss', bossing);
+    if (bossing) {
+      UI.objLbl.textContent = G.boss.def.name;
+      UI.objVal.textContent = Math.max(0, Math.ceil(G.boss.hp / G.boss.maxHp * 100)) + '%';
+      UI.objFill.style.width = clamp(G.boss.hp / G.boss.maxHp, 0, 1) * 100 + '%';
+    } else {
+      UI.objLbl.textContent = 'Quota';
+      UI.objVal.textContent = fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
+      UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
+    }
+    const travelled = clamp((G.car.idx - run.startIdx) / cfg.len, 0, 1);
+    UI.objDist.style.width = travelled * 100 + '%';
+  }
+}
+
+/* the build rail — a roguelite is unreadable if you cannot see your own deck */
+function renderBuild(){
+  const run = G.run;
+  if (!run) { UI.build.innerHTML = ''; return; }
+  const counts = {};
+  for (const id of run.chips) counts[id] = (counts[id] || 0) + 1;
+  let html = '';
+  for (const id in counts) {
+    const c = NHChips.byId(id);
+    html += '<i class="' + c.rarity + '">' + c.name +
+            (counts[id] > 1 ? '<b>&times;' + counts[id] + '</b>' : '') + '</i>';
+  }
+  for (const id of run.curses) {
+    const c = NHChips.curseById(id);
+    html += '<i class="curse">' + c.name + '</i>';
+  }
+  UI.build.innerHTML = html;
 }
 
 function show(el){ el.classList.remove('hide'); }
@@ -1314,29 +1707,141 @@ function hide(el){ el.classList.add('hide'); }
 
 function toMenu(){
   G.state = 'menu';
+  G.run = null;
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   UI.hud.classList.add('off');
-  $('menuBest').textContent = fmt(Save.data.best);
+  $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
+    (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
 }
 
 function startRun(){
-  hide(UI.menu); hide(UI.over); hide(UI.garage);
+  hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
+  G.run = newRun();
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false;
+  shownScore = 0;
+  nextDistrict();
+}
+
+/* ---- district lifecycle ---- */
+function nextDistrict(){
+  const run = G.run;
+  run.district++;
+  run.cfg = districtCfg(run.district);
+  run.quota = run.cfg.quota;
+  run.banked = 0;
+  run.crumpleLeft = run.M.crumple;
+
   newWorld(false);
+  run.startIdx = G.car.idx;
+  G.car.topBonus = 0;
+  G.heat = run.cfg.heatFloor + run.M.policeStart;
+  G.tier = Math.min(3, Math.floor(G.heat));
+
+  showBrief();
+}
+
+function showBrief(){
+  const cfg = G.run.cfg;
+  G.state = 'brief';
+  UI.hud.classList.add('off');
+  $('bkicker').textContent = cfg.boss ? 'Pursuit unit' : 'District ' + cfg.n;
+  $('bname').textContent = cfg.name;
+  $('bobj').innerHTML = cfg.boss
+    ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks.</b>'
+    : 'Bank <b>' + fmt(cfg.quota) + '</b> before the checkpoint.';
+  $('bsub').textContent = cfg.boss ? cfg.bossDef.sub : 'Heat floor ' + cfg.heatFloor;
+  UI.brief.classList.toggle('bossBrief', !!cfg.boss);
+  renderBuild();
+  show(UI.brief);
+  NHAudio.resume();
+}
+
+function beginDistrict(){
+  hide(UI.brief);
   G.state = 'play';
   UI.hud.classList.remove('off');
-  shownScore = 0;
+  if (G.run.cfg.boss) addBoss();
+}
+
+function clearDistrict(){
+  if (G.state !== 'play') return;
+  G.run.cleared++;
+  G.state = 'draft';
+  G.pending = 0; G.chain = 0; G.mult = 1;
+  UI.hud.classList.add('off');
+  NHAudio.clear();
+  G.flash = 0.5;
+  showDraft();
+}
+
+function failDistrict(why){
+  if (G.state !== 'play') return;
+  G.state = 'crash';
+  G.crashT = 0;
+  G.crashReason = why;
+  G.flash = 0.8; G.shake = 18;
+  G.pending = 0; G.chain = 0; G.mult = 1;
+  UI.hud.classList.add('off');
+  NHAudio.curse();
+}
+
+/* ---- the draft ---- */
+function showDraft(){
+  const run = G.run;
+  G.offers = NHChips.roll(run.chips, run.district, run.curses);
+  const wrap = $('dcards');
+  wrap.innerHTML = '';
+  $('dsub').textContent = 'District ' + run.district + ' cleared — ' + fmt(run.banked) + ' banked';
+
+  G.offers.forEach((offer, i) => {
+    const c = offer.chip;
+    const el = document.createElement('button');
+    el.className = 'dcard ' + c.rarity + (offer.curse ? ' oc' : '');
+    el.innerHTML =
+      (offer.curse ? '<div class="octag">Overclocked</div>' : '') +
+      '<div class="drar">' + c.rarity + ' &middot; ' + c.tag + '</div>' +
+      '<div class="dname">' + c.name + '</div>' +
+      '<div class="ddesc">' + c.desc + '</div>' +
+      (offer.curse
+        ? '<div class="dcurse"><span>' + offer.curse.name + '</span>' + offer.curse.desc + '</div>'
+        : '');
+    el.onclick = () => takeOffer(i);
+    wrap.appendChild(el);
+  });
+  show(UI.draft);
+}
+
+function takeOffer(i){
+  const offer = G.offers[i];
+  if (!offer) return;
+  const run = G.run;
+  run.chips.push(offer.chip.id);
+  if (offer.curse) { run.curses.push(offer.curse.id); NHAudio.curse(); }
+  else NHAudio.chip();
+  run.M = NHChips.build(run.chips, run.curses);
+  hide(UI.draft);
+  nextDistrict();
 }
 
 function endRun(){
   G.state = 'over';
   const isBest = G.score > Save.data.best;
   if (isBest) Save.data.best = G.score;
-  G.coinsRun = Math.floor(G.score / 80 * G.spec.payout);
+  const reached = G.run ? G.run.district : 1;
+  if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
+  /* clearing districts is the achievement, so it pays on top of raw score */
+  G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
 
-  $('ovKicker').textContent = G.crashReason === 'traffic' ? 'Wrecked' : 'Wall';
+  const kick = G.crashReason === 'traffic' ? 'Wrecked'
+             : G.crashReason === 'wall' ? 'Wall'
+             : G.crashReason || 'Busted';
+  $('ovKicker').textContent = kick;
+  $('ovRank').textContent = G.run
+    ? 'Reached district ' + G.run.district + ' — ' + G.run.cleared + ' cleared'
+    : '';
   $('ovScore').textContent = fmt(G.score);
   $('ovBest').textContent = fmt(Save.data.best);
   $('ovCombo').innerHTML = '&times;' + G.topMult.toFixed(1);
@@ -1357,7 +1862,10 @@ function commitCoins(mult){
 }
 
 /* ---- buttons ---- */
-$('btnPlay').onclick   = () => startRun();
+function setMute(m){ $('btnMute').textContent = m ? 'Sound off' : 'Sound on'; }
+$('btnMute').onclick   = e => { e.stopPropagation(); setMute(NHAudio.toggleMute()); };
+$('btnGo').onclick     = () => beginDistrict();
+$('btnPlay').onclick   = () => { NHAudio.resume(); startRun(); };
 $('btnAgain').onclick  = () => { commitCoins(1); startRun(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => { hide(UI.menu); show(UI.garage); renderGarage(); };
@@ -1370,6 +1878,7 @@ $('btnRevive').onclick = () => {
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
+    G.run.crumpleLeft = Math.max(G.run.crumpleLeft, G.run.M.crumple);
     UI.hud.classList.remove('off');
     /* drop back on the centreline a little ahead, briefly untouchable */
     const pos = G.track.at(G.car.idx + 4, 0);
@@ -1524,6 +2033,18 @@ function frame(now){
 
   adTick(raw);
   if (!adCb) step(raw * G.slow);
+
+  NHAudio.frame({
+    playing: G.state === 'play',
+    speed: G.car ? G.car.speed : 0,
+    boost: G.car ? G.car.boost : 0,
+    drift: G.car ? G.car.drift : 0,
+    cops: G.police.length + (G.boss ? 2 : 0),
+    /* arrangement follows how deep and how hot the run is */
+    intensity: G.state === 'menu' ? 0
+      : Math.min(3, (G.run ? Math.floor((G.run.district - 1) / 2) : 0) + G.tier + (G.boss ? 1 : 0))
+  });
+
   syncHUD();
   render();
   requestAnimationFrame(frame);
@@ -1531,11 +2052,16 @@ function frame(now){
 
 resize();
 newWorld(true);
+hide(UI.brief); hide(UI.draft);
 toMenu();
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */
-window.__NH = { G, cam, CARS, Save, QF, setQuality, startRun, toMenu };
+window.__NH = {
+  G, cam, CARS, Save, QF, setQuality, startRun, toMenu,
+  beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
+  get offers(){ return G.offers; }
+};
 
 /* signal readiness to the CrazyGames loader when hosted */
 if (window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.game) {

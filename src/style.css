@@ -115,9 +115,80 @@ body{
   font-weight:700;color:var(--dim);margin-top:calc(var(--u)*.7);
 }
 
+.hudMid{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--u)*1.1);min-width:calc(var(--u)*30);
+}
+
+/* objective rail — quota progress, or the boss's integrity */
+.obj{width:calc(var(--u)*30)}
+.objHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.55);
+}
+.objHead span{
+  font-size:calc(var(--u)*1.15);letter-spacing:.26em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.objHead b{
+  font-size:calc(var(--u)*1.6);font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+.obj.boss .objHead span{color:var(--red)}
+.objBar{
+  height:calc(var(--u)*.8);background:rgba(255,255,255,.10);
+  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+}
+.objBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,rgba(61,232,255,.6),var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.75);
+  transition:width .18s linear;
+}
+.obj.boss .objBar i{
+  background:linear-gradient(90deg,#8A1226,var(--red));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.8);
+}
+/* distance to the checkpoint, deliberately quieter than the quota */
+.objDist{
+  height:calc(var(--u)*.3);margin-top:calc(var(--u)*.4);
+  background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;
+}
+.objDist i{display:block;height:100%;width:0%;background:rgba(198,210,232,.4)}
+
+/* build rail — you cannot play a roguelite you cannot read */
+.build{
+  display:flex;flex-direction:column;gap:calc(var(--u)*.4);
+  margin-top:calc(var(--u)*1.4);max-width:calc(var(--u)*22);
+}
+.build i{
+  font-style:normal;
+  font-size:calc(var(--u)*1.05);letter-spacing:.12em;text-transform:uppercase;
+  font-weight:800;color:var(--ice);
+  border-left:calc(var(--u)*.35) solid var(--cyan);
+  background:rgba(255,255,255,.05);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7);
+  border-radius:0 calc(var(--u)*.35) calc(var(--u)*.35) 0;
+  display:flex;justify-content:space-between;gap:calc(var(--u)*.6);
+}
+.build i b{color:var(--cyan)}
+.build i.uncommon{border-left-color:var(--magenta)}
+.build i.uncommon b{color:var(--magenta)}
+.build i.rare{border-left-color:var(--amber)}
+.build i.rare b{color:var(--amber)}
+.build i.curse{border-left-color:var(--red);color:var(--red);background:rgba(255,51,85,.09)}
+
+.dchip{
+  display:inline-block;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:#04121A;background:var(--cyan);
+  border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1);
+  margin-bottom:calc(var(--u)*1);
+  box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.5);
+}
+
 /* heat tier pips */
 .heat{
-  position:absolute;top:calc(var(--u)*15.5);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:calc(var(--u)*.7);
   opacity:0;transition:opacity .25s;
 }
@@ -313,6 +384,127 @@ body{
   opacity:.62;border:1px solid currentColor;border-radius:calc(var(--u)*.35);
   padding:calc(var(--u)*.15) calc(var(--u)*.55);
 }
+
+/* ---------- district brief ---------- */
+.briefIn{text-align:center;max-width:calc(var(--u)*62)}
+.bkicker{
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.bname{
+  margin:calc(var(--u)*1.4) 0 calc(var(--u)*.8);
+  font-size:calc(var(--u)*8);font-weight:800;line-height:.9;
+  text-transform:uppercase;letter-spacing:-.02em;color:#fff;
+  text-shadow:0 0 calc(var(--u)*3.5) rgba(61,232,255,.5);
+}
+.bsub{
+  font-size:calc(var(--u)*1.2);letter-spacing:.28em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.bobj{
+  margin:calc(var(--u)*2.6) 0 calc(var(--u)*3.2);
+  font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
+}
+.bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
+/* boss briefs commit to red so the shift in stakes is instant */
+#brief.bossBrief .bkicker{color:var(--red)}
+#brief.bossBrief .bname{color:var(--red);text-shadow:0 0 calc(var(--u)*4) rgba(255,51,85,.6)}
+#brief.bossBrief .bobj b{color:var(--red)}
+#brief .build{
+  flex-direction:row;flex-wrap:wrap;justify-content:center;
+  max-width:none;margin:0 0 calc(var(--u)*2.6);
+}
+
+/* ---------- chip draft ---------- */
+.draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
+.dkicker{
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+.dtitle{
+  margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
+  font-size:calc(var(--u)*4.4);font-weight:800;
+  text-transform:uppercase;letter-spacing:.02em;color:#fff;
+}
+.dsub{
+  font-size:calc(var(--u)*1.3);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);margin-bottom:calc(var(--u)*2.8);
+}
+.dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
+.dcard{
+  cursor:pointer;text-align:left;position:relative;overflow:hidden;
+  font-family:var(--sans);color:var(--ice);
+  background:var(--panel);
+  border:1px solid var(--edge);border-top:calc(var(--u)*.4) solid var(--cyan);
+  border-radius:calc(var(--u)*1);
+  padding:calc(var(--u)*2.2) calc(var(--u)*1.8) calc(var(--u)*2);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.7);
+  transition:transform .12s,border-color .12s,background .12s,box-shadow .12s;
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+}
+.dcard:nth-child(2){animation-delay:.06s}
+.dcard:nth-child(3){animation-delay:.12s}
+.dcard:hover{transform:translateY(calc(var(--u)*-.6));background:rgba(61,232,255,.09)}
+.dcard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.dcard.uncommon{border-top-color:var(--magenta)}
+.dcard.uncommon:hover{background:rgba(255,46,136,.09)}
+.dcard.rare{border-top-color:var(--amber)}
+.dcard.rare:hover{background:rgba(255,177,61,.09)}
+.drar{
+  font-size:calc(var(--u)*1);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dcard.uncommon .drar{color:var(--magenta)}
+.dcard.rare .drar{color:var(--amber)}
+.dname{
+  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
+  text-transform:uppercase;letter-spacing:.01em;line-height:1.05;
+}
+.ddesc{font-size:calc(var(--u)*1.5);line-height:1.45;color:var(--ice);opacity:.82}
+/* the drawback is never buried — an unreadable cost is not a choice */
+.dcard.oc{border-top-color:var(--red)}
+.octag{
+  position:absolute;top:0;right:0;
+  font-size:calc(var(--u)*.95);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  color:#1A0407;background:var(--red);
+  padding:calc(var(--u)*.3) calc(var(--u)*.9);
+  border-radius:0 0 0 calc(var(--u)*.6);
+}
+.dcurse{
+  margin-top:auto;padding-top:calc(var(--u)*1);
+  border-top:1px dashed rgba(255,51,85,.42);
+  font-size:calc(var(--u)*1.3);line-height:1.4;color:rgba(255,150,165,.9);
+}
+.dcurse span{
+  display:block;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+  font-size:calc(var(--u)*1.05);color:var(--red);margin-bottom:calc(var(--u)*.35);
+}
+.dhint{
+  margin-top:calc(var(--u)*2.4);
+  font-size:calc(var(--u)*1.15);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.dhint b{
+  color:var(--ice);border:1px solid var(--edge);border-radius:calc(var(--u)*.35);
+  padding:calc(var(--u)*.2) calc(var(--u)*.6);margin:0 calc(var(--u)*.15);
+}
+
+.ovRank{
+  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
+}
+
+.mute{
+  position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*3);
+  pointer-events:auto;cursor:pointer;font-family:var(--sans);
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+  background:none;border:1px solid var(--edge);border-radius:calc(var(--u)*.5);
+  padding:calc(var(--u)*.6) calc(var(--u)*1.2);
+  transition:color .14s,border-color .14s;
+}
+.mute:hover{color:var(--ice);border-color:var(--edge2)}
+.mute:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 
 /* panels */
 .panel{

@@ -122,9 +122,80 @@ body{
   font-weight:700;color:var(--dim);margin-top:calc(var(--u)*.7);
 }
 
+.hudMid{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--u)*1.1);min-width:calc(var(--u)*30);
+}
+
+/* objective rail — quota progress, or the boss's integrity */
+.obj{width:calc(var(--u)*30)}
+.objHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.55);
+}
+.objHead span{
+  font-size:calc(var(--u)*1.15);letter-spacing:.26em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.objHead b{
+  font-size:calc(var(--u)*1.6);font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+.obj.boss .objHead span{color:var(--red)}
+.objBar{
+  height:calc(var(--u)*.8);background:rgba(255,255,255,.10);
+  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+}
+.objBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,rgba(61,232,255,.6),var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.75);
+  transition:width .18s linear;
+}
+.obj.boss .objBar i{
+  background:linear-gradient(90deg,#8A1226,var(--red));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.8);
+}
+/* distance to the checkpoint, deliberately quieter than the quota */
+.objDist{
+  height:calc(var(--u)*.3);margin-top:calc(var(--u)*.4);
+  background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;
+}
+.objDist i{display:block;height:100%;width:0%;background:rgba(198,210,232,.4)}
+
+/* build rail — you cannot play a roguelite you cannot read */
+.build{
+  display:flex;flex-direction:column;gap:calc(var(--u)*.4);
+  margin-top:calc(var(--u)*1.4);max-width:calc(var(--u)*22);
+}
+.build i{
+  font-style:normal;
+  font-size:calc(var(--u)*1.05);letter-spacing:.12em;text-transform:uppercase;
+  font-weight:800;color:var(--ice);
+  border-left:calc(var(--u)*.35) solid var(--cyan);
+  background:rgba(255,255,255,.05);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7);
+  border-radius:0 calc(var(--u)*.35) calc(var(--u)*.35) 0;
+  display:flex;justify-content:space-between;gap:calc(var(--u)*.6);
+}
+.build i b{color:var(--cyan)}
+.build i.uncommon{border-left-color:var(--magenta)}
+.build i.uncommon b{color:var(--magenta)}
+.build i.rare{border-left-color:var(--amber)}
+.build i.rare b{color:var(--amber)}
+.build i.curse{border-left-color:var(--red);color:var(--red);background:rgba(255,51,85,.09)}
+
+.dchip{
+  display:inline-block;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:#04121A;background:var(--cyan);
+  border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1);
+  margin-bottom:calc(var(--u)*1);
+  box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.5);
+}
+
 /* heat tier pips */
 .heat{
-  position:absolute;top:calc(var(--u)*15.5);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;gap:calc(var(--u)*.7);
   opacity:0;transition:opacity .25s;
 }
@@ -321,6 +392,127 @@ body{
   padding:calc(var(--u)*.15) calc(var(--u)*.55);
 }
 
+/* ---------- district brief ---------- */
+.briefIn{text-align:center;max-width:calc(var(--u)*62)}
+.bkicker{
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.bname{
+  margin:calc(var(--u)*1.4) 0 calc(var(--u)*.8);
+  font-size:calc(var(--u)*8);font-weight:800;line-height:.9;
+  text-transform:uppercase;letter-spacing:-.02em;color:#fff;
+  text-shadow:0 0 calc(var(--u)*3.5) rgba(61,232,255,.5);
+}
+.bsub{
+  font-size:calc(var(--u)*1.2);letter-spacing:.28em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.bobj{
+  margin:calc(var(--u)*2.6) 0 calc(var(--u)*3.2);
+  font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
+}
+.bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
+/* boss briefs commit to red so the shift in stakes is instant */
+#brief.bossBrief .bkicker{color:var(--red)}
+#brief.bossBrief .bname{color:var(--red);text-shadow:0 0 calc(var(--u)*4) rgba(255,51,85,.6)}
+#brief.bossBrief .bobj b{color:var(--red)}
+#brief .build{
+  flex-direction:row;flex-wrap:wrap;justify-content:center;
+  max-width:none;margin:0 0 calc(var(--u)*2.6);
+}
+
+/* ---------- chip draft ---------- */
+.draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
+.dkicker{
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+.dtitle{
+  margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
+  font-size:calc(var(--u)*4.4);font-weight:800;
+  text-transform:uppercase;letter-spacing:.02em;color:#fff;
+}
+.dsub{
+  font-size:calc(var(--u)*1.3);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);margin-bottom:calc(var(--u)*2.8);
+}
+.dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
+.dcard{
+  cursor:pointer;text-align:left;position:relative;overflow:hidden;
+  font-family:var(--sans);color:var(--ice);
+  background:var(--panel);
+  border:1px solid var(--edge);border-top:calc(var(--u)*.4) solid var(--cyan);
+  border-radius:calc(var(--u)*1);
+  padding:calc(var(--u)*2.2) calc(var(--u)*1.8) calc(var(--u)*2);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.7);
+  transition:transform .12s,border-color .12s,background .12s,box-shadow .12s;
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+}
+.dcard:nth-child(2){animation-delay:.06s}
+.dcard:nth-child(3){animation-delay:.12s}
+.dcard:hover{transform:translateY(calc(var(--u)*-.6));background:rgba(61,232,255,.09)}
+.dcard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.dcard.uncommon{border-top-color:var(--magenta)}
+.dcard.uncommon:hover{background:rgba(255,46,136,.09)}
+.dcard.rare{border-top-color:var(--amber)}
+.dcard.rare:hover{background:rgba(255,177,61,.09)}
+.drar{
+  font-size:calc(var(--u)*1);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dcard.uncommon .drar{color:var(--magenta)}
+.dcard.rare .drar{color:var(--amber)}
+.dname{
+  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
+  text-transform:uppercase;letter-spacing:.01em;line-height:1.05;
+}
+.ddesc{font-size:calc(var(--u)*1.5);line-height:1.45;color:var(--ice);opacity:.82}
+/* the drawback is never buried — an unreadable cost is not a choice */
+.dcard.oc{border-top-color:var(--red)}
+.octag{
+  position:absolute;top:0;right:0;
+  font-size:calc(var(--u)*.95);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  color:#1A0407;background:var(--red);
+  padding:calc(var(--u)*.3) calc(var(--u)*.9);
+  border-radius:0 0 0 calc(var(--u)*.6);
+}
+.dcurse{
+  margin-top:auto;padding-top:calc(var(--u)*1);
+  border-top:1px dashed rgba(255,51,85,.42);
+  font-size:calc(var(--u)*1.3);line-height:1.4;color:rgba(255,150,165,.9);
+}
+.dcurse span{
+  display:block;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+  font-size:calc(var(--u)*1.05);color:var(--red);margin-bottom:calc(var(--u)*.35);
+}
+.dhint{
+  margin-top:calc(var(--u)*2.4);
+  font-size:calc(var(--u)*1.15);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.dhint b{
+  color:var(--ice);border:1px solid var(--edge);border-radius:calc(var(--u)*.35);
+  padding:calc(var(--u)*.2) calc(var(--u)*.6);margin:0 calc(var(--u)*.15);
+}
+
+.ovRank{
+  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
+}
+
+.mute{
+  position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*3);
+  pointer-events:auto;cursor:pointer;font-family:var(--sans);
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+  background:none;border:1px solid var(--edge);border-radius:calc(var(--u)*.5);
+  padding:calc(var(--u)*.6) calc(var(--u)*1.2);
+  transition:color .14s,border-color .14s;
+}
+.mute:hover{color:var(--ice);border-color:var(--edge2)}
+.mute:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
 /* panels */
 .panel{
   width:100%;max-width:calc(var(--u)*54);
@@ -509,24 +701,34 @@ body{
       <div class="stat">
         <div class="lbl">Score</div>
         <div class="val" id="score">0</div>
+        <div class="build" id="build"></div>
       </div>
 
-      <div class="combo" id="combo">
-        <div class="cmult" id="cmult">&times;1.0</div>
-        <div class="cpts" id="cpts">0</div>
-        <div class="cbar"><i id="cfill"></i></div>
-        <div class="cnote">Straighten up to bank</div>
+      <div class="hudMid">
+        <div class="obj" id="obj">
+          <div class="objHead"><span id="objLbl">Quota</span><b id="objVal">0 / 0</b></div>
+          <div class="objBar"><i id="objFill"></i></div>
+          <div class="objDist"><i id="objDist"></i></div>
+        </div>
+
+        <div class="combo" id="combo">
+          <div class="cmult" id="cmult">&times;1.0</div>
+          <div class="cpts" id="cpts">0</div>
+          <div class="cbar"><i id="cfill"></i></div>
+          <div class="cnote">Release to bank</div>
+        </div>
+
+        <div class="heat" id="heat">
+          <span class="hlbl">Heat</span>
+          <i></i><i></i><i></i>
+        </div>
       </div>
 
       <div class="stat right">
+        <div class="dchip" id="dchip">District 1</div>
         <div class="lbl">Coins</div>
         <div class="val amber" id="coins">0</div>
       </div>
-    </div>
-
-    <div class="heat" id="heat">
-      <span class="hlbl">Heat</span>
-      <i></i><i></i><i></i>
     </div>
 
     <div class="hudBot">
@@ -565,7 +767,30 @@ body{
         <div class="hint"><b>Space</b> Drift</div>
         <div class="hint"><b>Shift</b> Nitro</div>
       </div>
-      <div class="best">Personal best <b id="menuBest">0</b></div>
+      <div class="best">Deepest run <b id="menuBest">District 1</b></div>
+      <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
+    </div>
+  </div>
+
+  <!-- ============ district brief ============ -->
+  <div id="brief" class="layer screen">
+    <div class="briefIn">
+      <div class="bkicker" id="bkicker">District 1</div>
+      <h2 class="bname" id="bname">Dockside</h2>
+      <div class="bsub" id="bsub">Heat floor 0</div>
+      <p class="bobj" id="bobj">Bank <b>4,200</b> before the checkpoint.</p>
+      <button class="btn primary" id="btnGo">Roll out<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ chip draft ============ -->
+  <div id="draft" class="layer screen">
+    <div class="draftIn">
+      <div class="dkicker">Salvage</div>
+      <h2 class="dtitle">Fit one chip</h2>
+      <div class="dsub" id="dsub">District cleared</div>
+      <div class="dcards" id="dcards"></div>
+      <div class="dhint">Press <b>1</b> <b>2</b> <b>3</b> to choose</div>
     </div>
   </div>
 
@@ -576,6 +801,7 @@ body{
         <span class="ovKicker" id="ovKicker">Wrecked</span>
         <span class="ovBadge" id="ovBadge">New best</span>
       </div>
+      <div class="ovRank" id="ovRank">Reached district 1</div>
       <div class="ovScore" id="ovScore">0</div>
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
@@ -622,6 +848,571 @@ body{
 </div>
 <script>
 /* ============================================================
+   NEON HEAT — audio
+   Fully synthesised. Same principle as the renderer: no asset files,
+   so nothing to license, nothing to download, nothing to sound cheap.
+   A four-layer synthwave bed whose arrangement tracks run intensity,
+   plus a small SFX set driven off gameplay state.
+   ============================================================ */
+window.NHAudio = (() => {
+'use strict';
+
+let ac = null, master = null, musicBus = null, sfxBus = null;
+let ready = false, muted = false;
+
+/* ---- musical material ---------------------------------------------------
+   A natural-minor vamp: i - VI - III - VII. Bright enough to drive to,
+   dark enough to read as a police chase.                                   */
+const PROG = [
+  { root: 55.00, chord: [55.00, 65.41, 82.41] },   // Am
+  { root: 43.65, chord: [43.65, 65.41, 87.31] },   // F
+  { root: 65.41, chord: [65.41, 82.41, 98.00] },   // C
+  { root: 49.00, chord: [49.00, 61.74, 73.42] }    // G
+];
+const BASS_STEPS = [0, 0, 7, 0, 0, 12, 0, 7, 0, 0, 7, 0, 12, 0, 7, 3];
+const ARP_STEPS  = [0, 4, 7, 12, 7, 4, 7, 12, 0, 4, 7, 12, 14, 12, 7, 4];
+const semi = (f, n) => f * Math.pow(2, n / 12);
+
+const BPM = 126;
+const STEP = 60 / BPM / 4;          // sixteenth notes
+let step = 0, nextTime = 0, timer = null;
+let intensity = 0, targetInt = 0;
+
+/* persistent voices */
+let engOsc1, engOsc2, engFilt, engGain, engSub;
+let sqNoise, sqFilt, sqGain;
+let sirOsc, sirGain, sirLfo;
+
+/* ---------------------------------------------------------------- helpers */
+function noiseBuffer(secs){
+  const n = Math.floor(ac.sampleRate * secs);
+  const b = ac.createBuffer(1, n, ac.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+let NOISE = null;
+function noiseSource(loop){
+  const s = ac.createBufferSource();
+  s.buffer = NOISE;
+  s.loop = !!loop;
+  return s;
+}
+/* one-shot envelope helper: returns the gain node to route through */
+function env(dest, peak, attack, decay, at){
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), at + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + attack + decay);
+  g.connect(dest);
+  return g;
+}
+
+/* ------------------------------------------------------------------- init */
+function init(){
+  if (ready) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  ac = new AC();
+  NOISE = noiseBuffer(2);
+
+  master = ac.createGain();
+  master.gain.value = muted ? 0 : 0.9;
+  master.connect(ac.destination);
+
+  /* a touch of compression keeps the bed from fighting the SFX */
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 3.2; comp.attack.value = 0.004;
+  comp.connect(master);
+
+  musicBus = ac.createGain(); musicBus.gain.value = 0.55; musicBus.connect(comp);
+  sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.85; sfxBus.connect(comp);
+
+  buildEngine();
+  buildSqueal();
+  buildSiren();
+
+  ready = true;
+  nextTime = ac.currentTime + 0.08;
+  tick();
+}
+
+function resume(){
+  if (!ready) { init(); return; }
+  if (ac.state === 'suspended') ac.resume();
+}
+
+/* ---------------------------------------------------------- engine voice */
+function buildEngine(){
+  engFilt = ac.createBiquadFilter();
+  engFilt.type = 'lowpass';
+  engFilt.frequency.value = 400;
+  engFilt.Q.value = 6;
+
+  engGain = ac.createGain();
+  engGain.gain.value = 0;
+
+  engOsc1 = ac.createOscillator(); engOsc1.type = 'sawtooth'; engOsc1.frequency.value = 60;
+  engOsc2 = ac.createOscillator(); engOsc2.type = 'sawtooth'; engOsc2.frequency.value = 60; engOsc2.detune.value = 11;
+  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 30;
+
+  engOsc1.connect(engFilt); engOsc2.connect(engFilt); engSub.connect(engFilt);
+  engFilt.connect(engGain); engGain.connect(sfxBus);
+  engOsc1.start(); engOsc2.start(); engSub.start();
+}
+
+function buildSqueal(){
+  sqFilt = ac.createBiquadFilter();
+  sqFilt.type = 'bandpass';
+  sqFilt.frequency.value = 2300;
+  sqFilt.Q.value = 7;
+  sqGain = ac.createGain();
+  sqGain.gain.value = 0;
+  sqNoise = noiseSource(true);
+  sqNoise.connect(sqFilt); sqFilt.connect(sqGain); sqGain.connect(sfxBus);
+  sqNoise.start();
+}
+
+function buildSiren(){
+  sirGain = ac.createGain(); sirGain.gain.value = 0;
+  sirOsc = ac.createOscillator(); sirOsc.type = 'square'; sirOsc.frequency.value = 620;
+  const sirFilt = ac.createBiquadFilter();
+  sirFilt.type = 'lowpass'; sirFilt.frequency.value = 1400;
+  /* the classic two-tone wail is just a slow LFO on pitch */
+  sirLfo = ac.createOscillator(); sirLfo.type = 'sine'; sirLfo.frequency.value = 1.1;
+  const lfoAmt = ac.createGain(); lfoAmt.gain.value = 150;
+  sirLfo.connect(lfoAmt); lfoAmt.connect(sirOsc.frequency);
+  sirOsc.connect(sirFilt); sirFilt.connect(sirGain); sirGain.connect(sfxBus);
+  sirOsc.start(); sirLfo.start();
+}
+
+/* --------------------------------------------------------------- drum kit */
+function kick(at, vel){
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(150, at);
+  o.frequency.exponentialRampToValueAtTime(44, at + 0.11);
+  const g = env(musicBus, 0.9 * vel, 0.004, 0.20, at);
+  o.connect(g); o.start(at); o.stop(at + 0.3);
+}
+function snare(at, vel){
+  const n = noiseSource(false);
+  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1600;
+  const g = env(musicBus, 0.34 * vel, 0.003, 0.15, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.25);
+
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 190;
+  const g2 = env(musicBus, 0.16 * vel, 0.003, 0.09, at);
+  o.connect(g2); o.start(at); o.stop(at + 0.16);
+}
+function hat(at, vel){
+  const n = noiseSource(false);
+  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7200;
+  const g = env(musicBus, 0.10 * vel, 0.002, 0.035, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.08);
+}
+function bassNote(at, freq){
+  const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(220 + intensity * 260, at);
+  f.frequency.exponentialRampToValueAtTime(120, at + 0.16);
+  f.Q.value = 9;
+  const g = env(musicBus, 0.30, 0.006, 0.15, at);
+  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.24);
+}
+function arpNote(at, freq, vel){
+  const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = freq;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600; f.Q.value = 3;
+  const g = env(musicBus, 0.085 * vel, 0.004, 0.13, at);
+  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.2);
+}
+let padVoices = [];
+function setPad(chord, at){
+  padVoices.forEach(v => { try { v.g.gain.cancelScheduledValues(at); v.g.gain.setTargetAtTime(0.0001, at, 0.25); v.o.stop(at + 1.6); } catch (e) {} });
+  padVoices = [];
+  if (intensity < 1) return;
+  for (const f0 of chord) {
+    for (const det of [-6, 6]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = f0 * 4; o.detune.value = det;
+      const flt = ac.createBiquadFilter();
+      flt.type = 'lowpass'; flt.frequency.value = 500 + intensity * 700; flt.Q.value = 1;
+      const g = ac.createGain(); g.gain.value = 0.0001;
+      g.gain.setTargetAtTime(0.020 + intensity * 0.010, at, 0.35);
+      o.connect(flt); flt.connect(g); g.connect(musicBus);
+      o.start(at);
+      padVoices.push({ o, g });
+    }
+  }
+}
+
+/* ------------------------------------------------------------- sequencer */
+function playStep(s, at){
+  const bar = Math.floor(s / 16) % 4;
+  const ch = PROG[bar];
+  const i = s % 16;
+
+  if (i === 0) setPad(ch.chord, at);
+
+  /* layer in as the run escalates — arrangement is the intensity dial */
+  if (intensity >= 0) {
+    if (i % 4 === 0) kick(at, 1);
+    if (intensity >= 2 && i === 14) kick(at, 0.6);
+  }
+  if (intensity >= 1 && (i === 4 || i === 12)) snare(at, 1);
+  if (intensity >= 1 && i % 2 === 0) hat(at, i % 4 === 2 ? 1 : 0.55);
+  if (intensity >= 3 && i % 2 === 1) hat(at, 0.32);
+
+  if (BASS_STEPS[i] !== undefined && i % 2 === 0) bassNote(at, semi(ch.root, BASS_STEPS[i]));
+  if (intensity >= 2) arpNote(at, semi(ch.chord[0] * 4, ARP_STEPS[i]), intensity >= 3 ? 1 : 0.6);
+}
+
+function tick(){
+  if (!ready) return;
+  intensity += (targetInt - intensity) * 0.08;
+  while (nextTime < ac.currentTime + 0.14) {
+    playStep(step, nextTime);
+    step = (step + 1) % 64;
+    nextTime += STEP;
+  }
+  timer = setTimeout(tick, 25);
+}
+
+/* ------------------------------------------------------------------- API */
+const A = {
+  init, resume,
+  get on(){ return ready && !muted; },
+
+  toggleMute(){
+    muted = !muted;
+    if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, ac.currentTime, 0.05);
+    return muted;
+  },
+  isMuted(){ return muted; },
+
+  /* continuous state, called every frame */
+  frame(st){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const spd = st.speed || 0;
+
+    const drive = st.playing ? 1 : 0.25;
+    engGain.gain.setTargetAtTime(0.055 * drive, t, 0.08);
+    const f = 42 + spd * 0.085 + (st.boost ? 26 : 0);
+    engOsc1.frequency.setTargetAtTime(f, t, 0.05);
+    engOsc2.frequency.setTargetAtTime(f * 1.005, t, 0.05);
+    engSub.frequency.setTargetAtTime(f * 0.5, t, 0.05);
+    engFilt.frequency.setTargetAtTime(320 + spd * 1.5 + (st.boost ? 900 : 0), t, 0.06);
+
+    const sq = st.playing ? Math.min(1, (st.drift || 0) * (spd > 240 ? 1 : 0)) : 0;
+    sqGain.gain.setTargetAtTime(0.055 * sq, t, 0.05);
+    sqFilt.frequency.setTargetAtTime(1900 + sq * 1300, t, 0.06);
+
+    const si = st.playing ? Math.min(1, (st.cops || 0) / 2) : 0;
+    sirGain.gain.setTargetAtTime(0.020 * si, t, 0.25);
+
+    targetInt = st.intensity || 0;
+  },
+
+  /* one-shots */
+  bank(mult){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const base = 330 * Math.pow(2, Math.min(2.2, mult * 0.16) / 12 * 6);
+    [0, 4, 7, 12].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(base, n);
+      const g = env(sfxBus, 0.15, 0.005, 0.16, t + k * 0.045);
+      o.connect(g); o.start(t + k * 0.045); o.stop(t + k * 0.045 + 0.24);
+    });
+  },
+  nearMiss(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
+    f.frequency.setValueAtTime(2600, t);
+    f.frequency.exponentialRampToValueAtTime(420, t + 0.24);
+    const g = env(sfxBus, 0.24, 0.01, 0.22, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.32);
+  },
+  hit(power){
+    if (!ready) return;
+    const t = ac.currentTime, p = power || 1;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+    const g = env(sfxBus, 0.42 * p, 0.003, 0.20, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.3);
+
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.22);
+    const g2 = env(sfxBus, 0.55 * p, 0.004, 0.26, t);
+    o.connect(g2); o.start(t); o.stop(t + 0.36);
+  },
+  spark(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3800;
+    const g = env(sfxBus, 0.10, 0.002, 0.05, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.09);
+  },
+  ui(up){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'square';
+    o.frequency.setValueAtTime(up ? 520 : 400, t);
+    o.frequency.exponentialRampToValueAtTime(up ? 780 : 260, t + 0.08);
+    const g = env(sfxBus, 0.08, 0.004, 0.09, t);
+    o.connect(g); o.start(t); o.stop(t + 0.16);
+  },
+  chip(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, 7, 12, 19].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.value = semi(523.25, n);
+      const g = env(sfxBus, 0.16, 0.004, 0.42, t + k * 0.06);
+      o.connect(g); o.start(t + k * 0.06); o.stop(t + k * 0.06 + 0.55);
+    });
+  },
+  curse(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, -1, -5].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = semi(146.83, n);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+      const g = env(sfxBus, 0.15, 0.02, 0.5, t + k * 0.05);
+      o.connect(f); f.connect(g); o.start(t + k * 0.05); o.stop(t + k * 0.05 + 0.7);
+    });
+  },
+  clear(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, 4, 7, 12, 16, 19].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(261.63, n);
+      const g = env(sfxBus, 0.17, 0.005, 0.3, t + k * 0.07);
+      o.connect(g); o.start(t + k * 0.07); o.stop(t + k * 0.07 + 0.42);
+    });
+  },
+  boss(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    for (const d of [0, 0.16]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(82, t + d);
+      o.frequency.exponentialRampToValueAtTime(55, t + d + 0.5);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = 4;
+      const g = env(sfxBus, 0.5, 0.01, 0.55, t + d);
+      o.connect(f); f.connect(g); o.start(t + d); o.stop(t + d + 0.7);
+    }
+  },
+  bossHit(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'square';
+    o.frequency.setValueAtTime(420, t);
+    o.frequency.exponentialRampToValueAtTime(120, t + 0.16);
+    const g = env(sfxBus, 0.22, 0.003, 0.18, t);
+    o.connect(g); o.start(t); o.stop(t + 0.24);
+  },
+  crash(){
+    if (!ready) return;
+    A.hit(1.5);
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(48, t + 0.9);
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1200;
+    const g = env(sfxBus, 0.3, 0.01, 1.0, t);
+    o.connect(f); f.connect(g); o.start(t); o.stop(t + 1.2);
+  }
+};
+return A;
+})();
+
+/* ============================================================
+   NEON HEAT — chips, curses and the draft
+   Every chip writes into a flat modifier table the physics and
+   scoring read each frame. Keeping effects declarative means builds
+   stack and interact without special-casing anywhere in the engine.
+   ============================================================ */
+window.NHChips = (() => {
+'use strict';
+
+/* the full modifier surface — anything a chip can touch lives here */
+function defaults(){
+  return {
+    accrueMul: 1,      // rate the pending bank fills
+    bankMul: 1,        // payout multiplier when you cash in
+    multRate: 0.42,    // chain seconds -> multiplier slope
+    multCap: 9.9,
+    topMul: 1,
+    gripMul: 1,
+    nitroCap: 1,
+    nitroRegen: 1,
+    nitroDrain: 1,
+    driftThresh: 0.20, // slip angle that counts as a drift
+    chainGrace: 0.42,  // seconds after release before the bank pays
+    nearMul: 1,        // near-miss bonus scale
+    nearNitro: 0,      // nitro refunded per near miss
+    nearTop: 0,        // top speed gained per near miss, resets each district
+    afterburn: 0,      // multiplier per second while boosting mid-drift
+    ghostOnBank: 0,    // seconds police lose your trail after a bank
+    shockOnBank: 0,    // banking spins out nearby pursuit
+    crumple: 0,        // crashes absorbed per district
+    heatBonus: 0,      // extra scoring at Heat 2+
+    roadMul: 1,        // curse: narrower streets
+    trafficMul: 1,     // curse: heavier traffic
+    policeStart: 0,    // curse: pursuit starts hotter
+    brittle: 0,        // curse: wall contact ends the chain outright
+    zoomMul: 1         // curse: tighter camera
+  };
+}
+
+/* rarity drives both the draft weights and the card colour */
+const CHIPS = [
+  /* ---------------- common ---------------- */
+  { id:'slipstream', name:'Slipstream', rarity:'common', tag:'Risk',
+    desc:'Near misses pay +50% and refund nitro.',
+    apply(M){ M.nearMul += 0.5; M.nearNitro += 0.12; } },
+
+  { id:'feather', name:'Feathered Throttle', rarity:'common', tag:'Chain',
+    desc:'Twice as long to bank after you straighten up.',
+    apply(M){ M.chainGrace += 0.45; } },
+
+  { id:'coldrubber', name:'Cold Rubber', rarity:'common', tag:'Handling',
+    desc:'Grip +20%. Snaps straight out of a slide.',
+    apply(M){ M.gripMul += 0.20; } },
+
+  { id:'bigbore', name:'Big Bore', rarity:'common', tag:'Engine',
+    desc:'Top speed +9%.',
+    apply(M){ M.topMul += 0.09; } },
+
+  { id:'deeptank', name:'Deep Tank', rarity:'common', tag:'Engine',
+    desc:'Nitro tank +40%, refills 30% faster.',
+    apply(M){ M.nitroCap += 0.40; M.nitroRegen += 0.30; } },
+
+  { id:'hairtrigger', name:'Hair Trigger', rarity:'common', tag:'Chain',
+    desc:'Shallower slides count as drifts.',
+    apply(M){ M.driftThresh = Math.max(0.10, M.driftThresh - 0.07); } },
+
+  /* ---------------- uncommon ---------------- */
+  { id:'afterburn', name:'Afterburn', rarity:'uncommon', tag:'Combo',
+    desc:'Nitro while drifting adds +0.6 multiplier per second.',
+    apply(M){ M.afterburn += 0.6; } },
+
+  { id:'interest', name:'Compound Interest', rarity:'uncommon', tag:'Combo',
+    desc:'Multiplier climbs 35% faster.',
+    apply(M){ M.multRate += 0.15; } },
+
+  { id:'ghost', name:'Ghost Plates', rarity:'uncommon', tag:'Heat',
+    desc:'Banking makes pursuit lose you for 3s.',
+    apply(M){ M.ghostOnBank += 3; } },
+
+  { id:'static', name:'Static Discharge', rarity:'uncommon', tag:'Heat',
+    desc:'Banking spins out any pursuit close behind.',
+    apply(M){ M.shockOnBank = 1; } },
+
+  { id:'crumple', name:'Crumple Zone', rarity:'uncommon', tag:'Defence',
+    desc:'Walk away from one wreck per district.',
+    apply(M){ M.crumple += 1; } },
+
+  { id:'adrenal', name:'Adrenal Feed', rarity:'uncommon', tag:'Heat',
+    desc:'+60% scoring while Heat is 2 or higher.',
+    apply(M){ M.heatBonus += 0.6; } },
+
+  { id:'kinetic', name:'Kinetic Battery', rarity:'uncommon', tag:'Risk',
+    desc:'Each near miss adds +1.5% top speed for the district.',
+    apply(M){ M.nearTop += 0.015; } },
+
+  /* ---------------- rare ---------------- */
+  { id:'redline', name:'Redline', rarity:'rare', tag:'Combo',
+    desc:'Multiplier ceiling raised to ×20.',
+    apply(M){ M.multCap = Math.max(M.multCap, 20); } },
+
+  { id:'bloodmoney', name:'Blood Money', rarity:'rare', tag:'Combo',
+    desc:'Every bank pays +75%.',
+    apply(M){ M.bankMul += 0.75; } },
+
+  { id:'overdrive', name:'Overdrive Coil', rarity:'rare', tag:'Engine',
+    desc:'Top speed +20%, but nitro burns 30% faster.',
+    apply(M){ M.topMul += 0.20; M.nitroDrain += 0.30; } },
+
+  { id:'longfuse', name:'Long Fuse', rarity:'rare', tag:'Chain',
+    desc:'The pending bank fills 45% faster.',
+    apply(M){ M.accrueMul += 0.45; } }
+];
+
+/* Overclocked offers pair a stronger chip with a permanent drawback.
+   The drawback is always legible up front — no hidden costs. */
+const CURSES = [
+  { id:'narrow', name:'Narrow Streets', desc:'Every street is 20% tighter.',
+    apply(M){ M.roadMul *= 0.80; } },
+  { id:'gridlock', name:'Gridlock', desc:'Half again as much traffic.',
+    apply(M){ M.trafficMul += 0.5; } },
+  { id:'marked', name:'Marked', desc:'Pursuit starts one tier hotter.',
+    apply(M){ M.policeStart += 1; } },
+  { id:'brittle', name:'Brittle', desc:'Scraping a barrier ends your chain outright.',
+    apply(M){ M.brittle = 1; } },
+  { id:'drytank', name:'Dry Tank', desc:'Nitro no longer refills on its own.',
+    apply(M){ M.nitroRegen = 0; } },
+  { id:'tunnel', name:'Tunnel Vision', desc:'The camera sits 15% tighter.',
+    apply(M){ M.zoomMul *= 0.85; } }
+];
+
+const byId = id => CHIPS.find(c => c.id === id);
+const curseById = id => CURSES.find(c => c.id === id);
+
+const RARITY_W = { common: 60, uncommon: 30, rare: 10 };
+
+/* Draft three offers, no duplicates, skipping anything already maxed.
+   Odds of an Overclocked (chip + curse) offer climb as the run deepens. */
+function roll(owned, district, takenCurses){
+  const pool = CHIPS.filter(c => {
+    const held = owned.filter(o => o === c.id).length;
+    if (c.id === 'redline' || c.id === 'static') return held < 1;  // binary effects
+    return held < 3;
+  });
+
+  const picks = [];
+  const used = new Set();
+  for (let n = 0; n < 3 && pool.length; n++) {
+    let total = 0;
+    const avail = pool.filter(c => !used.has(c.id));
+    if (!avail.length) break;
+    for (const c of avail) total += RARITY_W[c.rarity];
+    let r = Math.random() * total, chosen = avail[0];
+    for (const c of avail) { r -= RARITY_W[c.rarity]; if (r <= 0) { chosen = c; break; } }
+    used.add(chosen.id);
+
+    /* one offer at most per draft carries a curse, and never on district 1 */
+    const curseOK = district > 1 && !picks.some(p => p.curse);
+    const chance = Math.min(0.45, 0.10 + district * 0.045);
+    let curse = null;
+    if (curseOK && Math.random() < chance) {
+      const left = CURSES.filter(c => !takenCurses.includes(c.id));
+      if (left.length) curse = left[Math.floor(Math.random() * left.length)];
+    }
+    picks.push({ chip: chosen, curse });
+  }
+  return picks;
+}
+
+function build(ownedIds, curseIds){
+  const M = defaults();
+  for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
+  for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
+  return M;
+}
+
+return { defaults, CHIPS, CURSES, byId, curseById, roll, build };
+})();
+
+/* ============================================================
    NEON HEAT — playable prototype
    Every pixel is generated at runtime. No image assets, by design:
    procedural geometry + a real bloom chain is what makes a
@@ -651,7 +1442,7 @@ const CL = {
 /* ---------------- persistence ---------------- */
 const Save = {
   key:'neonheat.v1',
-  data:{ best:0, coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
+  data:{ best:0, deepest:0, coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -715,13 +1506,13 @@ function adTick(dt){
 /* ---------------- cars ---------------- */
 const CARS = [
   { id:'viper',   name:'Viper',   price:0,     len:46, wid:23, nose:.60, tail:.78,
-    col:'#3DE8FF', col2:'#0A5A72', power:660, grip:7.4, top:770, armor:0, stats:[3,3,3] },
+    col:'#3DE8FF', col2:'#0A5A72', power:560, grip:7.4, top:620, armor:0, stats:[3,3,3] },
   { id:'katana',  name:'Katana',  price:6500,  len:44, wid:21, nose:.48, tail:.60,
-    col:'#FF2E88', col2:'#6E0F3C', power:685, grip:9.0, top:780, armor:0, stats:[4,5,2] },
+    col:'#FF2E88', col2:'#6E0F3C', power:580, grip:9.0, top:630, armor:0, stats:[4,5,2] },
   { id:'brute',   name:'Brute',   price:22000, len:53, wid:27, nose:.82, tail:.92,
-    col:'#FFB13D', col2:'#6B3F08', power:625, grip:6.2, top:735, armor:1, stats:[2,2,5] },
+    col:'#FFB13D', col2:'#6B3F08', power:530, grip:6.2, top:590, armor:1, stats:[2,2,5] },
   { id:'phantom', name:'Phantom', price:60000, len:48, wid:22, nose:.44, tail:.54,
-    col:'#DCF6FF', col2:'#28536F', power:735, grip:8.2, top:870, armor:0, stats:[5,4,2] }
+    col:'#DCF6FF', col2:'#28536F', power:620, grip:8.2, top:700, armor:0, stats:[5,4,2] }
 ];
 const carById = id => CARS.find(c => c.id === id) || CARS[0];
 const STAT_LABELS = ['Speed', 'Grip', 'Bulk'];
@@ -741,7 +1532,7 @@ function activeSpec(){
   return Object.assign({}, c, {
     grip:  c.grip + u.grip * 0.42,
     nitroMax: 1 + u.nitro * 0.22,
-    crashV: 300 + u.armor * 34 + c.armor * 90,
+    crashV: 430 + u.armor * 40 + c.armor * 110,
     payout: 1 + u.payout * 0.14
   });
 }
@@ -837,14 +1628,19 @@ const IN = { steer:0, drift:0, nitro:0 };
 addEventListener('keydown', e => {
   keys[e.code] = 1;
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
+  NHAudio.resume();
   if (e.code === 'Enter') {
-    if (G.state === 'menu') startRun();
-    else if (G.state === 'over') startRun();
+    if (G.state === 'menu' || G.state === 'over') startRun();
+    else if (G.state === 'brief') beginDistrict();
   }
-  if (e.code === 'Escape' && G.state === 'play') toMenu();
+  if (G.state === 'draft' && /^Digit[123]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
+  if (e.code === 'KeyM') setMute(NHAudio.toggleMute());
+  if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
+
+addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
 
 const touchEl = document.getElementById('touch');
 if (matchMedia('(hover:none)').matches) touchEl.classList.add('on');
@@ -879,7 +1675,7 @@ class Track {
     this.pts = [];
     this.ang = -Math.PI / 2;
     this.curv = 0; this.tCurv = 0;
-    this.hw = 155; this.tHw = 155;
+    this.hw = 280; this.tHw = 280;
     this.x = 0; this.y = 0; this.n = 0;
     for (let i = 0; i < 260; i++) this.extend();
   }
@@ -887,7 +1683,7 @@ class Track {
     if (this.n % 24 === 0) {
       this.tCurv = Math.random() < 0.22 ? 0 : rnd(-0.062, 0.062);
     }
-    if (this.n % 46 === 0) this.tHw = rnd(155, 235);
+    if (this.n % 46 === 0) this.tHw = rnd(245, 345);
     this.curv = lerp(this.curv, this.tCurv, 0.07);
     this.hw   = lerp(this.hw, this.tHw, 0.05);
     this.ang += this.curv;
@@ -997,18 +1793,21 @@ class Vehicle {
     this.dead = false; this.hitFlash = 0; this.offroad = 0;
     this.skidT = 0; this.smokeT = 0;
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
+    this.mods = null; this.topBonus = 0;
     this.inv = 0;
   }
   get speed(){ return hyp(this.vx, this.vy); }
 
   drive(dt, steerIn, throttle, driftIn, boostIn){
     const s = this.spec;
+    /* only the player carries chip modifiers; traffic and pursuit run stock */
+    const M = this.mods;
     this.steer = damp(this.steer, steerIn, 13, dt);
 
     /* Turn authority falls off with speed, and drifting buys it back.
        That asymmetry is the design: fast corners *require* the slide. */
     const sp = this.speed;
-    const rate = (2.0 + (driftIn ? 1.5 : 0))
+    const rate = (2.0 + (driftIn ? 0.9 : 0))
                * clamp(sp / 190, 0, 1)
                * lerp(1, 0.62, clamp(sp / 900, 0, 1));
     this.a += this.steer * rate * dt;
@@ -1019,17 +1818,23 @@ class Vehicle {
     let lon =  cs * this.vx + sn * this.vy;
     let lat = -sn * this.vx + cs * this.vy;
 
+    const cap = (s.nitroMax || 1) * (M ? M.nitroCap : 1);
     let acc = throttle * s.power;
-    if (boostIn && this.nitro > 0.02) { acc *= 1.75; this.boost = 1; this.nitro -= dt * 0.45; }
-    else { this.boost = 0; this.nitro = Math.min(s.nitroMax || 1, this.nitro + dt * 0.055); }
+    if (boostIn && this.nitro > 0.02) {
+      acc *= 1.75; this.boost = 1;
+      this.nitro -= dt * 0.45 * (M ? M.nitroDrain : 1);
+    } else {
+      this.boost = 0;
+      this.nitro = Math.min(cap, this.nitro + dt * 0.055 * (M ? M.nitroRegen : 1));
+    }
 
-    const top = s.top * (this.boost ? 1.22 : 1);
+    const top = s.top * (M ? M.topMul * (1 + this.topBonus) : 1) * (this.boost ? 1.15 : 1);
     lon += acc * dt;
     if (lon > top) lon = damp(lon, top, 3, dt);
     lon *= Math.exp(-(0.42 + this.offroad * 2.4) * dt);
 
     /* grip is what the whole game is built on: releasing it is the verb */
-    const grip = (driftIn ? 1.45 : s.grip) * (1 - this.offroad * 0.45);
+    const grip = (driftIn ? 2.4 : s.grip * (M ? M.gripMul : 1)) * (1 - this.offroad * 0.45);
     lat *= Math.exp(-grip * dt);
 
     this.vx = cs * lon - sn * lat;
@@ -1038,8 +1843,17 @@ class Vehicle {
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    this.slip = Math.abs(Math.atan2(lat, Math.max(60, Math.abs(lon))));
-    this.drift = damp(this.drift, (this.slip > 0.20 && sp > 240) ? 1 : 0, 12, dt);
+    /* Self-aligning torque. Without it a slide has no equilibrium and simply
+       winds up into a spin — the car holds a stable angle instead, which is
+       what makes a drift something you can steer rather than survive. */
+    const phi = Math.atan2(lat, Math.max(60, Math.abs(lon)));
+    const maxSlip = driftIn ? 0.60 : 0.26;
+    const over = Math.abs(phi) - maxSlip;
+    if (over > 0) this.a += Math.sign(phi) * Math.min(over, 0.7) * 7.5 * dt;
+
+    this.slip = Math.abs(phi);
+    const thresh = M ? M.driftThresh : 0.20;
+    this.drift = damp(this.drift, (this.slip > thresh && sp > 200) ? 1 : 0, 12, dt);
 
     /* rear-wheel decals + smoke while sliding */
     if (this.drift > 0.4 && sp > 200) {
@@ -1081,43 +1895,88 @@ class Vehicle {
    GAME
    ============================================================ */
 const G = {
-  state:'menu',      // menu | play | crash | over | garage
+  state:'menu',      // menu | brief | play | draft | crash | over | garage
   ai:true,
   track:null, car:null, spec:null,
-  traffic:[], police:[],
+  traffic:[], police:[], boss:null, hazards:[],
   score:0, pending:0, chain:0, mult:1, sinceDrift:9,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1,
   crashT:0, slow:1, flash:0, revived:false,
-  shake:0, dist:0
+  shake:0, dist:0,
+  run:null, ghost:0, pulseWarn:0, offers:[]
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
 
+/* ---------------- the ladder ----------------
+   Districts get longer, hungrier and hotter. Every third is a boss, where
+   the quota is replaced by a pursuit unit you damage by banking into it. */
+const DISTRICTS = [
+  'Dockside', 'Sodium Row', 'The Spillway', 'Glasshouse', 'Nine Mile',
+  'Cathedral Hill', 'Ashfield', 'The Verge', 'Terminus'
+];
+const BOSSES = [
+  { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
+    blurb:'Rams hard and salts the road behind it.' },
+  { id:'siren',  name:'SIREN',   sub:'Signals Division',
+    blurb:'Pulses wipe a bank you have let grow too fat.' },
+  { id:'reaper', name:'REAPER',  sub:'Pursuit Special',
+    blurb:'Faster than you, and it brought friends.' }
+];
+
+function districtCfg(n){
+  const boss = n % 3 === 0;
+  const bi = Math.floor(n / 3) - 1;
+  return {
+    n, boss,
+    name: boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length],
+    bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
+    len: Math.round(420 + n * 34),
+    quota: Math.round(2600 * Math.pow(1.38, n - 1)),
+    bossHp: Math.round(6500 * Math.pow(1.55, Math.max(0, bi))),
+    heatFloor: Math.min(2, Math.floor((n - 1) / 3))
+  };
+}
+
+function newRun(){
+  return {
+    district: 0,
+    chips: [], curses: [],
+    M: NHChips.defaults(),
+    cfg: null, quota: 0, banked: 0, startIdx: 0,
+    cleared: 0, crumpleLeft: 0
+  };
+}
+
 function newWorld(ai){
   G.track = new Track();
   G.spec = activeSpec();
-  G.traffic = []; G.police = [];
+  G.traffic = []; G.police = []; G.boss = null; G.hazards = [];
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
+  G.car.mods = G.run ? G.run.M : NHChips.defaults();
   const st = G.track.at(6, 0);
   G.car.x = st.x; G.car.y = st.y; G.car.a = st.a;
   G.car.vx = Math.cos(st.a) * 300; G.car.vy = Math.sin(st.a) * 300;
   G.car.idx = 6; G.car.nitro = G.spec.nitroMax;
-  G.score = 0; G.pending = 0; G.chain = 0; G.mult = 1; G.sinceDrift = 9;
-  G.heat = 0; G.tier = 0; G.coinsRun = 0; G.topMult = 1;
-  G.slow = 1; G.flash = 0; G.shake = 0; G.revived = false; G.dist = 0;
+  G.pending = 0; G.chain = 0; G.mult = 1; G.sinceDrift = 9;
+  G.heat = 0; G.tier = 0; G.topMult = G.topMult || 1;
+  G.slow = 1; G.flash = 0; G.shake = 0; G.dist = 0;
+  G.ghost = 0; G.pulseWarn = 0;
   G.ai = !!ai;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   for (let i = 0; i < 9; i++) addTraffic(20 + i * 22);
 }
-const baseZoom = () => clamp(H / 420, 1.0, 2.3);
+const baseZoom = () => clamp(H / 640, 0.72, 1.5)
+  * (G.run ? G.run.M.zoomMul : 1);
+const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
-  const lat = rnd(-1, 1) * p.w * 0.60;
+  const lat = rnd(-1, 1) * roadHalf(p) * 0.60;
   const c = CARS[rint(0, CARS.length)];
   const spec = Object.assign({}, c, {
     col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330), nitroMax:1
@@ -1129,17 +1988,145 @@ function addTraffic(ahead){
   G.traffic.push(v);
 }
 
-function addPolice(){
-  const idx = Math.max(0, G.car.idx - 8);
+function addPolice(escort){
+  const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:700, grip:7.0, top:820, nitroMax:1
+    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660, nitroMax:1
   });
   const v = new Vehicle(spec, 'police');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
   v.vx = Math.cos(pos.a) * 420; v.vy = Math.sin(pos.a) * 420;
   G.police.push(v);
-  toast('Heat rising — units inbound', 'red');
+  if (!escort) toast('Heat rising — units inbound', 'red');
+}
+
+/* ---------------- bosses ----------------
+   A boss is a pursuit unit with a health bar that only your *banks* can
+   hurt. That keeps the fight on the game's actual verb — you cannot shoot
+   it, you can only out-drive it and cash in under pressure. */
+function addBoss(){
+  const cfg = G.run.cfg, def = cfg.bossDef;
+  const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
+  const spec = Object.assign({}, CARS[2], {
+    len:62, wid:32, nose:0.9, tail:0.95,
+    col:'#FF3355', col2:'#3A0A14',
+    power: def.id === 'reaper' ? 660 : 600,
+    grip:7.2, top: def.id === 'reaper' ? 720 : 665, nitroMax:1
+  });
+  const v = new Vehicle(spec, 'boss');
+  v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = pos.p.i;
+  v.vx = Math.cos(pos.a) * 460; v.vy = Math.sin(pos.a) * 460;
+  v.hp = cfg.bossHp; v.maxHp = cfg.bossHp;
+  v.def = def; v.atk = 3.2; v.charge = 0;
+  G.boss = v;
+
+  if (def.id === 'reaper') { addPolice(true); addPolice(true); }
+  NHAudio.boss();
+  toast(def.name + ' — ' + def.sub, 'red');
+}
+
+function bossDamage(amount){
+  const b = G.boss;
+  if (!b) return;
+  b.hp -= amount;
+  b.hitFlash = 1;
+  G.shake = Math.max(G.shake, 12);
+  NHAudio.bossHit();
+  for (let i = 0; i < 22; i++) {
+    const a = rnd(0, TAU), s = rnd(120, 460);
+    spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
+          rnd(0.25, 0.6), rnd(3, 8), '255,90,110', true, -6);
+  }
+  if (b.hp <= 0) {
+    for (let i = 0; i < 70; i++) {
+      const a = rnd(0, TAU), s = rnd(140, 700);
+      spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
+            rnd(0.4, 1.1), rnd(4, 12), i % 2 ? '255,170,80' : '255,70,90', true, -6);
+    }
+    G.flash = 1; G.shake = 30;
+    G.boss = null;
+    G.police.length = 0;
+    clearDistrict();
+  }
+}
+
+function stepBoss(dt){
+  const b = G.boss, car = G.car;
+  if (!b) return;
+  const loc = G.track.locate(b.x, b.y, b.idx);
+  b.idx = loc.i;
+  b.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
+
+  b.atk -= dt;
+  const st = steerToward(b, car.x + car.vx * 0.3, car.y + car.vy * 0.3);
+
+  if (b.def.id === 'warden') {
+    /* telegraphed charge, then a hazard dropped in its wake */
+    if (b.atk <= 0) { b.charge = 1.5; b.atk = 5.4; dropHazard(b); }
+    if (b.charge > 0) b.charge -= dt;
+  } else if (b.def.id === 'siren') {
+    if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
+    if (b.atk <= 0) {
+      b.atk = 7.0; G.pulseWarn = 0;
+      /* only punishes hoarding — bank little and often and it does nothing */
+      if (G.pending > 2400) {
+        G.pending = 0; G.chain = 0; G.mult = 1;
+        toast('Bank wiped', 'red');
+        NHAudio.curse();
+        G.flash = 0.6;
+      } else {
+        toast('Pulse — bank held', 'pink');
+      }
+      G.shake = Math.max(G.shake, 14);
+    }
+  } else if (b.def.id === 'reaper') {
+    if (b.atk <= 0) { b.atk = 4.4; b.charge = 1.1; }
+    if (b.charge > 0) b.charge -= dt;
+  }
+
+  b.drive(dt, st, 1, Math.abs(st) > 0.6 && b.speed > 420 ? 1 : 0, b.charge > 0 ? 1 : 0);
+  barrier(b, loc);
+
+  if (G.state === 'play' && !G.ai) {
+    const dx = b.x - car.x, dy = b.y - car.y, d = hyp(dx, dy);
+    if (d < (b.spec.len + car.spec.len) * 0.38 && car.inv <= 0) {
+      const nx = dx / (d || 1), ny = dy / (d || 1);
+      const power = b.charge > 0 ? 420 : 260;
+      car.vx -= nx * power; car.vy -= ny * power;
+      b.vx += nx * 90; b.vy += ny * 90;
+      G.shake = Math.max(G.shake, 22);
+      car.hitFlash = 1; car.inv = 0.5;
+      G.chain = Math.max(0, G.chain - 1.8);
+      NHAudio.hit(1.2);
+    }
+  }
+}
+
+/* road hazards dropped by the WARDEN — hitting one kills your chain */
+function dropHazard(b){
+  const pos = G.track.at(b.idx + 2, rnd(-0.7, 0.7) * roadHalf(G.track.pts[b.idx] || { w:150 }));
+  G.hazards.push({ x:pos.x, y:pos.y, a:pos.a, life:11, hit:0 });
+  if (G.hazards.length > 14) G.hazards.shift();
+}
+
+function stepHazards(dt){
+  const car = G.car;
+  for (let i = G.hazards.length - 1; i >= 0; i--) {
+    const h = G.hazards[i];
+    h.life -= dt;
+    if (h.life <= 0 || h.hit) { G.hazards.splice(i, 1); continue; }
+    if (G.state !== 'play' || G.ai || car.inv > 0) continue;
+    if (hyp(h.x - car.x, h.y - car.y) < 46) {
+      h.hit = 1;
+      G.chain = 0; G.pending = Math.floor(G.pending * 0.5);
+      car.vx *= 0.72; car.vy *= 0.72;
+      G.shake = Math.max(G.shake, 16);
+      car.hitFlash = 1;
+      NHAudio.hit(0.9);
+      toast('Spike strip', 'red');
+    }
+  }
 }
 
 /* -------- steering helper shared by AI, traffic and police -------- */
@@ -1156,16 +2143,16 @@ function autoDrive(v, dt, aggressive){
   const tgt = G.track.at(v.idx + look, v.lane || 0);
   const st = steerToward(v, tgt.x, tgt.y);
   /* the attract driver drifts through corners so the menu looks alive */
-  const wantDrift = aggressive && Math.abs(st) > 0.30 && v.speed > 320;
+  const wantDrift = aggressive && Math.abs(st) > 0.20 && v.speed > 300;
   v.driftHeld = wantDrift ? 1 : 0;
-  v.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
+  v.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
   v.drive(dt, st, 1, wantDrift ? 1 : 0, aggressive && Math.abs(st) < 0.2 ? 1 : 0);
   barrier(v, loc);
 }
 
 /* -------- barrier response -------- */
 function barrier(v, loc){
-  const lim = loc.p.w - v.spec.wid * 0.5;
+  const lim = roadHalf(loc.p) - v.spec.wid * 0.5;
   if (Math.abs(loc.lat) <= lim) return 0;
   const side = Math.sign(loc.lat);
   const p = loc.p;
@@ -1185,11 +2172,41 @@ function barrier(v, loc){
 /* -------- scoring -------- */
 function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; return; }
-  const gained = Math.floor(G.pending * (1 + G.tier * 0.35));
+  const M = G.run.M;
+  const heatMul = 1 + G.tier * 0.35 + (G.tier >= 2 ? M.heatBonus : 0);
+  const gained = Math.floor(G.pending * heatMul * M.bankMul);
+
   G.score += gained;
+  G.run.banked += gained;
   G.heat = Math.min(3.0, G.heat + gained / 14000);
-  toast('Banked +' + fmt(gained), 'gold');
+  NHAudio.bank(G.mult);
+
+  /* chips that trigger on the cash-in, not on the drift */
+  if (M.ghostOnBank) G.ghost = Math.max(G.ghost, M.ghostOnBank);
+  if (M.shockOnBank) {
+    for (const p of G.police) {
+      const d = hyp(p.x - G.car.x, p.y - G.car.y);
+      if (d < 420) {
+        const nx = (p.x - G.car.x) / (d || 1), ny = (p.y - G.car.y) / (d || 1);
+        p.vx += nx * 460; p.vy += ny * 460;
+        p.a += rnd(-1.6, 1.6);
+        p.hitFlash = 1;
+      }
+    }
+    for (let i = 0; i < 26; i++) {
+      const a = rnd(0, TAU), s = rnd(250, 620);
+      spawn(G.car.x, G.car.y, Math.cos(a) * s, Math.sin(a) * s,
+            rnd(0.2, 0.45), rnd(4, 9), '120,220,255', true, -8);
+    }
+  }
+
+  if (G.boss) { bossDamage(gained); toast('-' + fmt(gained) + ' integrity', 'red'); }
+  else toast('Banked +' + fmt(gained), 'gold');
+
   G.pending = 0; G.chain = 0; G.mult = 1;
+
+  /* quota districts clear the moment you meet the number */
+  if (!G.boss && G.run.cfg && !G.run.cfg.boss && G.run.banked >= G.run.quota) clearDistrict();
 }
 
 function toast(text, cls){
@@ -1204,6 +2221,21 @@ function toast(text, cls){
 /* -------- crash -------- */
 function crash(reason){
   if (G.state !== 'play' || G.car.inv > 0) return;
+
+  /* Crumple Zone spends a charge instead of ending the run */
+  if (G.run && G.run.crumpleLeft > 0) {
+    G.run.crumpleLeft--;
+    G.car.inv = 2.2;
+    G.car.hitFlash = 1;
+    G.pending = 0; G.chain = 0; G.mult = 1;
+    G.shake = 22; G.flash = 0.7;
+    G.car.vx *= 0.45; G.car.vy *= 0.45;
+    NHAudio.hit(1.4);
+    toast('Crumple zone spent', 'gold');
+    return;
+  }
+
+  NHAudio.crash();
   G.state = 'crash';
   G.crashT = 0;
   G.flash = 1;
@@ -1235,7 +2267,7 @@ function step(dt){
     readInput();
     const loc = T.locate(car.x, car.y, car.idx);
     car.idx = loc.i;
-    car.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
+    car.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
 
     if (G.ai) autoDrive(car, dt, true);
     else {
@@ -1250,8 +2282,10 @@ function step(dt){
                 rnd(0.2, 0.5), rnd(2, 5), '255,215,140', true, -4);
         }
         G.shake = Math.max(G.shake, Math.min(16, into / 22));
+        if (Math.random() < 0.25) NHAudio.spark();
         if (into > G.spec.crashV) { crash('wall'); return; }
-        G.chain = Math.max(0, G.chain - dt * 2.5);
+        if (G.run.M.brittle) { G.chain = 0; if (G.pending > 0) bank(); }
+        else G.chain = Math.max(0, G.chain - dt * 2.5);
       }
     }
     G.dist += car.speed * dt;
@@ -1260,20 +2294,40 @@ function step(dt){
        Points accrue only while the drift input is held, and pay out when it
        is released. Tying the payout to the button — not to the physics
        settling — is what makes the bet legible: you choose when to cash in. */
+    const M = G.run.M;
     const held = G.ai ? car.driftHeld : IN.drift;
-    const scoring = held && car.drift > 0.5 && car.speed > 250 && !car.offroad;
+    const scoring = held && car.drift > 0.5 && car.speed > 210 && !car.offroad;
     if (scoring) {
       G.sinceDrift = 0;
       G.chain += dt;
-      G.mult = Math.min(9.9, 1 + G.chain * 0.42);
+      /* Afterburn rewards spending nitro mid-slide instead of hoarding it */
+      if (car.boost && M.afterburn) G.chain += M.afterburn * dt;
+      G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
       G.topMult = Math.max(G.topMult, G.mult);
-      G.pending += car.speed * 0.30 * G.mult * dt;
+      G.pending += car.speed * 0.40 * G.mult * dt * M.accrueMul;
     } else {
       G.sinceDrift += dt;
-      if (G.sinceDrift > 0.42 && G.pending > 0) bank();
+      if (G.sinceDrift > M.chainGrace && G.pending > 0) bank();
     }
+
+    G.ghost = Math.max(0, G.ghost - dt);
     G.heat = Math.max(0, G.heat - dt * 0.038);
-    G.tier = Math.floor(G.heat);
+    G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
+    G.tier = Math.min(3, G.tier);
+
+    stepHazards(dt);
+    if (G.boss) stepBoss(dt);
+
+    /* reaching the checkpoint decides the district */
+    if (G.run.cfg) {
+      const travelled = car.idx - G.run.startIdx;
+      if (travelled >= G.run.cfg.len) {
+        if (G.run.cfg.boss) failDistrict('The unit got away');
+        else if (G.run.banked >= G.run.quota) clearDistrict();
+        else failDistrict('Quota missed');
+        return;
+      }
+    }
   }
 
   /* ---- traffic ---- */
@@ -1285,30 +2339,40 @@ function step(dt){
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
     const touchR = (t.spec.len + car.spec.len) * 0.36;
     if (playing && !G.ai) {
-      if (d < touchR) {
+      if (d < touchR && car.inv <= 0) {
+        /* You close on traffic at ~400, so a 210 threshold made any contact
+           fatal. Only a genuine high-speed impact ends the run; the rest
+           bumps, costs chain, and grants a moment of grace so one nudge
+           into a cluster cannot chain-kill. */
         const rel = hyp(t.vx - car.vx, t.vy - car.vy);
-        if (rel > 210) { crash('traffic'); return; }
+        if (rel > 380) { crash('traffic'); return; }
         const nx = dx / (d || 1), ny = dy / (d || 1);
-        car.vx -= nx * 130; car.vy -= ny * 130;
-        t.vx += nx * 130; t.vy += ny * 130;
-        G.shake = Math.max(G.shake, 11);
-        car.hitFlash = 1;
+        car.vx -= nx * 150; car.vy -= ny * 150;
+        t.vx += nx * 150; t.vy += ny * 150;
+        G.shake = Math.max(G.shake, 13);
+        car.hitFlash = 1; car.inv = 0.35;
+        NHAudio.hit(0.8);
         G.chain = Math.max(0, G.chain - 0.9);
-      } else if (d < 92 && !t.nearFlag && car.speed > 300) {
+      } else if (d < 105 && !t.nearFlag && car.speed > 260) {
         t.nearFlag = true;
+        const M = G.run.M;
         if (G.chain > 0.25) {
-          G.pending += 220 * G.mult;
+          const bonus = 220 * G.mult * M.nearMul;
+          G.pending += bonus;
           G.chain += 0.32;
-          toast('Near miss +' + fmt(220 * G.mult), 'pink');
+          toast('Near miss +' + fmt(bonus), 'pink');
+          NHAudio.nearMiss();
         }
+        if (M.nearNitro) car.nitro = Math.min(G.spec.nitroMax * M.nitroCap, car.nitro + M.nearNitro);
+        if (M.nearTop) car.topBonus += M.nearTop;
       }
       if (d > 140) t.nearFlag = false;
     }
   }
-  while (G.traffic.length < 10) addTraffic(rint(46, 118));
+  while (G.traffic.length < Math.round(8 * (G.run ? G.run.M.trafficMul : 1))) addTraffic(rint(46, 118));
 
   /* ---- police ---- */
-  if (playing && !G.ai) {
+  if (playing && !G.ai && !G.boss) {
     while (G.police.length < G.tier) addPolice();
     while (G.police.length > G.tier) G.police.pop();
   }
@@ -1316,15 +2380,19 @@ function step(dt){
     const p = G.police[i];
     const loc = T.locate(p.x, p.y, p.idx);
     p.idx = loc.i;
-    p.offroad = Math.abs(loc.lat) > loc.p.w ? 1 : 0;
-    /* aim slightly ahead of the player so they cut the corner */
-    const st = steerToward(p, car.x + car.vx * 0.35, car.y + car.vy * 0.35);
+    p.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
+    /* aim slightly ahead of the player so they cut the corner —
+       unless Ghost Plates has them chasing a lost trail */
+    const lost = G.ghost > 0;
+    const st = lost
+      ? steerToward(p, G.track.at(p.idx + 8, 0).x, G.track.at(p.idx + 8, 0).y)
+      : steerToward(p, car.x + car.vx * 0.35, car.y + car.vy * 0.35);
     p.drive(dt, st, 1, Math.abs(st) > 0.6 && p.speed > 400 ? 1 : 0, 1);
     barrier(p, loc);
 
     if (playing && !G.ai) {
       const dx = p.x - car.x, dy = p.y - car.y, d = hyp(dx, dy);
-      if (d < (p.spec.len + car.spec.len) * 0.36) {
+      if (!lost && car.inv <= 0 && d < (p.spec.len + car.spec.len) * 0.36) {
         const nx = dx / (d || 1), ny = dy / (d || 1);
         car.vx -= nx * 240; car.vy -= ny * 240;
         p.vx += nx * 120; p.vy += ny * 120;
@@ -1332,6 +2400,7 @@ function step(dt){
         car.hitFlash = 1;
         G.chain = Math.max(0, G.chain - 1.6);
         G.heat = Math.max(0, G.heat - 0.25);
+        NHAudio.hit(1);
         toast('Rammed', 'red');
       }
     }
@@ -1419,12 +2488,14 @@ function drawRoad(){
   ctx.beginPath();
   for (let i = a; i <= b; i++) {
     const p = pts[i];
-    const nx = -Math.sin(p.a) * p.w, ny = Math.cos(p.a) * p.w;
+    const hw = roadHalf(p);
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
     if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
   }
   for (let i = b; i >= a; i--) {
     const p = pts[i];
-    const nx = -Math.sin(p.a) * p.w, ny = Math.cos(p.a) * p.w;
+    const hw = roadHalf(p);
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
     ctx.lineTo(p.x - nx, p.y - ny);
   }
   ctx.closePath();
@@ -1440,7 +2511,8 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * side, ny = Math.cos(p.a) * p.w * side;
+      const hw = roadHalf(p) * side;
+      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     ctx.strokeStyle = hexA(side < 0 ? CL.cyan : CL.magenta, 0.10);
@@ -1457,7 +2529,7 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * f, ny = Math.cos(p.a) * p.w * f;
+      const nx = -Math.sin(p.a) * roadHalf(p) * f, ny = Math.cos(p.a) * roadHalf(p) * f;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     ctx.stroke();
@@ -1477,7 +2549,8 @@ function drawRoad(){
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
       const p = pts[i];
-      const nx = -Math.sin(p.a) * p.w * side, ny = Math.cos(p.a) * p.w * side;
+      const hw = roadHalf(p) * side;
+      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
     const col = side < 0 ? CL.cyan : CL.magenta;
@@ -1520,6 +2593,29 @@ function drawParticles(){
     ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
+}
+
+function drawHazards(){
+  for (const h of G.hazards) {
+    const fade = clamp(h.life / 1.6, 0, 1);
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.rotate(h.a);
+    ctx.globalAlpha = fade;
+    ctx.fillStyle = 'rgba(255,51,85,0.20)';
+    ctx.fillRect(-9, -46, 18, 92);
+    ctx.strokeStyle = CL.red;
+    ctx.lineWidth = 2.4;
+    ctx.strokeRect(-9, -46, 18, 92);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(255,51,85,0.55)';
+    ctx.beginPath();
+    for (let y = -42; y <= 42; y += 12) { ctx.moveTo(-9, y); ctx.lineTo(9, y - 6); }
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 }
 
 /* --- procedural car: the only "asset" in the game --- */
@@ -1643,7 +2739,7 @@ function drawVehicle(v, opt){
   }
 
   /* police bar */
-  if (v.kind === 'police') {
+  if (v.kind === 'police' || v.kind === 'boss') {
     const f = Math.sin(v.lamp) > 0;
     ctx.fillStyle = f ? 'rgba(80,140,255,0.95)' : 'rgba(255,50,70,0.95)';
     ctx.fillRect(-s.len * 0.08, -s.wid * 0.5, s.len * 0.1, s.wid);
@@ -1770,8 +2866,8 @@ function drawLamps(){
     const p = G.track.pts[i];
     if (!p.lamp) continue;
     for (const side of [-1, 1]) {
-      const x = p.x - Math.sin(p.a) * (p.w + 16) * side;
-      const y = p.y + Math.cos(p.a) * (p.w + 16) * side;
+      const x = p.x - Math.sin(p.a) * (roadHalf(p) + 16) * side;
+      const y = p.y + Math.cos(p.a) * (roadHalf(p) + 16) * side;
       blitGlow(side < 0 ? CL.cyan : CL.magenta, x, y, 46, 46, 0.30);
     }
   }
@@ -1826,6 +2922,50 @@ function bloom(){
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/* A chase you cannot see is just a random shove. Anything hunting you that
+   is off screen gets a chevron pinned to the edge, pointing at it. */
+function drawThreats(){
+  if (G.state !== 'play' && G.state !== 'crash') return;
+  const list = G.boss ? G.police.concat([G.boss]) : G.police;
+  if (!list.length) return;
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const cx = W / 2, cy = H * 0.62, pad = W * 0.055;
+
+  for (const v of list) {
+    const [sx, sy] = w2s(v.x, v.y);
+    const inView = sx > pad && sx < W - pad && sy > pad && sy < H - pad;
+    if (inView) continue;
+
+    const dx = sx - cx, dy = sy - cy;
+    const ang = Math.atan2(dy, dx);
+    /* clamp onto the inset viewport rectangle */
+    const hw = W / 2 - pad, hh = H / 2 - pad;
+    const t = Math.min(hw / Math.abs(Math.cos(ang) || 1e-6), hh / Math.abs(Math.sin(ang) || 1e-6));
+    const px = cx + Math.cos(ang) * t, py = cy + Math.sin(ang) * t;
+
+    const dist = hyp(v.x - G.car.x, v.y - G.car.y);
+    const near = clamp(1 - dist / 1400, 0.18, 1);
+    const isBoss = v.kind === 'boss';
+    const size = (isBoss ? 16 : 12) * (0.8 + near * 0.5);
+
+    ctx.save();
+    ctx.translate(clamp(px, pad, W - pad), clamp(py, pad, H - pad));
+    ctx.rotate(ang);
+    ctx.globalAlpha = 0.35 + near * 0.6;
+    ctx.fillStyle = isBoss ? CL.red : '#FF6A80';
+    ctx.beginPath();
+    ctx.moveTo(size, 0);
+    ctx.lineTo(-size * 0.7, -size * 0.72);
+    ctx.lineTo(-size * 0.35, 0);
+    ctx.lineTo(-size * 0.7, size * 0.72);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+}
+
 function post(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (plates.length) {
@@ -1850,13 +2990,16 @@ function render(){
   drawRoad();
   drawSkids();
   drawLamps();
+  drawHazards();
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const p of G.police) drawVehicle(p);
+  if (G.boss) drawVehicle(G.boss);
   drawVehicle(G.car);
   drawParticles();
 
   if (QF.city) drawCity();
   bloom();
+  drawThreats();
   post();
 }
 
@@ -1908,7 +3051,10 @@ const UI = {
   hud:$('hud'), score:$('score'), coins:$('coins'),
   combo:$('combo'), cmult:$('cmult'), cpts:$('cpts'), cfill:$('cfill'),
   heat:$('heat'), spd:$('spd'), nfill:$('nfill'), toasts:$('toasts'),
-  menu:$('menu'), over:$('over'), garage:$('garage')
+  menu:$('menu'), over:$('over'), garage:$('garage'),
+  brief:$('brief'), draft:$('draft'),
+  obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
+  objDist:$('objDist'), dchip:$('dchip'), build:$('build')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -1917,7 +3063,7 @@ function syncHUD(){
   shownScore = lerp(shownScore, G.score, 0.2);
   UI.score.textContent = fmt(shownScore);
   UI.coins.textContent = fmt(Save.data.coins + G.coinsRun);
-  UI.spd.textContent = Math.round(G.car.speed * 0.42);
+  UI.spd.textContent = Math.round(G.car.speed * 0.52);
   UI.nfill.style.width = clamp(G.car.nitro / (G.spec.nitroMax || 1), 0, 1) * 100 + '%';
 
   const active = G.pending > 0 || G.chain > 0.05;
@@ -1927,9 +3073,47 @@ function syncHUD(){
   UI.cpts.textContent = fmt(G.pending);
   UI.cfill.style.width = clamp(G.mult / 9.9, 0, 1) * 100 + '%';
 
-  UI.heat.classList.toggle('on', G.heat > 0.05);
+  UI.heat.classList.toggle('on', G.heat > 0.05 || G.tier > 0);
   UI.heat.classList.toggle('max', G.tier >= 3);
   heatPips.forEach((el, i) => el.classList.toggle('lit', i < G.tier));
+
+  /* objective rail: quota progress, or the boss's remaining integrity */
+  const run = G.run, cfg = run && run.cfg;
+  if (cfg) {
+    UI.dchip.textContent = 'District ' + cfg.n;
+    const bossing = !!G.boss;
+    UI.obj.classList.toggle('boss', bossing);
+    if (bossing) {
+      UI.objLbl.textContent = G.boss.def.name;
+      UI.objVal.textContent = Math.max(0, Math.ceil(G.boss.hp / G.boss.maxHp * 100)) + '%';
+      UI.objFill.style.width = clamp(G.boss.hp / G.boss.maxHp, 0, 1) * 100 + '%';
+    } else {
+      UI.objLbl.textContent = 'Quota';
+      UI.objVal.textContent = fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
+      UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
+    }
+    const travelled = clamp((G.car.idx - run.startIdx) / cfg.len, 0, 1);
+    UI.objDist.style.width = travelled * 100 + '%';
+  }
+}
+
+/* the build rail — a roguelite is unreadable if you cannot see your own deck */
+function renderBuild(){
+  const run = G.run;
+  if (!run) { UI.build.innerHTML = ''; return; }
+  const counts = {};
+  for (const id of run.chips) counts[id] = (counts[id] || 0) + 1;
+  let html = '';
+  for (const id in counts) {
+    const c = NHChips.byId(id);
+    html += '<i class="' + c.rarity + '">' + c.name +
+            (counts[id] > 1 ? '<b>&times;' + counts[id] + '</b>' : '') + '</i>';
+  }
+  for (const id of run.curses) {
+    const c = NHChips.curseById(id);
+    html += '<i class="curse">' + c.name + '</i>';
+  }
+  UI.build.innerHTML = html;
 }
 
 function show(el){ el.classList.remove('hide'); }
@@ -1937,29 +3121,141 @@ function hide(el){ el.classList.add('hide'); }
 
 function toMenu(){
   G.state = 'menu';
+  G.run = null;
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   UI.hud.classList.add('off');
-  $('menuBest').textContent = fmt(Save.data.best);
+  $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
+    (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
 }
 
 function startRun(){
-  hide(UI.menu); hide(UI.over); hide(UI.garage);
+  hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
+  G.run = newRun();
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false;
+  shownScore = 0;
+  nextDistrict();
+}
+
+/* ---- district lifecycle ---- */
+function nextDistrict(){
+  const run = G.run;
+  run.district++;
+  run.cfg = districtCfg(run.district);
+  run.quota = run.cfg.quota;
+  run.banked = 0;
+  run.crumpleLeft = run.M.crumple;
+
   newWorld(false);
+  run.startIdx = G.car.idx;
+  G.car.topBonus = 0;
+  G.heat = run.cfg.heatFloor + run.M.policeStart;
+  G.tier = Math.min(3, Math.floor(G.heat));
+
+  showBrief();
+}
+
+function showBrief(){
+  const cfg = G.run.cfg;
+  G.state = 'brief';
+  UI.hud.classList.add('off');
+  $('bkicker').textContent = cfg.boss ? 'Pursuit unit' : 'District ' + cfg.n;
+  $('bname').textContent = cfg.name;
+  $('bobj').innerHTML = cfg.boss
+    ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks.</b>'
+    : 'Bank <b>' + fmt(cfg.quota) + '</b> before the checkpoint.';
+  $('bsub').textContent = cfg.boss ? cfg.bossDef.sub : 'Heat floor ' + cfg.heatFloor;
+  UI.brief.classList.toggle('bossBrief', !!cfg.boss);
+  renderBuild();
+  show(UI.brief);
+  NHAudio.resume();
+}
+
+function beginDistrict(){
+  hide(UI.brief);
   G.state = 'play';
   UI.hud.classList.remove('off');
-  shownScore = 0;
+  if (G.run.cfg.boss) addBoss();
+}
+
+function clearDistrict(){
+  if (G.state !== 'play') return;
+  G.run.cleared++;
+  G.state = 'draft';
+  G.pending = 0; G.chain = 0; G.mult = 1;
+  UI.hud.classList.add('off');
+  NHAudio.clear();
+  G.flash = 0.5;
+  showDraft();
+}
+
+function failDistrict(why){
+  if (G.state !== 'play') return;
+  G.state = 'crash';
+  G.crashT = 0;
+  G.crashReason = why;
+  G.flash = 0.8; G.shake = 18;
+  G.pending = 0; G.chain = 0; G.mult = 1;
+  UI.hud.classList.add('off');
+  NHAudio.curse();
+}
+
+/* ---- the draft ---- */
+function showDraft(){
+  const run = G.run;
+  G.offers = NHChips.roll(run.chips, run.district, run.curses);
+  const wrap = $('dcards');
+  wrap.innerHTML = '';
+  $('dsub').textContent = 'District ' + run.district + ' cleared — ' + fmt(run.banked) + ' banked';
+
+  G.offers.forEach((offer, i) => {
+    const c = offer.chip;
+    const el = document.createElement('button');
+    el.className = 'dcard ' + c.rarity + (offer.curse ? ' oc' : '');
+    el.innerHTML =
+      (offer.curse ? '<div class="octag">Overclocked</div>' : '') +
+      '<div class="drar">' + c.rarity + ' &middot; ' + c.tag + '</div>' +
+      '<div class="dname">' + c.name + '</div>' +
+      '<div class="ddesc">' + c.desc + '</div>' +
+      (offer.curse
+        ? '<div class="dcurse"><span>' + offer.curse.name + '</span>' + offer.curse.desc + '</div>'
+        : '');
+    el.onclick = () => takeOffer(i);
+    wrap.appendChild(el);
+  });
+  show(UI.draft);
+}
+
+function takeOffer(i){
+  const offer = G.offers[i];
+  if (!offer) return;
+  const run = G.run;
+  run.chips.push(offer.chip.id);
+  if (offer.curse) { run.curses.push(offer.curse.id); NHAudio.curse(); }
+  else NHAudio.chip();
+  run.M = NHChips.build(run.chips, run.curses);
+  hide(UI.draft);
+  nextDistrict();
 }
 
 function endRun(){
   G.state = 'over';
   const isBest = G.score > Save.data.best;
   if (isBest) Save.data.best = G.score;
-  G.coinsRun = Math.floor(G.score / 80 * G.spec.payout);
+  const reached = G.run ? G.run.district : 1;
+  if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
+  /* clearing districts is the achievement, so it pays on top of raw score */
+  G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
 
-  $('ovKicker').textContent = G.crashReason === 'traffic' ? 'Wrecked' : 'Wall';
+  const kick = G.crashReason === 'traffic' ? 'Wrecked'
+             : G.crashReason === 'wall' ? 'Wall'
+             : G.crashReason || 'Busted';
+  $('ovKicker').textContent = kick;
+  $('ovRank').textContent = G.run
+    ? 'Reached district ' + G.run.district + ' — ' + G.run.cleared + ' cleared'
+    : '';
   $('ovScore').textContent = fmt(G.score);
   $('ovBest').textContent = fmt(Save.data.best);
   $('ovCombo').innerHTML = '&times;' + G.topMult.toFixed(1);
@@ -1980,7 +3276,10 @@ function commitCoins(mult){
 }
 
 /* ---- buttons ---- */
-$('btnPlay').onclick   = () => startRun();
+function setMute(m){ $('btnMute').textContent = m ? 'Sound off' : 'Sound on'; }
+$('btnMute').onclick   = e => { e.stopPropagation(); setMute(NHAudio.toggleMute()); };
+$('btnGo').onclick     = () => beginDistrict();
+$('btnPlay').onclick   = () => { NHAudio.resume(); startRun(); };
 $('btnAgain').onclick  = () => { commitCoins(1); startRun(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => { hide(UI.menu); show(UI.garage); renderGarage(); };
@@ -1993,6 +3292,7 @@ $('btnRevive').onclick = () => {
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
+    G.run.crumpleLeft = Math.max(G.run.crumpleLeft, G.run.M.crumple);
     UI.hud.classList.remove('off');
     /* drop back on the centreline a little ahead, briefly untouchable */
     const pos = G.track.at(G.car.idx + 4, 0);
@@ -2147,6 +3447,18 @@ function frame(now){
 
   adTick(raw);
   if (!adCb) step(raw * G.slow);
+
+  NHAudio.frame({
+    playing: G.state === 'play',
+    speed: G.car ? G.car.speed : 0,
+    boost: G.car ? G.car.boost : 0,
+    drift: G.car ? G.car.drift : 0,
+    cops: G.police.length + (G.boss ? 2 : 0),
+    /* arrangement follows how deep and how hot the run is */
+    intensity: G.state === 'menu' ? 0
+      : Math.min(3, (G.run ? Math.floor((G.run.district - 1) / 2) : 0) + G.tier + (G.boss ? 1 : 0))
+  });
+
   syncHUD();
   render();
   requestAnimationFrame(frame);
@@ -2154,11 +3466,16 @@ function frame(now){
 
 resize();
 newWorld(true);
+hide(UI.brief); hide(UI.draft);
 toMenu();
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */
-window.__NH = { G, cam, CARS, Save, QF, setQuality, startRun, toMenu };
+window.__NH = {
+  G, cam, CARS, Save, QF, setQuality, startRun, toMenu,
+  beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
+  get offers(){ return G.offers; }
+};
 
 /* signal readiness to the CrazyGames loader when hosted */
 if (window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.game) {
