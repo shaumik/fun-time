@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>NEON HEAT — Drift Outlaw</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+
+  <!-- ============ in-run HUD ============ -->
+  <div id="hud" class="layer">
+    <div class="hudTop">
+      <div class="stat">
+        <div class="lbl">Score</div>
+        <div class="val" id="score">0</div>
+      </div>
+
+      <div class="combo" id="combo">
+        <div class="cmult" id="cmult">&times;1.0</div>
+        <div class="cpts" id="cpts">0</div>
+        <div class="cbar"><i id="cfill"></i></div>
+        <div class="cnote">Straighten up to bank</div>
+      </div>
+
+      <div class="stat right">
+        <div class="lbl">Coins</div>
+        <div class="val amber" id="coins">0</div>
+      </div>
+    </div>
+
+    <div class="heat" id="heat">
+      <span class="hlbl">Heat</span>
+      <i></i><i></i><i></i>
+    </div>
+
+    <div class="hudBot">
+      <div class="speedo">
+        <div class="spdv" id="spd">0</div>
+        <div class="spdu">km/h</div>
+      </div>
+      <div class="nitro">
+        <div class="lbl">Nitro <span class="key">Shift</span></div>
+        <div class="nbar"><i id="nfill"></i></div>
+      </div>
+    </div>
+
+    <div id="toasts"></div>
+  </div>
+
+  <!-- ============ touch controls ============ -->
+  <div id="touch" class="layer">
+    <button class="tbtn tl" data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24"><path d="M15 4 7 12l8 8"/></svg></button>
+    <button class="tbtn tr" data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24"><path d="m9 4 8 8-8 8"/></svg></button>
+    <button class="tbtn td" data-k="drift" aria-label="Drift">DRIFT</button>
+  </div>
+
+  <!-- ============ menu ============ -->
+  <div id="menu" class="layer screen">
+    <div class="menuIn">
+      <div class="eyebrow">Arcade drift · Outrun division</div>
+      <h1 class="title"><span class="t1">Neon</span><span class="t2">Heat</span></h1>
+      <p class="tag">Hold the slide. Bank the points. Lose the cops.</p>
+      <div class="btns">
+        <button class="btn primary" id="btnPlay">Start Run<span class="key">Enter</span></button>
+        <button class="btn" id="btnGarage">Garage</button>
+      </div>
+      <div class="hints">
+        <div class="hint"><b>&#8592; &#8594;</b> Steer</div>
+        <div class="hint"><b>Space</b> Drift</div>
+        <div class="hint"><b>Shift</b> Nitro</div>
+      </div>
+      <div class="best">Personal best <b id="menuBest">0</b></div>
+    </div>
+  </div>
+
+  <!-- ============ game over ============ -->
+  <div id="over" class="layer screen">
+    <div class="panel">
+      <div class="ovHead">
+        <span class="ovKicker" id="ovKicker">Wrecked</span>
+        <span class="ovBadge" id="ovBadge">New best</span>
+      </div>
+      <div class="ovScore" id="ovScore">0</div>
+      <div class="ovRow">
+        <div><span>Best</span><b id="ovBest">0</b></div>
+        <div><span>Top combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
+      </div>
+      <div class="ovActs">
+        <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
+        <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
+      </div>
+      <div class="ovFoot">
+        <button class="btn primary" id="btnAgain">Race again</button>
+        <button class="btn" id="btnMenu">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ garage ============ -->
+  <div id="garage" class="layer screen">
+    <div class="panel wide">
+      <div class="gHead">
+        <h2>Garage</h2>
+        <div class="gCoins"><span>Balance</span><b class="amber" id="gCoins">0</b></div>
+      </div>
+      <div class="gCars" id="gCars"></div>
+      <div class="gUps" id="gUps"></div>
+      <div class="gFoot">
+        <button class="btn primary" id="btnRace">Race</button>
+        <button class="btn" id="btnBack">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ simulated ad ============ -->
+  <div id="ad" class="layer">
+    <div class="adBox">
+      <div class="adTag">Advertisement</div>
+      <div class="adArt"><div class="adPulse"></div></div>
+      <div class="adMsg" id="adMsg">Your reward is on the way</div>
+      <div class="adBar"><i id="adFill"></i></div>
+      <div class="adNote">Simulated placement — wired to the CrazyGames SDK in production</div>
+    </div>
+  </div>
+</div>
+<script src="src/game.js"></script>
+</body>
+</html>
