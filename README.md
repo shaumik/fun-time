@@ -22,10 +22,8 @@ back to in-memory for the session).
 
 | Input | Action |
 |---|---|
-| <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Steer |
-| <kbd>Space</kbd> or <kbd>S</kbd> | Drift — hold to charge and pile up wrecks, release to bank |
-| <kbd>Shift</kbd> or <kbd>W</kbd> | Nitro |
-| <kbd>Enter</kbd> | Start run / leave a district brief |
+| <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Steer — the whole control surface |
+| <kbd>Enter</kbd> | Garage / start run / leave a district brief |
 | <kbd>1</kbd>–<kbd>4</kbd> | Pick a chip at the draft |
 | <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
@@ -39,16 +37,10 @@ using a quarter of the screen.
 eyes are on the road, which is the wrong demand on a phone. Instead the first finger down
 becomes a virtual stick wherever it lands:
 
-| Gesture | Action |
-|---|---|
-| Drag sideways | Steer — analogue, unlike the keyboard |
-| Pull back | Handbrake: hold the drift |
-| Release forward | Straighten up and bank |
-| Second finger, anywhere | Nitro |
-
-The anchor trails your thumb so the stick never saturates out of reach, and the handbrake
-has hysteresis so a shaky grip doesn't chatter it. A ring shows where it anchored and what
-it is reading. The old pad layout is still there behind a **Controls** toggle on the menu.
+Drag sideways to steer. That is the entire input — the handbrake and the nitro pull are
+both gone, so the stick carries one axis and there is nothing to aim at. The anchor trails
+your thumb so it never saturates out of reach, and a ring shows where it anchored and what
+it is reading. A two-pad layout is still there behind a **Controls** toggle on the menu.
 
 - The HUD rails stack in portrait, the draft becomes a single column, and keyboard hints are
   hidden on touch devices.
@@ -57,18 +49,22 @@ it is reading. The old pad layout is still there behind a **Controls** toggle on
 - Rendering demotes itself on slower hardware, which on a phone means dropping to device
   pixel ratio 1 and skipping the wide bloom tap.
 
-Turn authority drops as you go faster and drifting buys it back, so fast corners *require*
-the slide. A self-aligning torque clamps the slip angle so a slide holds an angle instead of
-winding up into a spin — that pair is the whole handling model.
+The slide is automatic: lean hard on the wheel above 420 and the tail comes round on its
+own, held at a stable angle by a self-aligning torque rather than winding up into a spin.
+You provoke the drift, you no longer operate it.
 
-**Traffic is ammunition, not obstacle.** Drifting builds the multiplier; ramming cars is
-what converts it into points, and a pile-up compounds — the fourth car pays about twice the
-first. Each wreck costs hull, and banking welds some of it back, but never as much as it
-cost. Threading a gap pays thin and costs nothing, so a thin hull changes how you drive
-instead of ending you.
+**Traffic is ammunition, not obstacle.** Every wreck adds a link to the chain, resets a
+~3.2s clock and pays at the multiplier the chain has already earned. Let the clock hit zero
+and everything banks automatically; wreck your hull first and it is gone. Threading a gap
+pays thin but puts time back on the clock, so a thin hull changes how you drive rather than
+ending you.
 
-Points accrue into a *pending* bank while you hold the drift and only pay out when you
-release. Wreck while holding a fat bank and it is gone.
+**Power-ups** sit in the traffic lanes and fire the moment you touch them — Boost, Repair,
+Ram Plate (free wrecks), and Surge, which stops the clock.
+
+**The garage sits between runs.** Coins earned by a failed run buy chassis, tuning, and
+permanent hardware — a harpoon that auto-fires, plating that detonates every fifth link, a
+welder that repairs you between chains. See [DESIGN.md](DESIGN.md).
 
 **Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; a contract
 chosen before every district (boon + bane, stated up front); a chip drafted after. Risk on

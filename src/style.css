@@ -219,17 +219,24 @@ body{
   font-size:calc(var(--u)*1.3);letter-spacing:.22em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
-.nitro{text-align:right}
-.nbar{
-  width:calc(var(--u)*22);height:calc(var(--u)*.9);margin-top:calc(var(--u)*.8);
-  background:rgba(255,255,255,.10);border-radius:99px;overflow:hidden;
-  border:1px solid var(--edge);
+/* Active power-ups. Nothing here is a resource you meter out any more, so
+   these are countdowns, not bars: what is running and how long is left. */
+.powers{display:flex;flex-direction:column;align-items:flex-end;gap:calc(var(--u)*.6)}
+.pwr{
+  display:flex;align-items:center;gap:calc(var(--u)*.8);
+  padding:calc(var(--u)*.45) calc(var(--u)*1);
+  border:1px solid currentColor;border-radius:99px;
+  font-size:calc(var(--u)*1.15);font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;
+  background:rgba(4,8,18,.5);
+  animation:pwrIn .18s cubic-bezier(.2,.9,.25,1) both;
 }
-.nbar i{
-  display:block;height:100%;width:0%;
-  background:linear-gradient(90deg,rgba(255,177,61,.55),var(--amber));
-  box-shadow:0 0 calc(var(--u)*1.6) rgba(255,177,61,.8);
-}
+.pwr b{font-variant-numeric:tabular-nums;font-weight:800;opacity:.75;letter-spacing:.04em}
+.pwr.boost{color:var(--amber)}
+.pwr.shield{color:var(--cyan)}
+.pwr.surge{color:var(--magenta)}
+.pwr.rack{color:var(--ice);opacity:.75}
+@keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
 
 /* toasts */
 #toasts{
@@ -271,20 +278,6 @@ body{
 .tl{left:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4))}
 .tr{left:calc(max(14px,calc(var(--u)*2.4)) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
     bottom:max(14px,calc(var(--u)*2.4))}
-.td{
-  right:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4));
-  width:max(78px,calc(var(--u)*14));height:max(78px,calc(var(--u)*14));
-  border-color:var(--magenta);color:var(--magenta);
-}
-.td:active,.td.down{background:rgba(255,46,136,.26)}
-/* nitro sits above the drift pad — same thumb, no reach */
-.tn{
-  right:max(14px,calc(var(--u)*2.4));
-  bottom:calc(max(78px,var(--u)*14) + max(14px,var(--u)*2.4) + max(10px,var(--u)*1.4));
-  border-color:var(--amber);color:var(--amber);
-  font-size:max(10px,calc(var(--u)*1.25));
-}
-.tn:active,.tn.down{background:rgba(255,177,61,.26)}
 
 /* ============ screens ============ */
 .screen{
@@ -538,7 +531,7 @@ body{
   box-shadow:0 calc(var(--u)*3) calc(var(--u)*8) rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07);
   animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
 }
-.panel.wide{max-width:calc(var(--u)*86)}
+.panel.wide{max-width:calc(var(--u)*86);max-height:92vh;overflow-y:auto;overscroll-behavior:contain}
 @keyframes pop{from{opacity:0;transform:translateY(calc(var(--u)*2)) scale(.97)}to{opacity:1;transform:none}}
 
 .ovHead{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.4)}
@@ -588,7 +581,21 @@ body{
 }
 .gCoins b{font-size:calc(var(--u)*2.6);font-weight:800;font-variant-numeric:tabular-nums}
 
-.gCars{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.2);margin-bottom:calc(var(--u)*2.4)}
+/* the garage is now a between-runs step rather than a side room, so it gets
+   real section headings instead of three unlabelled grids stacked up */
+.gSec{
+  display:flex;align-items:baseline;gap:calc(var(--u)*1.2);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*1.2);
+  border-bottom:1px solid var(--edge);padding-bottom:calc(var(--u)*.7);
+}
+.gSec:first-of-type{margin-top:0}
+.gSec h3{
+  margin:0;font-size:calc(var(--u)*1.5);font-weight:800;
+  letter-spacing:.24em;text-transform:uppercase;color:var(--cyan);
+}
+.gSec span{font-size:calc(var(--u)*1.2);color:var(--dim);font-weight:600}
+.gBody{overflow-y:auto;overscroll-behavior:contain;max-height:100%}
+.gCars{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.2)}
 .car{
   cursor:pointer;text-align:center;position:relative;
   background:rgba(255,255,255,.035);
@@ -657,6 +664,34 @@ body{
 .up button:active{transform:translateY(1px)}
 .up button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 .up button[disabled]{background:rgba(255,255,255,.08);color:var(--dim);cursor:not-allowed}
+/* hardware cards: the reason a lost run still moves you forward */
+.gGear{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.2)}
+.gear{
+  position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
+  background:rgba(255,255,255,.035);
+  border:1px solid var(--edge);border-left:calc(var(--u)*.4) solid var(--amber);
+  border-radius:calc(var(--u)*.9);
+  padding:calc(var(--u)*1.3) calc(var(--u)*1.4);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.6);
+  transition:background .14s,border-color .14s,transform .1s;
+}
+.gear:hover{background:rgba(255,177,61,.09);transform:translateY(-2px)}
+.gear:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.gear .nm{
+  font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;color:#fff;
+}
+.gear .ds{font-size:calc(var(--u)*1.25);line-height:1.4;color:var(--ice);opacity:.8}
+.gear .pr{
+  margin-top:auto;font-size:calc(var(--u)*1.35);font-weight:800;
+  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
+}
+.gear.owned{border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default}
+.gear.owned:hover{transform:none;background:rgba(61,232,255,.07)}
+.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.15)}
+.gear.broke{opacity:.5}
+.gear.broke .pr{color:var(--dim)}
+
 .gFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.6)}
 .gFoot .btn{flex:1;justify-content:center}
 
@@ -771,8 +806,7 @@ body{
 
   .hudBot{
     left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
-    bottom:calc(max(78px,var(--u)*14) + max(60px,var(--u)*11)
-              + max(14px,var(--u)*2.4) + max(10px,var(--u)*1.4) + var(--u)*1.6);
+    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6);
   }
   .spdv{font-size:calc(var(--u)*4.4)}
   .hudDrv{gap:calc(var(--u)*1.9)}
@@ -802,6 +836,9 @@ body{
 
   .gCars{grid-template-columns:repeat(2,1fr)}
   .gUps{grid-template-columns:1fr}
+  .gGear{grid-template-columns:1fr}
+  .gSec{flex-direction:column;gap:calc(var(--u)*.3)}
+  .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
   .gFoot{flex-direction:column}
 }
 
@@ -818,10 +855,8 @@ body{
   .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
   .ovScore{font-size:calc(var(--u)*7)}
   .hudBot{bottom:calc(var(--u)*2.4)}
-  /* keep the speedo clear of the left-hand steering pad */
-  .speedo{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
-  .nitro{margin-right:calc(max(78px,var(--u)*14) + var(--u)*2)}
-  .tn{bottom:calc(max(78px,var(--u)*14) + max(14px,var(--u)*2.4) + max(8px,var(--u)*1))}
+  /* keep the speedo clear of the left-hand steering pads */
+  .hudDrv{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
 }
 
 /* ============================================================

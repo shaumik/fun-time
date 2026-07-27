@@ -1,9 +1,8 @@
 # NEON HEAT — design & monetization brief
 
-**One line:** A demolition-drift roguelite. Drift to charge a multiplier, ram traffic to
-cash it in, and spend hull doing it — climbing a ladder of city districts that each demand
-a quota before the checkpoint, with a chip drafted after every clear and a named pursuit
-unit every third.
+**One line:** A demolition roguelite you play with one axis. Steer — that is the entire
+control surface — ram traffic to build a chain, and race a clock that resets with every
+wreck, climbing a ladder of city districts on a hull you spend rather than protect.
 
 ---
 
@@ -84,18 +83,26 @@ safe one into a standard three.
 Elite) while the player's build grows through chips — the two curves are meant to stay
 close, so a run ends when the build stops keeping up rather than at a fixed wall.
 
-**The bet.** Points accrue into a *pending* bank that only pays out when you release the
-drift. Wreck while holding a fat bank and it is gone. Tying the payout to the button rather
-than to the physics settling is what makes the wager legible: you choose when to cash in.
+**One axis.** There is no handbrake and no nitro button. Steering is the whole control
+surface, on keyboard and on glass alike. Two things follow. The slide is *automatic* —
+lean hard on the wheel above 420 and the tail comes round on its own, so the car still
+looks and sounds like the same car without asking you to operate it. And turn authority
+had to be retuned to sit between the old gripped and drifting rates: set at the full
+drifting rate the car became twitchy, and every correction overshot into a barrier.
 
-**Drift charges, wrecks cash.** The split matters. Drifting trickles points but its real job
-is the multiplier, and a clean lap of pure drifting cannot meet a quota — it was tuned so
-that it could, and a test bot promptly cleared a district on drift alone with the hull
-untouched at 100, which meant the new verb was decoration. Wrecks are what convert the
-multiplier into a number, and the streak term compounds hard enough (the fourth car in a
-pile-up pays roughly twice the first) that the greedy line is always one more wreck. Since
-one more wreck is also one more bite out of the hull, the game's central decision is asked
-several times a minute rather than once a district.
+**The chain clock.** With no button to release, the wager moved onto a timer. Every wreck
+resets a ~3.2s clock and adds a link; let it run out and the entire pending bank pays
+automatically. The question stopped being *when do I let go* and became *can I reach one
+more car before this hits zero* — the same bet, asked several times a minute instead of
+once a district. The multiplier is the chain length, so the first car pays ×1 and every one
+after it pays more than the last, and since one more wreck is also one more bite out of the
+hull, greed and survival pull against each other continuously.
+
+Getting hit burns *clock*, not links. Docking the chain itself would drop the multiplier by
+an amount the player never sees coming; taking seconds off the timer says exactly what it
+costs. Threading a gap does the reverse — it pays thin and puts a slice of the clock back,
+which is how you carry a chain across a hole in the traffic when your hull cannot afford
+another wreck.
 
 **Hull is the resource you spend, not the health you protect.** It starts at 100, a wreck
 costs about nine, and banking welds some back on — more for a big pile-up than a lone hit,
@@ -104,6 +111,12 @@ Threading a gap instead of driving through it pays thin and costs nothing, which
 lets a player on a thin hull keep a chain alive rather than simply losing. Walls are
 deliberately *not* the main sink: clipping a barrier while learning should not read as the
 same class of event as choosing to hit something.
+
+**Power-ups** lie on the road and fire the instant you touch them — nothing is held,
+metered or aimed, which is the only shape that fits a one-axis game. Boost is raw speed;
+Repair gives back a quarter of the hull; Ram Plate makes wrecks free for seven seconds;
+Surge *stops the clock*, which is a licence to be greedy. They spawn in the same lanes as
+the traffic, so going for one is a line you have to choose rather than a button you press.
 
 **Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
 so the correct play is always slightly more dangerous than the comfortable one.
@@ -161,8 +174,32 @@ and cannot bring audio back, which is what their docs require.
 
 Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 
-Meta progression (coins, cars, four upgrade tracks) persists across runs and is separate
-from the per-run chip build — the roguelite layer resets, the garage layer does not.
+## The garage
+
+A roguelite that only resets is a roguelike. The garage is the other half of the contract:
+it sits *between* runs rather than off to one side, so a run that ended badly still paid for
+something you keep, and the next attempt starts further along. Every path into a run goes
+through it — the menu's Start Run, the game-over screen's primary action, and Enter.
+
+Three tiers of spend, in ascending permanence: **chassis** (four cars), **tuning** (four
+tracks, five levels each), and **hardware** — bought once, fitted forever, and each one
+changes a verb rather than a number.
+
+| Hardware | Cost | What it does |
+|---|---|---|
+| Ram Prow | 2,400 | Wrecks pay +25% and cost a fifth less hull. |
+| Scrap Welder | 4,200 | Hull repairs itself whenever no chain is running. |
+| Turbine Intake | 7,000 | Grabbing a Boost adds two links to a live chain. |
+| Harpoon Rack | 12,000 | Auto-fires every 9s: detonates the nearest car ahead, free. |
+| Shock Plating | 20,000 | Every fifth link in a chain detonates everything around you. |
+| Black Box | 32,000 | Start every district with a Ram Plate already fitted. |
+
+The Harpoon deliberately has no fire button. An active weapon would put back exactly the
+kind of control the rest of this pass took out, and a top-down auto-cannon reads as
+generous rather than passive — you still choose the line that puts a car in front of it.
+
+Coins, cars, tuning and hardware persist across runs; the chip build inside a run does not.
+The roguelite layer resets, the garage layer does not.
 
 ## Audio
 

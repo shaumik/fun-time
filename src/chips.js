@@ -10,21 +10,20 @@ window.NHChips = (() => {
 /* the full modifier surface — anything a chip can touch lives here */
 function defaults(){
   return {
-    accrueMul: 1,      // rate the pending bank fills
     bankMul: 1,        // payout multiplier when you cash in
-    multRate: 0.42,    // chain seconds -> multiplier slope
+    wreckMul: 1,       // payout multiplier on a wreck specifically
+    multRate: 0.60,    // chain links -> multiplier slope
     multCap: 9.9,
     topMul: 1,
     gripMul: 1,
-    nitroCap: 1,
-    nitroRegen: 1,
-    nitroDrain: 1,
-    driftThresh: 0.20, // slip angle that counts as a drift
-    chainGrace: 0.42,  // seconds after release before the bank pays
+    chainTime: 3.2,    // seconds on the chain clock, reset by every wreck
+    boostTime: 1,      // scales how long a Boost pickup lasts
+    powerTime: 1,      // scales how long the timed pickups last
+    pickupRate: 1,     // how many power-ups are on the road
+    boostChain: 0,     // extra chain links for a wreck made while boosting
     nearMul: 1,        // near-miss bonus scale
-    nearNitro: 0,      // nitro refunded per near miss
+    nearChain: 0,      // extra seconds a thread puts back on the clock
     nearTop: 0,        // top speed gained per near miss, resets each district
-    afterburn: 0,      // multiplier per second while boosting mid-drift
     ghostOnBank: 0,    // seconds police lose your trail after a bank
     shockOnBank: 0,    // banking spins out nearby pursuit
     crumple: 0,        // crashes absorbed per district
@@ -44,12 +43,12 @@ function defaults(){
 const CHIPS = [
   /* ---------------- common ---------------- */
   { id:'slipstream', name:'Slipstream', rarity:'common', tag:'Risk',
-    desc:'Near misses pay +50% and refund nitro.',
-    apply(M){ M.nearMul += 0.5; M.nearNitro += 0.12; } },
+    desc:'Threading pays +50% and puts another 0.35s back on the clock.',
+    apply(M){ M.nearMul += 0.5; M.nearChain += 0.35; } },
 
-  { id:'feather', name:'Feathered Throttle', rarity:'common', tag:'Chain',
-    desc:'Twice as long to bank after you straighten up.',
-    apply(M){ M.chainGrace += 0.45; } },
+  { id:'slowburn', name:'Slow Burn', rarity:'common', tag:'Chain',
+    desc:'The chain clock runs 0.9s longer.',
+    apply(M){ M.chainTime += 0.9; } },
 
   { id:'coldrubber', name:'Cold Rubber', rarity:'common', tag:'Handling',
     desc:'Grip +20%. Snaps straight out of a slide.',
@@ -59,18 +58,22 @@ const CHIPS = [
     desc:'Top speed +9%.',
     apply(M){ M.topMul += 0.09; } },
 
-  { id:'deeptank', name:'Deep Tank', rarity:'common', tag:'Engine',
-    desc:'Nitro tank +40%, refills 30% faster.',
-    apply(M){ M.nitroCap += 0.40; M.nitroRegen += 0.30; } },
+  { id:'pressure', name:'Pressure Cell', rarity:'common', tag:'Engine',
+    desc:'Boost pickups burn 60% longer.',
+    apply(M){ M.boostTime += 0.60; } },
 
-  { id:'hairtrigger', name:'Hair Trigger', rarity:'common', tag:'Chain',
-    desc:'Shallower slides count as drifts.',
-    apply(M){ M.driftThresh = Math.max(0.10, M.driftThresh - 0.07); } },
+  { id:'magnet', name:'Scrap Magnet', rarity:'common', tag:'Power',
+    desc:'Half again as many power-ups on the road.',
+    apply(M){ M.pickupRate += 0.5; } },
 
   /* ---------------- uncommon ---------------- */
   { id:'afterburn', name:'Afterburn', rarity:'uncommon', tag:'Combo',
-    desc:'Nitro while drifting adds +0.6 multiplier per second.',
-    apply(M){ M.afterburn += 0.6; } },
+    desc:'A wreck made under boost counts as two links in the chain.',
+    apply(M){ M.boostChain += 1; } },
+
+  { id:'halflife', name:'Half Life', rarity:'uncommon', tag:'Power',
+    desc:'Ram Plate and Surge last 70% longer.',
+    apply(M){ M.powerTime += 0.70; } },
 
   { id:'interest', name:'Compound Interest', rarity:'uncommon', tag:'Combo',
     desc:'Multiplier climbs 35% faster.',
@@ -122,12 +125,12 @@ const CHIPS = [
     apply(M){ M.bankMul += 0.75; } },
 
   { id:'overdrive', name:'Overdrive Coil', rarity:'rare', tag:'Engine',
-    desc:'Top speed +20%, but nitro burns 30% faster.',
-    apply(M){ M.topMul += 0.20; M.nitroDrain += 0.30; } },
+    desc:'Top speed +20%, but the chain clock runs 0.4s shorter.',
+    apply(M){ M.topMul += 0.20; M.chainTime -= 0.40; } },
 
-  { id:'longfuse', name:'Long Fuse', rarity:'rare', tag:'Chain',
-    desc:'The pending bank fills 45% faster.',
-    apply(M){ M.accrueMul += 0.45; } }
+  { id:'piledriver', name:'Pile Driver', rarity:'rare', tag:'Chain',
+    desc:'Every wreck banks 45% more.',
+    apply(M){ M.wreckMul += 0.45; } }
 ];
 
 /* Overclocked offers pair a stronger chip with a permanent drawback.
@@ -141,8 +144,8 @@ const CURSES = [
     apply(M){ M.policeStart += 1; } },
   { id:'brittle', name:'Brittle', desc:'Scraping a barrier ends your chain outright.',
     apply(M){ M.brittle = 1; } },
-  { id:'drytank', name:'Dry Tank', desc:'Nitro no longer refills on its own.',
-    apply(M){ M.nitroRegen = 0; } },
+  { id:'scavenged', name:'Scavenged', desc:'Half as many power-ups on the road.',
+    apply(M){ M.pickupRate *= 0.5; } },
   { id:'tunnel', name:'Tunnel Vision', desc:'The camera sits 15% tighter.',
     apply(M){ M.zoomMul *= 0.85; } }
 ];
@@ -182,8 +185,8 @@ const CONTRACTS = [
 
   { id:'rush', name:'Rush Hour', risk:1,
     bane:'Twice the traffic.',
-    boon:'Near misses pay triple and refill nitro.',
-    apply(M, L){ M.trafficMul += 1; M.nearMul += 2; M.nearNitro += 0.18; } },
+    boon:'Threading pays triple and keeps the clock alive.',
+    apply(M, L){ M.trafficMul += 1; M.nearMul += 2; M.nearChain += 0.5; } },
 
   { id:'blackout', name:'Blackout', risk:1,
     bane:'City power is out. You drive on headlights.',
@@ -206,18 +209,18 @@ const CONTRACTS = [
     apply(M, L){ L.quotaMul *= 1.45; M.trafficMul = 0; } },
 
   { id:'overpressure', name:'Overpressure', risk:2,
-    bane:'Grip down 20% and the nitro tank will not refill.',
+    bane:'Grip down 20% and the chain clock is half a second shorter.',
     boon:'Top speed up 30%.',
-    apply(M, L){ M.gripMul *= 0.80; M.nitroRegen = 0; M.topMul += 0.30; } },
+    apply(M, L){ M.gripMul *= 0.80; M.chainTime -= 0.5; M.topMul += 0.30; } },
 
-  { id:'hairpin', name:'Hair Trigger', risk:2,
+  { id:'scrapyard', name:'Scrapyard', risk:2,
     bane:'Touching a barrier ends your chain outright.',
-    boon:'The shallowest slide counts as a drift.',
-    apply(M, L){ M.brittle = 1; M.driftThresh = 0.09; } },
+    boon:'Power-ups everywhere — two and a half times as many.',
+    apply(M, L){ M.brittle = 1; M.pickupRate += 1.5; } },
 
   { id:'narrows', name:'The Narrows', risk:2,
     bane:'Streets 25% tighter.',
-    boon:'The multiplier ceiling comes off — ×25.',
+    boon:'The multiplier ceiling comes off — \u00d725.',
     apply(M, L){ M.roadMul *= 0.75; M.multCap = Math.max(M.multCap, 25); } }
 ];
 

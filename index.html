@@ -34,7 +34,7 @@
           <div class="cmult" id="cmult">&times;1.0</div>
           <div class="cpts" id="cpts">0</div>
           <div class="cbar"><i id="cfill"></i></div>
-          <div class="cnote">Release to bank</div>
+          <div class="cnote">Chain</div>
         </div>
 
         <div class="wreck" id="wreckChain"></div>
@@ -63,16 +63,13 @@
           <div class="spdu">km/h</div>
         </div>
       </div>
-      <div class="nitro">
-        <div class="lbl">Nitro <span class="key">Shift</span></div>
-        <div class="nbar"><i id="nfill"></i></div>
-      </div>
+      <div class="powers" id="powers"></div>
     </div>
 
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
-      <b>Drift to charge · ram traffic to cash</b>
-      <span>Drag sideways to steer &middot; pull back to drift &middot; release forward to bank</span>
+      <b>Drag anywhere to steer</b>
+      <span>Ram traffic to build the chain &middot; grab power-ups &middot; it banks itself</span>
     </div>
   </div>
 
@@ -80,8 +77,6 @@
   <div id="touch" class="layer">
     <button class="tbtn tl" data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24"><path d="M15 4 7 12l8 8"/></svg></button>
     <button class="tbtn tr" data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24"><path d="m9 4 8 8-8 8"/></svg></button>
-    <button class="tbtn tn" data-k="nitro" aria-label="Nitro">NITRO</button>
-    <button class="tbtn td" data-k="drift" aria-label="Drift">DRIFT</button>
   </div>
 
   <!-- ============ menu ============ -->
@@ -89,15 +84,13 @@
     <div class="menuIn">
       <div class="eyebrow">Arcade drift · Outrun division</div>
       <h1 class="title"><span class="t1">Neon</span><span class="t2">Heat</span></h1>
-      <p class="tag">Drift to charge it. Ram traffic to cash it. Your hull is the ammo.</p>
+      <p class="tag">Steer. Ram everything. Bank it before the chain dies.</p>
       <div class="btns">
         <button class="btn primary" id="btnPlay">Start Run<span class="key">Enter</span></button>
         <button class="btn" id="btnGarage">Garage</button>
       </div>
       <div class="hints">
-        <div class="hint"><b>&#8592; &#8594;</b> Steer</div>
-        <div class="hint"><b>Space</b> Drift &amp; ram</div>
-        <div class="hint"><b>Shift</b> Nitro</div>
+        <div class="hint"><b>&#8592; &#8594;</b> Steer &mdash; that is the whole control</div>
       </div>
       <div class="best">Deepest run <b id="menuBest">District 1</b></div>
       <div class="opts">
@@ -198,7 +191,7 @@
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
       </div>
       <div class="ovFoot">
-        <button class="btn primary" id="btnAgain">Race again</button>
+        <button class="btn primary" id="btnAgain">Spend it in the garage</button>
         <button class="btn" id="btnMenu">Menu</button>
       </div>
     </div>
@@ -211,11 +204,15 @@
         <h2>Garage</h2>
         <div class="gCoins"><span>Balance</span><b class="amber" id="gCoins">0</b></div>
       </div>
+      <div class="gSec"><h3>Chassis</h3><span>Pick what you drive</span></div>
       <div class="gCars" id="gCars"></div>
+      <div class="gSec"><h3>Tuning</h3><span>Five levels each, permanent</span></div>
       <div class="gUps" id="gUps"></div>
+      <div class="gSec"><h3>Hardware</h3><span>Bought once, fitted for every run after</span></div>
+      <div class="gGear" id="gGear"></div>
       <div class="gFoot">
-        <button class="btn primary" id="btnRace">Race</button>
-        <button class="btn" id="btnBack">Back</button>
+        <button class="btn primary" id="btnRace">Roll out</button>
+        <button class="btn" id="btnBack">Menu</button>
       </div>
     </div>
   </div>

@@ -28,18 +28,22 @@ Paste-ready. Edit to taste.
 **Title:** NEON HEAT
 
 **Short description**
-> A demolition-drift roguelite. Drift to charge your multiplier, ram traffic to cash it in,
-> and climb a ladder of city districts on a hull that only ever gets thinner.
+> A demolition roguelite you play with one axis. Steer, ram everything, and beat the chain
+> clock — then spend what you earned in the garage before the next run.
 
 **Description**
-> Traffic is ammunition, not scenery. Hold a slide to charge the multiplier, then drive
-> straight through the cars in front of you — every wreck banks points at the multiplier
-> you built, and the fourth car in a pile-up is worth roughly twice the first. It costs
-> hull, and hull is the only clock your run has.
+> Traffic is ammunition, not scenery. Steering is the only control — no handbrake, no boost
+> button — and you drive straight through the cars in front of you. Every wreck adds a link
+> to your chain and resets a three-second clock; when it runs out, the whole pile banks at
+> once. Wreck your hull before then and you lose the lot.
 >
-> Cash in and you weld some of it back on. Hold out for one more wreck and you might not.
-> Threading a gap instead pays thin but costs nothing, so a thin hull changes how you drive
-> rather than ending you.
+> Power-ups lie in the lanes and fire the instant you touch them: raw Boost, Repair, a Ram
+> Plate that makes wrecks free, and Surge, which stops the clock dead.
+>
+> Coins from a failed run still buy something you keep. The garage sits between every run —
+> four chassis, four tuning tracks, and permanent hardware: a harpoon that auto-fires into
+> the nearest car, plating that detonates everything around you every fifth link, a welder
+> that repairs the hull between chains.
 >
 > Every district demands a points quota before the checkpoint, and you choose the route and
 > the terms you drive under before each one. Clear it and you fit one chip from three. Some
@@ -51,9 +55,8 @@ Paste-ready. Edit to taste.
 > right line is always a little more dangerous than the comfortable one.
 
 **Controls**
-> Desktop — Arrow keys or A/D to steer, Space to drift and hold a pile-up, Shift for nitro, M to mute.
-> Mobile — touch anywhere and drag: sideways steers, pull back to drift, release forward to
-> bank. A second finger anywhere is nitro.
+> Desktop — Arrow keys or A/D to steer. That is the whole control. M to mute.
+> Mobile — touch anywhere and drag sideways to steer. Nothing else to press.
 
 **Suggested tags:** driving, racing, drift, crash, destruction, roguelite, arcade, 1 player, singleplayer
 
@@ -71,7 +74,7 @@ The submission form asks these directly. Answers for this build:
 > **Yes, using LocalStorage** (refer to Automatic Progress Save)
 
 Saves live under the `neonheat.v1` key: best score, deepest district, coins, owned cars,
-upgrade levels and the control-scheme preference. The Data Module is not used, so pick the
+upgrade levels, purchased hardware and the control-scheme preference. The Data Module is not used, so pick the
 LocalStorage option — CrazyGames then syncs that key to a signed-in player's account
 automatically, which gives cloud saves with no code change. Writes are wrapped in
 try/catch, so a blocked storage context degrades to in-memory rather than throwing.

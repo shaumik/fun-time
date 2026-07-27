@@ -314,6 +314,20 @@ const A = {
       o.connect(g); o.start(t + k * 0.045); o.stop(t + k * 0.045 + 0.24);
     });
   },
+  /* Picking something up should read as a reward before you have parsed
+     which one it was: a rising arpeggio, brighter and faster for a Boost. */
+  pickup(hot){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const steps = hot ? [660, 880, 1320] : [523, 784, 1046];
+    steps.forEach((f, i) => {
+      const o = ac.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f, t + i * 0.045);
+      const g = env(sfxBus, 0.20, 0.004, 0.13, t + i * 0.045);
+      o.connect(g); o.start(t + i * 0.045); o.stop(t + i * 0.045 + 0.2);
+    });
+  },
   nearMiss(){
     if (!ready) return;
     const t = ac.currentTime;
