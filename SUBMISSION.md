@@ -57,7 +57,32 @@ the chip draft, and the garage. Generated from the running game, so they are hon
 > These PNGs are marketing assets. The game build itself still ships zero image and zero
 > audio files — everything in it is generated at runtime.
 
-## 4. Requirements checklist
+## 4. Form answers
+
+The submission form asks these directly. Answers for this build:
+
+**Does your game save progress?**
+> **Yes, using LocalStorage** (refer to Automatic Progress Save)
+
+Saves live under the `neonheat.v1` key: best score, deepest district, coins, owned cars,
+upgrade levels and the control-scheme preference. The Data Module is not used, so pick the
+LocalStorage option — CrazyGames then syncs that key to a signed-in player's account
+automatically, which gives cloud saves with no code change. Writes are wrapped in
+try/catch, so a blocked storage context degrades to in-memory rather than throwing.
+
+**Game options**
+
+| Option | Answer |
+|---|---|
+| The game supports mobile devices | **Check it.** Portrait and landscape, gesture controls, 60fps on a 390×844 viewport. |
+| The game is an online multiplayer game | **Leave unchecked.** Single player, no server. |
+| The game supports CrazyGames muting audio through SDK | **Check it.** `settings.muteAudio` is read at init and via `addSettingsChangeListener`. |
+
+On that last one: the portal's setting outranks the in-game sound button, as their docs
+require — while the site has muted us the button is disabled and clicking it cannot bring
+audio back. Test it locally with `?muteAudio=true`.
+
+## 5. Requirements checklist
 
 | Requirement | Status |
 |---|---|
@@ -73,8 +98,9 @@ the chip draft, and the garage. Generated from the running game, so they are hon
 | Runs on mobile, portrait and landscape | Yes, with gesture controls |
 | No console errors | Verified against a mocked SDK |
 | `happytime()` used sparingly | On a boss kill and a new personal best only |
+| `settings.muteAudio` honoured, outranking the in-game toggle | Yes — verified silent, and unmutable from in-game while set |
 
-## 5. Before you hit submit
+## 6. Before you hit submit
 
 Two things I could not verify from here, both worth ten minutes:
 
@@ -89,7 +115,7 @@ Not built, in case it comes up in review: no leaderboards, no daily reward, no t
 beyond a one-time control hint, and no banner ads (`requestBanner` is not wired — the
 rewarded and midgame placements are).
 
-## 6. Ad placement summary
+## 7. Ad placement summary
 
 | Placement | Trigger |
 |---|---|

@@ -525,6 +525,8 @@ body{
   transition:color .14s,border-color .14s;
 }
 .mute:hover{color:var(--ice);border-color:var(--edge2)}
+.mute[disabled]{opacity:.45;cursor:not-allowed}
+.mute[disabled]:hover{color:var(--dim);border-color:var(--edge)}
 .mute:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 
 /* panels */
@@ -1089,10 +1091,15 @@ let ready = false, muted = false;
 /* Ducking is separate from the user's mute so an ad can silence the game
    without destroying the setting they chose. */
 let ducked = false;
+/* The portal can mute us, and its setting outranks the in-game toggle —
+   a player who muted on the CrazyGames page must stay muted even if they
+   then hit the sound button in here. */
+let siteMuted = false;
 const MASTER = 0.9;
 function applyMaster(){
   if (!master) return;
-  master.gain.setTargetAtTime((muted || ducked) ? 0 : MASTER, ac.currentTime, 0.04);
+  const silent = muted || ducked || siteMuted;
+  master.gain.setTargetAtTime(silent ? 0 : MASTER, ac.currentTime, 0.04);
 }
 
 /* ---- musical material ---------------------------------------------------
@@ -1152,7 +1159,7 @@ function init(){
   NOISE = noiseBuffer(2);
 
   master = ac.createGain();
-  master.gain.value = (muted || ducked) ? 0 : MASTER;
+  master.gain.value = (muted || ducked || siteMuted) ? 0 : MASTER;
   master.connect(ac.destination);
 
   /* a touch of compression keeps the bed from fighting the SFX */
@@ -1324,6 +1331,16 @@ const A = {
     return muted;
   },
   isMuted(){ return muted; },
+
+  /* portal-driven mute (CrazyGames SDK settings.muteAudio) */
+  setSiteMute(on){
+    if (siteMuted === !!on) return;
+    siteMuted = !!on;
+    applyMaster();
+  },
+  /* what the sound button should actually read */
+  isSilenced(){ return muted || siteMuted; },
+  isForced(){ return siteMuted; },
 
   /* silence for an ad or a backgrounded tab, then restore the user's setting */
   duck(on){
@@ -1726,6 +1743,7 @@ const Ads = {
       /* the whole game is inline, so loading begins and ends immediately */
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
+      this.bindSettings(SDK);
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -1733,6 +1751,22 @@ const Ads = {
 
   /* every SDK call is best-effort: a throw here must never break the game */
   call(fn){ if (!this.ready) return; try { fn(); } catch (e) {} },
+
+  /* Portal audio settings. The exact accessor has moved between SDK
+     versions, so read defensively rather than pinning one path, and apply
+     whatever the change listener hands back. */
+  bindSettings(SDK){
+    const read = s => {
+      const src = s || (SDK.game && SDK.game.settings) || SDK.settings || {};
+      return !!src.muteAudio;
+    };
+    const apply = s => { NHAudio.setSiteMute(read(s)); setMute(); };
+    try { apply(); } catch (e) {}
+    const host = (SDK.game && SDK.game.addSettingsChangeListener) ? SDK.game : SDK;
+    try {
+      if (host && host.addSettingsChangeListener) host.addSettingsChangeListener(apply);
+    } catch (e) {}
+  },
 
   /* Their QA checks that gameplay is bracketed — it gates ad eligibility
      and stops the portal counting menu time as play. */
@@ -1985,7 +2019,7 @@ addEventListener('keydown', e => {
     else if (G.state === 'brief') beginDistrict();
   }
   if (G.state === 'draft' && /^Digit[123]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
-  if (e.code === 'KeyM') setMute(NHAudio.toggleMute());
+  if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
   if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
@@ -3764,8 +3798,14 @@ function commitCoins(mult){
 }
 
 /* ---- buttons ---- */
-function setMute(m){ $('btnMute').textContent = m ? 'Sound off' : 'Sound on'; }
-$('btnMute').onclick   = e => { e.stopPropagation(); setMute(NHAudio.toggleMute()); };
+function setMute(){
+  const b = $('btnMute');
+  b.textContent = NHAudio.isSilenced() ? 'Sound off' : 'Sound on';
+  /* if the site muted us, the in-game toggle cannot override it */
+  b.disabled = NHAudio.isForced();
+  b.title = NHAudio.isForced() ? 'Muted from the CrazyGames page' : '';
+}
+$('btnMute').onclick   = e => { e.stopPropagation(); NHAudio.toggleMute(); setMute(); };
 function setCtrlLabel(){
   $('btnCtrl').textContent = Save.data.ctrl === 'pads' ? 'Controls: pads' : 'Controls: swipe';
 }
@@ -3992,11 +4032,17 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
+/* ?muteAudio=true is CrazyGames' documented way to test this locally */
+try {
+  if (/[?&]muteAudio=true/i.test(location.search)) NHAudio.setSiteMute(true);
+} catch (e) {}
+
 Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft);
 setCtrlLabel();
+setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
 toMenu();
 requestAnimationFrame(frame);

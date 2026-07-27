@@ -88,6 +88,10 @@ an ad that opens instantly never gets a frame of game sound over it, and a watch
 play if an ad hangs without ever calling back. Off-platform every call degrades to a
 simulated placement, so the flow stays demonstrable.
 
+The portal's `settings.muteAudio` is honoured at init and through a change listener, and it
+outranks the in-game sound button — while the site has muted the game the button is disabled
+and cannot bring audio back, which is what their docs require.
+
 Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 
 Meta progression (coins, cars, four upgrade tracks) persists across runs and is separate

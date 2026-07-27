@@ -523,6 +523,8 @@ body{
   transition:color .14s,border-color .14s;
 }
 .mute:hover{color:var(--ice);border-color:var(--edge2)}
+.mute[disabled]{opacity:.45;cursor:not-allowed}
+.mute[disabled]:hover{color:var(--dim);border-color:var(--edge)}
 .mute:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
 
 /* panels */

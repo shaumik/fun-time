@@ -13,10 +13,15 @@ let ready = false, muted = false;
 /* Ducking is separate from the user's mute so an ad can silence the game
    without destroying the setting they chose. */
 let ducked = false;
+/* The portal can mute us, and its setting outranks the in-game toggle —
+   a player who muted on the CrazyGames page must stay muted even if they
+   then hit the sound button in here. */
+let siteMuted = false;
 const MASTER = 0.9;
 function applyMaster(){
   if (!master) return;
-  master.gain.setTargetAtTime((muted || ducked) ? 0 : MASTER, ac.currentTime, 0.04);
+  const silent = muted || ducked || siteMuted;
+  master.gain.setTargetAtTime(silent ? 0 : MASTER, ac.currentTime, 0.04);
 }
 
 /* ---- musical material ---------------------------------------------------
@@ -76,7 +81,7 @@ function init(){
   NOISE = noiseBuffer(2);
 
   master = ac.createGain();
-  master.gain.value = (muted || ducked) ? 0 : MASTER;
+  master.gain.value = (muted || ducked || siteMuted) ? 0 : MASTER;
   master.connect(ac.destination);
 
   /* a touch of compression keeps the bed from fighting the SFX */
@@ -248,6 +253,16 @@ const A = {
     return muted;
   },
   isMuted(){ return muted; },
+
+  /* portal-driven mute (CrazyGames SDK settings.muteAudio) */
+  setSiteMute(on){
+    if (siteMuted === !!on) return;
+    siteMuted = !!on;
+    applyMaster();
+  },
+  /* what the sound button should actually read */
+  isSilenced(){ return muted || siteMuted; },
+  isForced(){ return siteMuted; },
 
   /* silence for an ad or a backgrounded tab, then restore the user's setting */
   duck(on){

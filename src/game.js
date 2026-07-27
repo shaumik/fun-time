@@ -63,6 +63,7 @@ const Ads = {
       /* the whole game is inline, so loading begins and ends immediately */
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
+      this.bindSettings(SDK);
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -70,6 +71,22 @@ const Ads = {
 
   /* every SDK call is best-effort: a throw here must never break the game */
   call(fn){ if (!this.ready) return; try { fn(); } catch (e) {} },
+
+  /* Portal audio settings. The exact accessor has moved between SDK
+     versions, so read defensively rather than pinning one path, and apply
+     whatever the change listener hands back. */
+  bindSettings(SDK){
+    const read = s => {
+      const src = s || (SDK.game && SDK.game.settings) || SDK.settings || {};
+      return !!src.muteAudio;
+    };
+    const apply = s => { NHAudio.setSiteMute(read(s)); setMute(); };
+    try { apply(); } catch (e) {}
+    const host = (SDK.game && SDK.game.addSettingsChangeListener) ? SDK.game : SDK;
+    try {
+      if (host && host.addSettingsChangeListener) host.addSettingsChangeListener(apply);
+    } catch (e) {}
+  },
 
   /* Their QA checks that gameplay is bracketed — it gates ad eligibility
      and stops the portal counting menu time as play. */
@@ -322,7 +339,7 @@ addEventListener('keydown', e => {
     else if (G.state === 'brief') beginDistrict();
   }
   if (G.state === 'draft' && /^Digit[123]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
-  if (e.code === 'KeyM') setMute(NHAudio.toggleMute());
+  if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
   if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
@@ -2101,8 +2118,14 @@ function commitCoins(mult){
 }
 
 /* ---- buttons ---- */
-function setMute(m){ $('btnMute').textContent = m ? 'Sound off' : 'Sound on'; }
-$('btnMute').onclick   = e => { e.stopPropagation(); setMute(NHAudio.toggleMute()); };
+function setMute(){
+  const b = $('btnMute');
+  b.textContent = NHAudio.isSilenced() ? 'Sound off' : 'Sound on';
+  /* if the site muted us, the in-game toggle cannot override it */
+  b.disabled = NHAudio.isForced();
+  b.title = NHAudio.isForced() ? 'Muted from the CrazyGames page' : '';
+}
+$('btnMute').onclick   = e => { e.stopPropagation(); NHAudio.toggleMute(); setMute(); };
 function setCtrlLabel(){
   $('btnCtrl').textContent = Save.data.ctrl === 'pads' ? 'Controls: pads' : 'Controls: swipe';
 }
@@ -2329,11 +2352,17 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
+/* ?muteAudio=true is CrazyGames' documented way to test this locally */
+try {
+  if (/[?&]muteAudio=true/i.test(location.search)) NHAudio.setSiteMute(true);
+} catch (e) {}
+
 Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft);
 setCtrlLabel();
+setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
 toMenu();
 requestAnimationFrame(frame);
