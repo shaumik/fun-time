@@ -1,0 +1,10 @@
+{
+  "name": "neon-heat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A drift roguelite for web distribution",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "npx --yes serve -l 3000 ."
+  }
+}

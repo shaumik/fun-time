@@ -66,6 +66,7 @@ release. Wreck while holding a fat bank and it is gone.
 
 ```
 index.html        development shell (source of truth for markup)
+SUBMISSION.md     build, upload, store copy, requirements checklist
 src/style.css     all UI — HUD, briefs, draft, garage, ad overlay
 src/audio.js      synthesised music bed and SFX, no audio files
 src/chips.js      chips, curses and the weighted draft; pure data + a modifier table
@@ -73,6 +74,8 @@ src/game.js       engine: physics, districts, bosses, AI, renderer, post FX, met
 build.mjs         inlines the above into dist/
 dist/index.html   self-contained single file — this is what you zip for CrazyGames
 dist/mockup.html  body fragment for publishing as a shareable page
+dist/neon-heat.zip  the CrazyGames upload
+press/            1920x1080 store screenshots, generated from the game
 DESIGN.md         concept, monetization, art direction
 ```
 
@@ -82,10 +85,13 @@ node build.mjs
 
 ## Notes for integration
 
-`Ads` in `src/game.js` calls `window.CrazyGames.SDK` when the game is hosted there and
-falls back to a simulated placement otherwise, so the full monetization flow is
-demonstrable standalone. Three rewarded placements and one interstitial are wired; see
-DESIGN.md for the frequency rules.
+**To submit to CrazyGames, see [SUBMISSION.md](SUBMISSION.md).** `npm run build` produces
+`dist/neon-heat.zip` — that is the upload.
+
+`Ads` in `src/game.js` loads the CrazyGames SDK v3, awaits `init()`, brackets play with
+`gameplayStart`/`gameplayStop`, and pauses and mutes the game around every ad. Off-platform
+each call degrades to a simulated placement so the flow stays demonstrable. Two rewarded
+placements and one midgame interstitial are wired; banners are not.
 
 Rendering demotes itself: sustained slow frames drop the wide bloom tap, window detail,
 grain and device pixel ratio in one step. Audio starts on the first key or pointer press, as

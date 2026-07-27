@@ -10,6 +10,14 @@ window.NHAudio = (() => {
 
 let ac = null, master = null, musicBus = null, sfxBus = null;
 let ready = false, muted = false;
+/* Ducking is separate from the user's mute so an ad can silence the game
+   without destroying the setting they chose. */
+let ducked = false;
+const MASTER = 0.9;
+function applyMaster(){
+  if (!master) return;
+  master.gain.setTargetAtTime((muted || ducked) ? 0 : MASTER, ac.currentTime, 0.04);
+}
 
 /* ---- musical material ---------------------------------------------------
    A natural-minor vamp: i - VI - III - VII. Bright enough to drive to,
@@ -68,7 +76,7 @@ function init(){
   NOISE = noiseBuffer(2);
 
   master = ac.createGain();
-  master.gain.value = muted ? 0 : 0.9;
+  master.gain.value = (muted || ducked) ? 0 : MASTER;
   master.connect(ac.destination);
 
   /* a touch of compression keeps the bed from fighting the SFX */
@@ -236,10 +244,24 @@ const A = {
 
   toggleMute(){
     muted = !muted;
-    if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, ac.currentTime, 0.05);
+    applyMaster();
     return muted;
   },
   isMuted(){ return muted; },
+
+  /* silence for an ad or a backgrounded tab, then restore the user's setting */
+  duck(on){
+    if (ducked === !!on) return;
+    ducked = !!on;
+    applyMaster();
+  },
+
+  /* browsers throttle a hidden tab's timers; stop the sequencer outright */
+  setActive(on){
+    if (!ready) return;
+    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    else if (ac.state === 'running') ac.suspend();
+  },
 
   /* continuous state, called every frame */
   frame(st){

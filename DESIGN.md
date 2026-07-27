@@ -79,11 +79,16 @@ about 0.9 seconds. An earlier build was at 0.4s, and no amount of skill made tha
 |---|---|---|
 | Rewarded — Revive | On wreck, once per run | A player deep in a run they have invested chips in is the highest-intent moment the format has — far better than reviving a score chase. |
 | Rewarded — 2× Coins | Game over | Coins pay on districts cleared as well as score, so the double-up has a visible target. |
-| Interstitial | Every 3rd run end | Within CrazyGames' frequency guidance without feeling hostile. |
-| Banner | Menu and garage only | Never during play. |
+| Interstitial (midgame) | Every 3rd run end | Within CrazyGames' frequency guidance without feeling hostile. |
 
-`Ads` in `src/game.js` calls the real CrazyGames SDK when hosted there and falls back to a
-simulated placement, so the whole flow is demonstrable standalone.
+`Ads` in `src/game.js` loads the CrazyGames SDK v3, awaits `SDK.init()`, and brackets play
+with `gameplayStart`/`gameplayStop` so the portal never counts menu time as gameplay. The
+game is paused and the audio ducked *before* the ad request rather than on `adStarted`, so
+an ad that opens instantly never gets a frame of game sound over it, and a watchdog resumes
+play if an ad hangs without ever calling back. Off-platform every call degrades to a
+simulated placement, so the flow stays demonstrable.
+
+Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 
 Meta progression (coins, cars, four upgrade tracks) persists across runs and is separate
 from the per-run chip build — the roguelite layer resets, the garage layer does not.
@@ -150,4 +155,6 @@ particles and decals, bloom pipeline with adaptive quality, synthesised music an
 garage with four cars and four upgrade tracks, localStorage persistence, and a
 responsive layout with keyboard and touch input.
 
-Not built: leaderboards, daily rewards, a tutorial, and the real SDK handshake (shimmed).
+Not built: leaderboards, daily rewards, a tutorial, and banner ads. The SDK integration is
+verified against a mock covering every call and callback, but has not run against the real
+SDK — that needs one pass on their platform.

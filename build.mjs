@@ -4,6 +4,7 @@
    index.html stays the source of truth; nothing is duplicated by hand. */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -127,4 +128,22 @@ ${js}
 </script>
 `);
 
-console.log('built dist/index.html and dist/mockup.html');
+/* The submission artefact: a zip with index.html at its root, and nothing
+   else in it. dist/mockup.html is deliberately excluded — it is the
+   shareable pitch page, not the game build. */
+const dist = path.join(ROOT, 'dist');
+const zip = path.join(dist, 'neon-heat.zip');
+fs.rmSync(zip, { force: true });
+execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
+
+const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
+console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
+console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
+console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
+
+/* guard the two things that would fail their review silently */
+const built = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
+const ext = [...built.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m => m[2]);
+const stray = ext.filter(u => !u.startsWith('sdk.crazygames.com'));
+if (stray.length) console.warn('WARNING external requests besides the SDK: ' + stray.join(', '));
+if (!built.includes('sdk.crazygames.com')) console.warn('WARNING the SDK script tag is missing from the build');

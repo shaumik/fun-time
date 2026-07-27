@@ -1086,6 +1086,14 @@ window.NHAudio = (() => {
 
 let ac = null, master = null, musicBus = null, sfxBus = null;
 let ready = false, muted = false;
+/* Ducking is separate from the user's mute so an ad can silence the game
+   without destroying the setting they chose. */
+let ducked = false;
+const MASTER = 0.9;
+function applyMaster(){
+  if (!master) return;
+  master.gain.setTargetAtTime((muted || ducked) ? 0 : MASTER, ac.currentTime, 0.04);
+}
 
 /* ---- musical material ---------------------------------------------------
    A natural-minor vamp: i - VI - III - VII. Bright enough to drive to,
@@ -1144,7 +1152,7 @@ function init(){
   NOISE = noiseBuffer(2);
 
   master = ac.createGain();
-  master.gain.value = muted ? 0 : 0.9;
+  master.gain.value = (muted || ducked) ? 0 : MASTER;
   master.connect(ac.destination);
 
   /* a touch of compression keeps the bed from fighting the SFX */
@@ -1312,10 +1320,24 @@ const A = {
 
   toggleMute(){
     muted = !muted;
-    if (master) master.gain.setTargetAtTime(muted ? 0 : 0.9, ac.currentTime, 0.05);
+    applyMaster();
     return muted;
   },
   isMuted(){ return muted; },
+
+  /* silence for an ad or a backgrounded tab, then restore the user's setting */
+  duck(on){
+    if (ducked === !!on) return;
+    ducked = !!on;
+    applyMaster();
+  },
+
+  /* browsers throttle a hidden tab's timers; stop the sequencer outright */
+  setActive(on){
+    if (!ready) return;
+    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    else if (ac.state === 'running') ac.suspend();
+  },
 
   /* continuous state, called every frame */
   frame(st){
@@ -1682,32 +1704,104 @@ const Save = {
 };
 Save.load();
 
-/* ---------------- ads ----------------
-   Talks to the real CrazyGames SDK when hosted there; otherwise
-   plays a simulated placement so the flow is demonstrable standalone. */
+/* ============================================================
+   CRAZYGAMES SDK
+   The SDK is present only when the game is served from their portal.
+   Everywhere else — local files, the shareable build — every call
+   degrades to a simulated placement so the flow stays demonstrable.
+   ============================================================ */
 const Ads = {
-  get sdk(){ return window.CrazyGames && window.CrazyGames.SDK; },
-  rewarded(msg, done){
-    if (this.sdk) {
-      this.sdk.ad.requestAd('rewarded', {
-        adFinished: () => done(true),
-        adError:    () => done(false),
-        adStarted:  () => {}
-      });
-      return;
+  sdk: null,
+  ready: false,
+  playing: false,      // mirrors gameplayStart/Stop so we never double-fire
+
+  async boot(){
+    const SDK = window.CrazyGames && window.CrazyGames.SDK;
+    if (!SDK) return;                       // not hosted on CrazyGames
+    try {
+      /* v3 is promise-based and unusable until init resolves */
+      await SDK.init();
+      this.sdk = SDK;
+      this.ready = true;
+      /* the whole game is inline, so loading begins and ends immediately */
+      this.call(() => SDK.game.loadingStart());
+      this.call(() => SDK.game.loadingStop());
+    } catch (e) {
+      this.sdk = null; this.ready = false;
     }
-    simAd(msg, 3.2, () => done(true));
   },
-  midroll(done){
-    if (this.sdk) {
-      this.sdk.ad.requestAd('midgame', {
-        adFinished: done, adError: done, adStarted: () => {}
+
+  /* every SDK call is best-effort: a throw here must never break the game */
+  call(fn){ if (!this.ready) return; try { fn(); } catch (e) {} },
+
+  /* Their QA checks that gameplay is bracketed — it gates ad eligibility
+     and stops the portal counting menu time as play. */
+  gameplay(on){
+    if (!this.ready || this.playing === on) return;
+    this.playing = on;
+    this.call(() => on ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop());
+  },
+
+  /* used sparingly, per their guidance: a boss down or a new personal best */
+  celebrate(){ this.call(() => this.sdk.game.happytime()); },
+
+  request(type, msg, simSecs, done){
+    if (!this.ready) { simAd(msg, simSecs, () => done(true)); return; }
+
+    let settled = false;
+    const finish = ok => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(guard);
+      adPause(false);
+      done(ok);
+    };
+    /* Pause and mute before the request, not on adStarted: an ad that opens
+       instantly would otherwise get a frame or two of game audio over it. */
+    adPause(true);
+    /* if the network stalls and neither callback ever fires, do not
+       leave the player staring at a frozen game */
+    const guard = setTimeout(() => finish(false), 25000);
+
+    try {
+      this.sdk.ad.requestAd(type, {
+        adStarted:  () => adPause(true),
+        adFinished: () => finish(true),
+        adError:    () => finish(false)
       });
-      return;
-    }
-    simAd('Back in a moment', 2.4, done);
-  }
+    } catch (e) { finish(false); }
+  },
+
+  rewarded(msg, done){ this.request('rewarded', msg, 3.2, done); },
+  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); }
 };
+
+/* ---------------- pause ----------------
+   Several things can suspend play — an ad, a backgrounded tab, a blurred
+   iframe. Track them by reason so the last one to clear resumes the game. */
+const pauseReasons = new Set();
+function setPause(reason, on){
+  const before = pauseReasons.size;
+  if (on) pauseReasons.add(reason); else pauseReasons.delete(reason);
+  const now = pauseReasons.size;
+  if ((before > 0) === (now > 0)) return;
+  const paused = now > 0;
+  G.paused = paused;
+  NHAudio.duck(paused);
+  if (paused) Ads.gameplay(false);
+  for (const k in keys) keys[k] = 0;   // never resume with a key stuck down
+}
+const adPause = on => setPause('ad', on);
+
+/* A hidden tab still fires rAF in some browsers and keeps the audio graph
+   running in others; stop both rather than trusting either. */
+function setVisible(on){
+  setPause('hidden', !on);
+  NHAudio.setActive(on);
+}
+addEventListener('visibilitychange', () => setVisible(!document.hidden));
+addEventListener('blur',  () => setPause('blur', true));
+addEventListener('focus', () => setPause('blur', false));
 
 const adEl = document.getElementById('ad');
 const adFill = document.getElementById('adFill');
@@ -1870,7 +1964,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
-addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
+
 
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
 stage.addEventListener('pointerdown', gsDown);
@@ -2209,7 +2303,7 @@ const G = {
   coinsRun:0, topMult:1,
   crashT:0, slow:1, flash:0, revived:false,
   shake:0, dist:0,
-  run:null, ghost:0, pulseWarn:0, offers:[]
+  run:null, ghost:0, pulseWarn:0, offers:[], paused:false
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
@@ -2356,6 +2450,7 @@ function bossDamage(amount){
     G.flash = 1; G.shake = 30;
     G.boss = null;
     G.police.length = 0;
+    Ads.celebrate();
     clearDistrict();
   }
 }
@@ -3609,7 +3704,7 @@ function takeOffer(i){
 function endRun(){
   G.state = 'over';
   const isBest = G.score > Save.data.best;
-  if (isBest) Save.data.best = G.score;
+  if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
   if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
   /* clearing districts is the achievement, so it pays on top of raw score */
@@ -3822,7 +3917,9 @@ function frame(now){
   }
 
   adTick(raw);
-  if (!adCb) step(raw * G.slow);
+  const live = !adCb && !G.paused;
+  if (live) step(raw * G.slow);
+  Ads.gameplay(live && G.state === 'play');
 
   NHAudio.frame({
     playing: G.state === 'play',
@@ -3841,6 +3938,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 
+Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft);
@@ -3851,15 +3949,10 @@ requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */
 window.__NH = {
-  G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN,
+  G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
   beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
   get offers(){ return G.offers; }
 };
-
-/* signal readiness to the CrazyGames loader when hosted */
-if (window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.game) {
-  try { window.CrazyGames.SDK.game.loadingStop(); } catch (e) {}
-}
 })();
 
 </script>
