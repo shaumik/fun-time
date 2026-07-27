@@ -1,8 +1,9 @@
 # NEON HEAT — design & monetization brief
 
-**One line:** A drift roguelite. Climb a ladder of city districts, each demanding a points
-quota banked before the checkpoint; clear one and you fit a chip from three; every third
-district is a named pursuit unit with its own mechanic.
+**One line:** A demolition-drift roguelite. Drift to charge a multiplier, ram traffic to
+cash it in, and spend hull doing it — climbing a ladder of city districts that each demand
+a quota before the checkpoint, with a chip drafted after every clear and a named pursuit
+unit every third.
 
 ---
 
@@ -10,10 +11,19 @@ district is a named pursuit unit with its own mechanic.
 
 **The genre problem first.** A top-down drift game that is only score-attack has no reason
 to exist next to the hundred already on the platform. Polish alone does not differentiate —
-it has to be a different *kind* of game. The roguelite ladder is what makes it one, and it
-solves a concrete design failure at the same time: without a quota, nothing forces the
-player to drift, so the safe line is the boring line and the whole game is optional. The
-quota makes the risk mandatory.
+it has to be a different *kind* of game. Two things make it one.
+
+The roguelite ladder is the first, and it solves a concrete design failure on the way:
+without a quota, nothing forces the player to drift, so the safe line is the boring line and
+the whole game is optional. The quota makes the risk mandatory.
+
+The second is that **traffic is ammunition rather than obstacle**. Dodging is the default
+verb of every top-down driving game there is, and it is a verb of avoidance: the best
+outcome is that nothing happens. That is why the first playable version of this was
+correctly called boring — a clean lap was the optimal lap, and a clean lap has no moment in
+it. Ramming inverts the sign. The best outcome is a four-car pile-up you chose to cause, and
+the cost is a hull bar that only ever goes down. What used to be a hazard to route around is
+now the thing you aim at, and the road stops being empty.
 
 **The art constraint second.** Hand-drawn sprites made without an illustrator are the most
 common reason a self-published web game looks cheap. So there are no image files, and no
@@ -74,10 +84,26 @@ safe one into a standard three.
 Elite) while the player's build grows through chips — the two curves are meant to stay
 close, so a run ends when the build stops keeping up rather than at a fixed wall.
 
-**The bet.** Drift points accrue into a *pending* bank that only pays out when you release
-the drift. Wreck while holding a fat bank and it is gone. Tying the payout to the button
-rather than to the physics settling is what makes the wager legible: you choose when to
-cash in.
+**The bet.** Points accrue into a *pending* bank that only pays out when you release the
+drift. Wreck while holding a fat bank and it is gone. Tying the payout to the button rather
+than to the physics settling is what makes the wager legible: you choose when to cash in.
+
+**Drift charges, wrecks cash.** The split matters. Drifting trickles points but its real job
+is the multiplier, and a clean lap of pure drifting cannot meet a quota — it was tuned so
+that it could, and a test bot promptly cleared a district on drift alone with the hull
+untouched at 100, which meant the new verb was decoration. Wrecks are what convert the
+multiplier into a number, and the streak term compounds hard enough (the fourth car in a
+pile-up pays roughly twice the first) that the greedy line is always one more wreck. Since
+one more wreck is also one more bite out of the hull, the game's central decision is asked
+several times a minute rather than once a district.
+
+**Hull is the resource you spend, not the health you protect.** It starts at 100, a wreck
+costs about nine, and banking welds some back on — more for a big pile-up than a lone hit,
+but never as much as it cost, so the trend is always down and the run always has a clock.
+Threading a gap instead of driving through it pays thin and costs nothing, which is what
+lets a player on a thin hull keep a chain alive rather than simply losing. Walls are
+deliberately *not* the main sink: clipping a barrier while learning should not read as the
+same class of event as choosing to hit something.
 
 **Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
 so the correct play is always slightly more dangerous than the comfortable one.
@@ -94,7 +120,9 @@ one per draft, never on district 1, and the cost is always stated on the card. A
 is not a choice.
 
 **Bosses** every third district, damaged only by *banking* into them — the fight runs on the
-game's own verb rather than bolting on a new one.
+game's own verb rather than bolting on a new one. Their integrity was raised with the
+switch to wreck income; at the old numbers a boss died to two chains, and it now takes a
+sustained fight where the hull bar and the integrity bar race each other down.
 
 | Unit | Division | Mechanic |
 |---|---|---|

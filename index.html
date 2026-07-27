@@ -37,6 +37,8 @@
           <div class="cnote">Release to bank</div>
         </div>
 
+        <div class="wreck" id="wreckChain"></div>
+
         <div class="heat" id="heat">
           <span class="hlbl">Heat</span>
           <i></i><i></i><i></i>
@@ -51,9 +53,15 @@
     </div>
 
     <div class="hudBot">
-      <div class="speedo">
-        <div class="spdv" id="spd">0</div>
-        <div class="spdu">km/h</div>
+      <div class="hudDrv">
+        <div class="hull" id="hull">
+          <div class="hullHead"><span>Hull</span><b id="hullVal">100</b></div>
+          <div class="hullBar"><i id="hullFill"></i></div>
+        </div>
+        <div class="speedo">
+          <div class="spdv" id="spd">0</div>
+          <div class="spdu">km/h</div>
+        </div>
       </div>
       <div class="nitro">
         <div class="lbl">Nitro <span class="key">Shift</span></div>
@@ -63,8 +71,8 @@
 
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
-      <b>Touch anywhere and drag</b>
-      <span>Sideways steers &middot; pull back to drift &middot; release forward to bank</span>
+      <b>Drift to charge · ram traffic to cash</b>
+      <span>Drag sideways to steer &middot; pull back to drift &middot; release forward to bank</span>
     </div>
   </div>
 
@@ -81,14 +89,14 @@
     <div class="menuIn">
       <div class="eyebrow">Arcade drift · Outrun division</div>
       <h1 class="title"><span class="t1">Neon</span><span class="t2">Heat</span></h1>
-      <p class="tag">Hold the slide. Bank the points. Lose the cops.</p>
+      <p class="tag">Drift to charge it. Ram traffic to cash it. Your hull is the ammo.</p>
       <div class="btns">
         <button class="btn primary" id="btnPlay">Start Run<span class="key">Enter</span></button>
         <button class="btn" id="btnGarage">Garage</button>
       </div>
       <div class="hints">
         <div class="hint"><b>&#8592; &#8594;</b> Steer</div>
-        <div class="hint"><b>Space</b> Drift</div>
+        <div class="hint"><b>Space</b> Drift &amp; ram</div>
         <div class="hint"><b>Shift</b> Nitro</div>
       </div>
       <div class="best">Deepest run <b id="menuBest">District 1</b></div>
@@ -182,6 +190,7 @@
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
         <div><span>Top combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
         <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
       </div>
       <div class="ovActs">

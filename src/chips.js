@@ -33,7 +33,10 @@ function defaults(){
     trafficMul: 1,     // curse: heavier traffic
     policeStart: 0,    // curse: pursuit starts hotter
     brittle: 0,        // curse: wall contact ends the chain outright
-    zoomMul: 1         // curse: tighter camera
+    zoomMul: 1,        // curse: tighter camera
+    hullMax: 1,        // hull capacity multiplier
+    hullCost: 1,       // hull taken per wreck
+    bankHeal: 0        // extra hull welded back on each bank
   };
 }
 
@@ -81,9 +84,25 @@ const CHIPS = [
     desc:'Banking spins out any pursuit close behind.',
     apply(M){ M.shockOnBank = 1; } },
 
-  { id:'crumple', name:'Crumple Zone', rarity:'uncommon', tag:'Defence',
-    desc:'Walk away from one wreck per district.',
+  { id:'crumple', name:'Crumple Zone', rarity:'uncommon', tag:'Hull',
+    desc:'Survive one totalled hull per district, patched to 45%.',
     apply(M){ M.crumple += 1; } },
+
+  { id:'rollcage', name:'Roll Cage', rarity:'common', tag:'Hull',
+    desc:'Hull +35%.',
+    apply(M){ M.hullMax += 0.35; } },
+
+  { id:'ram', name:'Ram Bar', rarity:'common', tag:'Hull',
+    desc:'Wrecks cost 35% less hull.',
+    apply(M){ M.hullCost *= 0.65; } },
+
+  { id:'weld', name:'Field Weld', rarity:'uncommon', tag:'Hull',
+    desc:'Every bank welds back an extra 9 hull.',
+    apply(M){ M.bankHeal += 9; } },
+
+  { id:'juggernaut', name:'Juggernaut', rarity:'rare', tag:'Hull',
+    desc:'Hull +60%, and wrecks cost half.',
+    apply(M){ M.hullMax += 0.60; M.hullCost *= 0.5; } },
 
   { id:'adrenal', name:'Adrenal Feed', rarity:'uncommon', tag:'Heat',
     desc:'+60% scoring while Heat is 2 or higher.',
@@ -140,6 +159,21 @@ const CONTRACTS = [
     bane:'Nothing out of the ordinary.',
     boon:'Standard payout.',
     apply(M, L){} },
+
+  { id:'demolition', name:'Demolition Derby', risk:2,
+    bane:'Hull cut to 60%.',
+    boon:'Wrecks pay double and cost no hull at all.',
+    apply(M, L){ M.hullMax *= 0.60; M.hullCost = 0; L.wreckPay = 2; } },
+
+  { id:'featherweight', name:'Featherweight', risk:2,
+    bane:'Every wreck costs triple hull.',
+    boon:'Threading a gap pays four times over.',
+    apply(M, L){ M.hullCost *= 3; M.nearMul += 3; } },
+
+  { id:'armoured', name:'Armoured Up', risk:1,
+    bane:'Top speed down 15%.',
+    boon:'Hull doubled.',
+    apply(M, L){ M.topMul -= 0.15; M.hullMax *= 2; } },
 
   { id:'downpour', name:'Downpour', risk:1,
     bane:'Wet asphalt — grip down 30%.',
@@ -252,7 +286,7 @@ function roll(owned, district, takenCurses, count, rareBias){
 /* Level params a contract can bend, separate from the persistent modifier
    table so they reset when the district ends. */
 function levelDefaults(){
-  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0 };
+  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1 };
 }
 
 function build(ownedIds, curseIds, contractId){

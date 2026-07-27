@@ -195,7 +195,7 @@ const STAT_LABELS = ['Speed', 'Grip', 'Bulk'];
 const UPGRADES = [
   { id:'grip',   name:'Grip',   base:900,  desc:'Slide control' },
   { id:'nitro',  name:'Nitro',  base:1100, desc:'Boost tank' },
-  { id:'armor',  name:'Armor',  base:1400, desc:'Impact tolerance' },
+  { id:'armor',  name:'Hull',   base:1400, desc:'Hull capacity' },
   { id:'payout', name:'Payout', base:1800, desc:'Coins per run' }
 ];
 const UP_MAX = 5;
@@ -207,7 +207,8 @@ function activeSpec(){
   return Object.assign({}, c, {
     grip:  c.grip + u.grip * 0.42,
     nitroMax: 1 + u.nitro * 0.22,
-    crashV: 430 + u.armor * 40 + c.armor * 110,
+    crashV: 430 + c.armor * 110,
+    hull: u.armor * 14 + c.armor * 20,
     payout: 1 + u.payout * 0.14
   });
 }
@@ -571,7 +572,7 @@ class Vehicle {
     this.dead = false; this.hitFlash = 0; this.offroad = 0;
     this.skidT = 0; this.smokeT = 0;
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
-    this.mods = null; this.topBonus = 0;
+    this.mods = null; this.topBonus = 0; this.spin = 0; this.wrecked = 0;
     this.inv = 0;
   }
   get speed(){ return hyp(this.vx, this.vy); }
@@ -679,10 +680,11 @@ const G = {
   traffic:[], police:[], boss:null, hazards:[],
   score:0, pending:0, chain:0, mult:1, sinceDrift:9,
   heat:0, tier:0, best:Save.data.best,
-  coinsRun:0, topMult:1,
+  coinsRun:0, topMult:1, totalWreck:0,
   crashT:0, slow:1, flash:0, revived:false,
   shake:0, dist:0,
-  run:null, ghost:0, pulseWarn:0, offers:[], paused:false
+  run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
+  hp:100, hpMax:100, freeze:0, wreck:0, wreckT:0, hitCool:0
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
@@ -716,8 +718,10 @@ function districtCfg(n, type, act){
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
     len: Math.round(400 + n * 26),
     /* Elites cost more and pay a rare chip; the route choice has to bite */
-    quota: Math.round(2600 * Math.pow(1.30, n - 1) * (elite ? 1.45 : 1)),
-    bossHp: Math.round(6500 * Math.pow(1.55, Math.max(0, bi))),
+    quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1)),
+    /* Wrecks bank far harder than the old drift-only income did, so a boss
+       that used to be a two-chain fight now needs the headroom to last. */
+    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
 }
@@ -816,7 +820,7 @@ function makeRoute(act){
     n.rare = info.rare;
     n.heat = info.heat;
     n.quota = info.quotaMul
-      ? Math.round(2600 * Math.pow(1.30, idx - 1) * info.quotaMul / 10) * 10
+      ? Math.round(7000 * Math.pow(1.32, idx - 1) * info.quotaMul / 100) * 100
       : 0;
   }));
   return rows;
@@ -865,9 +869,12 @@ function newWorld(ai){
   G.heat = 0; G.tier = 0; G.topMult = G.topMult || 1;
   G.slow = 1; G.flash = 0; G.shake = 0; G.dist = 0;
   G.ghost = 0; G.pulseWarn = 0;
+  G.freeze = 0; G.wreck = 0; G.wreckT = 0; G.hitCool = 0; G.hurt = 0;
+  G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0));
+  G.hp = G.hpMax;
   G.ai = !!ai;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
-  for (let i = 0; i < 9; i++) addTraffic(20 + i * 22);
+  for (let i = 0; i < 18; i++) addTraffic(14 + i * 11);
 }
 /* Zoom is bounded by width as well as height, otherwise a portrait phone
    frames less than half the street and you cannot see what you are aiming at. */
@@ -879,11 +886,16 @@ const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 /* level conditions set by the chosen contract, reset when the district ends */
 const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults());
 
+const LANES = [-0.62, -0.21, 0.21, 0.62];
+
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
-  const lat = rnd(-1, 1) * roadHalf(p) * 0.60;
+  /* Three lanes rather than a uniform scatter. A scatter is a fog you steer
+     through; lanes give the player a readable target to aim at and a readable
+     gap to thread, which are the only two things you can do with a car. */
+  const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
   const c = CARS[rint(0, CARS.length)];
   const spec = Object.assign({}, c, {
     col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330), nitroMax:1
@@ -1006,6 +1018,8 @@ function stepBoss(dt){
       G.shake = Math.max(G.shake, 22);
       car.hitFlash = 1; car.inv = 0.5;
       G.chain = Math.max(0, G.chain - 1.8);
+      damage(b.charge > 0 ? 26 : 18, 'boss');
+      hitstop(0.06, 24);
       NHAudio.hit(1.2);
     }
   }
@@ -1031,6 +1045,7 @@ function stepHazards(dt){
       car.vx *= 0.72; car.vy *= 0.72;
       G.shake = Math.max(G.shake, 16);
       car.hitFlash = 1;
+      damage(12, 'strip');
       NHAudio.hit(0.9);
       toast('Spike strip', 'red');
     }
@@ -1077,6 +1092,80 @@ function barrier(v, loc){
   return into;
 }
 
+/* ============================================================
+   IMPACT
+   Traffic is ammunition, not an obstacle. Slamming a car banks points at
+   the current multiplier, shoves you forward, and extends the chain — but
+   it costs hull. Dodging still pays, and pays more, because threading the
+   gap is the harder skill; it just does not cost anything. Two live ways
+   to treat every car on the road is the whole loop.
+   ============================================================ */
+function hitstop(secs, shake){
+  G.freeze = Math.max(G.freeze, secs);
+  G.shake = Math.max(G.shake, shake);
+}
+
+function damage(amount, reason){
+  if (G.car.inv > 0 && reason !== 'wall') return;
+  G.hp -= amount;
+  G.hurt = 1;
+  if (G.hp <= 0) { G.hp = 0; crash(reason); }
+}
+
+/* the payoff for driving through something rather than around it */
+function smash(v, rel){
+  const car = G.car;
+  const power = clamp(rel / 520, 0.35, 1.7);
+  const M = G.run.M;
+
+  G.wreck++;
+  G.totalWreck++;
+  G.wreckT = 2.2;
+  /* The streak term is the adrenaline: the fourth car in a pile-up is worth
+     roughly twice the first, so the greedy line is always one more wreck
+     before you cash in — which is also one more bite out of the hull. */
+  const gain = Math.round(240 * power * G.mult * M.bankMul
+             * (G.run.L.wreckPay || 1) * (1 + G.wreck * 0.30));
+  G.pending += gain;
+  /* smashing sustains the slide instead of breaking it — that is what
+     makes a chain of wrecks feel like one continuous move */
+  G.chain += 0.28;
+
+  damage(Math.round(9 * power * (M.hullCost || 1)), 'traffic');
+
+  /* kinetic transfer: you come out of a hit faster, not slower */
+  const cs = Math.cos(car.a), sn = Math.sin(car.a);
+  car.vx += cs * 120 * power; car.vy += sn * 120 * power;
+
+  /* the victim leaves the road */
+  const nx = (v.x - car.x), ny = (v.y - car.y);
+  const d = hyp(nx, ny) || 1;
+  v.vx += nx / d * 620 * power; v.vy += ny / d * 620 * power;
+  v.spin = (Math.random() < 0.5 ? -1 : 1) * (5 + power * 7);
+  v.wrecked = 1; v.hitFlash = 1;
+
+  hitstop(0.055 + power * 0.045, 18 + power * 16);
+  G.flash = Math.max(G.flash, 0.35 * power);
+  NHAudio.smash(power);
+  car.hitFlash = 1;
+  G.hitCool = 0.1;
+
+  for (let i = 0; i < 26; i++) {
+    const a = rnd(0, TAU), sp = rnd(140, 620) * power;
+    spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.3, 0.85), rnd(3, 8),
+          i % 3 ? '255,196,120' : '255,120,90', true, -6);
+  }
+  for (let i = 0; i < 10; i++) {
+    const a = rnd(0, TAU), sp = rnd(40, 180);
+    spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.6, 1.3), rnd(9, 18), '140,150,170', false, 40);
+  }
+  /* the pile-up counter already carries the streak; repeating it in the
+     toast just doubles the noise now that wrecks come several a second */
+  toast('Wreck +' + fmt(gain), 'gold');
+}
+
 /* -------- scoring -------- */
 function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; return; }
@@ -1111,7 +1200,14 @@ function bank(){
   if (G.boss) { bossDamage(gained); toast('-' + fmt(gained) + ' integrity', 'red'); }
   else toast('Banked +' + fmt(gained), 'gold');
 
+  /* Cashing in welds the hull back together, and a pile-up patches more than
+     a lone wreck — but never as much as it cost, so hull only ever trends
+     down and the run still has a clock on it. */
+  const heal = 3 + G.wreck * 2.5 + (M.bankHeal || 0);
+  if (G.hp < G.hpMax) G.hp = Math.min(G.hpMax, G.hp + heal);
+
   G.pending = 0; G.chain = 0; G.mult = 1;
+  G.wreck = 0;
 
   /* quota districts clear the moment you meet the number */
   if (!G.boss && G.run.cfg && !G.run.cfg.boss && G.run.banked >= G.run.quota) clearDistrict();
@@ -1123,23 +1219,24 @@ function toast(text, cls){
   el.textContent = text;
   UI.toasts.appendChild(el);
   setTimeout(() => el.remove(), 1150);
-  while (UI.toasts.children.length > 4) UI.toasts.firstChild.remove();
+  while (UI.toasts.children.length > 3) UI.toasts.firstChild.remove();
 }
 
 /* -------- crash -------- */
 function crash(reason){
-  if (G.state !== 'play' || G.car.inv > 0) return;
+  if (G.state !== 'play') return;
 
   /* Crumple Zone spends a charge instead of ending the run */
   if (G.run && G.run.crumpleLeft > 0) {
     G.run.crumpleLeft--;
+    G.hp = Math.max(G.hp, Math.round(G.hpMax * 0.45));
     G.car.inv = 2.2;
     G.car.hitFlash = 1;
     G.pending = 0; G.chain = 0; G.mult = 1;
     G.shake = 22; G.flash = 0.7;
     G.car.vx *= 0.45; G.car.vy *= 0.45;
     NHAudio.hit(1.4);
-    toast('Crumple zone spent', 'gold');
+    toast('Crumple zone spent — hull patched', 'gold');
     return;
   }
 
@@ -1191,17 +1288,36 @@ function step(dt){
         }
         G.shake = Math.max(G.shake, Math.min(16, into / 22));
         if (Math.random() < 0.25) NHAudio.spark();
-        if (into > G.spec.crashV) { crash('wall'); return; }
-        if (G.run.M.brittle) { G.chain = 0; if (G.pending > 0) bank(); }
-        else G.chain = Math.max(0, G.chain - dt * 2.5);
+        if (into > G.spec.crashV) {
+          /* A hard wall is the mistake that pays nothing, but it must not be
+             the main hull sink — hull is meant to read as fuel you spend on
+             traffic, not as a tax on clipping a barrier while learning. */
+          damage(Math.round(8 + into * 0.02), 'wall');
+          hitstop(0.07, 26);
+          NHAudio.hit(1.4);
+          car.hitFlash = 1;
+          G.chain = 0;
+          if (G.pending > 0) bank();
+          car.vx *= 0.55; car.vy *= 0.55;
+          car.inv = 0.35;
+          if (G.state !== 'play') return;
+        } else {
+          G.hp -= dt * 1.8;                    // scraping bleeds you slowly
+          if (G.hp <= 0) { crash('wall'); return; }
+          if (G.run.M.brittle) { G.chain = 0; if (G.pending > 0) bank(); }
+          else G.chain = Math.max(0, G.chain - dt * 2.5);
+        }
       }
     }
     G.dist += car.speed * dt;
 
     /* ---- drift scoring ----
-       Points accrue only while the drift input is held, and pay out when it
-       is released. Tying the payout to the button — not to the physics
-       settling — is what makes the bet legible: you choose when to cash in. */
+       The drift's job is the multiplier, not the points. It trickles a little
+       into the bank so holding a slide still feels like it pays, but a clean
+       lap of pure drifting cannot meet a quota — you have to spend hull on
+       traffic to convert the multiplier into a number. Points pay out when
+       the drift is released: tying the payout to the button, not to the
+       physics settling, is what makes the bet legible. */
     const M = G.run.M;
     const held = G.ai ? car.driftHeld : IN.drift;
     const scoring = held && car.drift > 0.5 && car.speed > 210 && !car.offroad;
@@ -1212,7 +1328,7 @@ function step(dt){
       if (car.boost && M.afterburn) G.chain += M.afterburn * dt;
       G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
       G.topMult = Math.max(G.topMult, G.mult);
-      G.pending += car.speed * 0.40 * G.mult * dt * M.accrueMul;
+      G.pending += car.speed * 0.13 * G.mult * dt * M.accrueMul;
     } else {
       G.sinceDrift += dt;
       if (G.sinceDrift > M.chainGrace && G.pending > 0) bank();
@@ -1239,36 +1355,46 @@ function step(dt){
   }
 
   /* ---- traffic ---- */
+  G.hitCool = Math.max(0, G.hitCool - dt);
+  G.wreckT = Math.max(0, G.wreckT - dt);
+  if (G.wreckT <= 0) G.wreck = 0;
+  G.hurt = Math.max(0, (G.hurt || 0) - dt * 2.5);
   for (let i = G.traffic.length - 1; i >= 0; i--) {
     const t = G.traffic[i];
+    /* a wrecked car is debris: it coasts and spins, it does not drive */
+    if (t.wrecked) {
+      t.a += t.spin * dt;
+      t.spin *= Math.exp(-1.2 * dt);
+      t.vx *= Math.exp(-0.9 * dt); t.vy *= Math.exp(-0.9 * dt);
+      t.x += t.vx * dt; t.y += t.vy * dt;
+      t.hitFlash = Math.max(0, t.hitFlash - dt * 3);
+      if (t.idx < car.idx - 24) { G.traffic.splice(i, 1); }
+      continue;
+    }
     autoDrive(t, dt, false);
     if (t.idx < car.idx - 24 || t.idx > car.idx + 120) { G.traffic.splice(i, 1); continue; }
 
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
-    const touchR = (t.spec.len + car.spec.len) * 0.36;
+    /* Half the sum of the lengths — the distance at which two bodies actually
+       touch nose to tail. An earlier 0.36 put it at 33px for two 46px cars, so
+       the player drove clean through traffic and the whole verb never fired. */
+    const touchR = (t.spec.len + car.spec.len) * 0.52;
     if (playing && !G.ai) {
-      if (d < touchR && car.inv <= 0) {
-        /* You close on traffic at ~400, so a 210 threshold made any contact
-           fatal. Only a genuine high-speed impact ends the run; the rest
-           bumps, costs chain, and grants a moment of grace so one nudge
-           into a cluster cannot chain-kill. */
-        const rel = hyp(t.vx - car.vx, t.vy - car.vy);
-        if (rel > 380) { crash('traffic'); return; }
-        const nx = dx / (d || 1), ny = dy / (d || 1);
-        car.vx -= nx * 150; car.vy -= ny * 150;
-        t.vx += nx * 150; t.vy += ny * 150;
-        G.shake = Math.max(G.shake, 13);
-        car.hitFlash = 1; car.inv = 0.35;
-        NHAudio.hit(0.8);
-        G.chain = Math.max(0, G.chain - 0.9);
-      } else if (d < 105 && !t.nearFlag && car.speed > 260) {
+      if (d < touchR && !t.wrecked && G.hitCool <= 0) {
+        /* Traffic is the ammunition. Hitting it pays, feeds the chain and
+           costs hull — the run ends when the hull does, not on contact. */
+        smash(t, hyp(t.vx - car.vx, t.vy - car.vy));
+      } else if (d < 118 && !t.nearFlag && !t.wrecked && car.speed > 260) {
         t.nearFlag = true;
         const M = G.run.M;
         if (G.chain > 0.25) {
-          const bonus = 220 * G.mult * M.nearMul;
+          /* threading keeps the slide alive without spending hull. It pays
+             thin on purpose: hull is the ammunition, and this is how you
+             carry a chain between wrecks when you cannot afford another. */
+          const bonus = 130 * G.mult * M.nearMul;
           G.pending += bonus;
-          G.chain += 0.32;
-          toast('Near miss +' + fmt(bonus), 'pink');
+          G.chain += 0.40;
+          toast('Threaded +' + fmt(bonus), 'pink');
           NHAudio.nearMiss();
         }
         if (M.nearNitro) car.nitro = Math.min(G.spec.nitroMax * M.nitroCap, car.nitro + M.nearNitro);
@@ -1277,7 +1403,7 @@ function step(dt){
       if (d > 140) t.nearFlag = false;
     }
   }
-  while (G.traffic.length < Math.round(8 * (G.run ? G.run.M.trafficMul : 1))) addTraffic(rint(46, 118));
+  while (G.traffic.length < Math.round(18 * (G.run ? G.run.M.trafficMul : 1))) addTraffic(rint(26, 104));
 
   /* ---- police ---- */
   if (playing && !G.ai && !G.boss) {
@@ -1308,7 +1434,10 @@ function step(dt){
         car.hitFlash = 1;
         G.chain = Math.max(0, G.chain - 1.6);
         G.heat = Math.max(0, G.heat - 0.25);
+        damage(16, 'police');
+        hitstop(0.05, 20);
         NHAudio.hit(1);
+        car.inv = 0.45;
         toast('Rammed', 'red');
       }
     }
@@ -1942,6 +2071,39 @@ function drawStick(){
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/* Streaks pulled from the edges toward the centre. Cheap, and the single
+   clearest read of speed a top-down camera can give. */
+let streaks = null;
+function drawSpeed(){
+  if (G.state !== 'play' && G.state !== 'crash') return;
+  const sp = G.car ? G.car.speed : 0;
+  const t = clamp((sp - 430) / 420, 0, 1) * (G.car && G.car.boost ? 1.35 : 1);
+  if (t < 0.04) return;
+  if (!streaks) {
+    streaks = Array.from({ length: 46 }, () => ({
+      a: Math.random() * TAU, r: 0.42 + Math.random() * 0.72, l: 0.1 + Math.random() * 0.3,
+      s: 0.6 + Math.random() * 0.9
+    }));
+  }
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  const cx = W / 2, cy = camY(), R = hyp(W, H) * 0.62;
+  const phase = (G.dist * 0.0016);
+  for (const s of streaks) {
+    const f = ((s.r + phase * s.s) % 1.1);
+    const r0 = R * f, r1 = R * (f + s.l * t);
+    const ca = Math.cos(s.a), sa = Math.sin(s.a);
+    ctx.strokeStyle = 'rgba(190,232,255,' + (0.10 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
+    ctx.lineWidth = 1.6 + t * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + ca * r0, cy + sa * r0);
+    ctx.lineTo(cx + ca * r1, cy + sa * r1);
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 function post(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (plates.length) {
@@ -1951,6 +2113,20 @@ function post(){
   }
   if (G.flash > 0.01) {
     ctx.fillStyle = 'rgba(255,240,220,' + (G.flash * 0.55).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+  /* the hull talks: a red rim on damage, and a permanent one when critical */
+  /* Taking a hit is now the thing you do on purpose several times a minute,
+     so the tell has to stay a rim. Held wide and thin it reads as pressure;
+     flooded to the middle of the screen it just hides the road. */
+  const crit = G.state === 'play' && G.hp / G.hpMax < 0.3
+    ? 0.19 + Math.sin(performance.now() / 180) * 0.07 : 0;
+  const rim = Math.max((G.hurt || 0) * 0.30, crit);
+  if (rim > 0.02) {
+    const g = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.46, W/2, H/2, Math.max(W,H)*0.62);
+    g.addColorStop(0, 'rgba(255,40,60,0)');
+    g.addColorStop(1, 'rgba(255,40,60,' + rim.toFixed(3) + ')');
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
   }
 }
@@ -1975,6 +2151,7 @@ function render(){
 
   if (QF.city) drawCity();
   bloom();
+  drawSpeed();
   drawThreats();
   drawStick();
   post();
@@ -2030,6 +2207,7 @@ const UI = {
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
+  hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), dchip:$('dchip'), build:$('build')
 };
@@ -2049,6 +2227,16 @@ function syncHUD(){
   UI.cmult.innerHTML = '&times;' + G.mult.toFixed(1);
   UI.cpts.textContent = fmt(G.pending);
   UI.cfill.style.width = clamp(G.mult / 9.9, 0, 1) * 100 + '%';
+
+  /* hull */
+  const hf = clamp(G.hp / G.hpMax, 0, 1);
+  UI.hull.classList.toggle('on', G.state === 'play' || G.state === 'crash');
+  UI.hull.classList.toggle('warn', hf < 0.6 && hf >= 0.3);
+  UI.hull.classList.toggle('crit', hf < 0.3);
+  UI.hullVal.textContent = Math.max(0, Math.ceil(G.hp));
+  UI.hullFill.style.width = hf * 100 + '%';
+  UI.wreck.classList.toggle('on', G.wreck > 1);
+  if (G.wreck > 1) UI.wreck.textContent = G.wreck + ' car pile-up';
 
   UI.heat.classList.toggle('on', G.heat > 0.05 || G.tier > 0);
   UI.heat.classList.toggle('max', G.tier >= 3);
@@ -2122,7 +2310,7 @@ function toMenu(){
 function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
   G.run = newRun();
-  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false;
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
   shownScore = 0;
   showMap();
 }
@@ -2420,7 +2608,7 @@ function showBrief(){
   $('bname').textContent = cfg.name;
   $('bobj').innerHTML = cfg.boss
     ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks.</b>'
-    : 'Bank <b>' + fmt(G.run.quota) + '</b> before the checkpoint.';
+    : 'Wreck traffic and bank <b>' + fmt(G.run.quota) + '</b> before the checkpoint.';
   const k = NHChips.contractById(G.run.contract);
   $('bsub').textContent = (cfg.boss ? cfg.bossDef.sub : cfg.elite ? 'Elite run' : 'Standard run') +
     (k && k.id !== 'clear' ? '  ·  ' + k.name : '');
@@ -2528,8 +2716,9 @@ function endRun(won){
   Save.data.runs++;
   Save.flush();
 
-  const kick = G.crashReason === 'traffic' ? 'Wrecked'
-             : G.crashReason === 'wall' ? 'Wall'
+  /* the run ends when the hull does, so the kicker names the last straw */
+  const kick = G.crashReason === 'traffic' ? 'Hull gone'
+             : G.crashReason === 'wall' ? 'Into the wall'
              : G.crashReason || 'Busted';
   $('ovKicker').textContent = kick;
   $('ovKicker').textContent = won ? 'City cleared' : kick;
@@ -2539,6 +2728,7 @@ function endRun(won){
   $('ovScore').textContent = fmt(G.score);
   $('ovBest').textContent = fmt(Save.data.best);
   $('ovCombo').innerHTML = '&times;' + G.topMult.toFixed(1);
+  $('ovWrecks').textContent = fmt(G.totalWreck);
   $('ovCoins').textContent = fmt(G.coinsRun);
   $('ovBadge').classList.toggle('hide', !isBest);
   /* one revive per run, and only when the run was worth saving */
@@ -2765,7 +2955,10 @@ function frame(now){
 
   adTick(raw);
   const live = !adCb && !G.paused;
-  if (live) step(raw * G.slow);
+  /* Hitstop. Freezing the simulation for a few frames on impact is what
+     turns a collision from a number change into a punch. */
+  if (G.freeze > 0) { G.freeze -= raw; }
+  else if (live) step(raw * G.slow);
   Ads.gameplay(live && G.state === 'play');
 
   NHAudio.frame({

@@ -28,30 +28,36 @@ Paste-ready. Edit to taste.
 **Title:** NEON HEAT
 
 **Short description**
-> A drift roguelite. Hold the slide to build a bank, release to cash it in, and climb a
-> ladder of city districts before the law catches up.
+> A demolition-drift roguelite. Drift to charge your multiplier, ram traffic to cash it in,
+> and climb a ladder of city districts on a hull that only ever gets thinner.
 
 **Description**
-> Every district demands a points quota banked before the checkpoint. Points only accrue
-> while you are sideways — and they only pay out when you straighten up. Wreck while
-> holding a fat bank and you lose the lot.
+> Traffic is ammunition, not scenery. Hold a slide to charge the multiplier, then drive
+> straight through the cars in front of you — every wreck banks points at the multiplier
+> you built, and the fourth car in a pile-up is worth roughly twice the first. It costs
+> hull, and hull is the only clock your run has.
 >
-> Clear a district and you fit one chip from three. Some come Overclocked: stronger, but
-> welded to a permanent curse — narrower streets, heavier traffic, a hotter start. Every
-> third district sends a named pursuit unit after you, and the only way to hurt it is to
-> keep banking while it rams you.
+> Cash in and you weld some of it back on. Hold out for one more wreck and you might not.
+> Threading a gap instead pays thin but costs nothing, so a thin hull changes how you drive
+> rather than ending you.
+>
+> Every district demands a points quota before the checkpoint, and you choose the route and
+> the terms you drive under before each one. Clear it and you fit one chip from three. Some
+> come Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
+> traffic, a hotter start. Every third district sends a named pursuit unit after you, and
+> the only way to hurt it is to keep banking while it rams you.
 >
 > Banking raises Heat. Heat puts more units behind you and multiplies every payout, so the
 > right line is always a little more dangerous than the comfortable one.
 
 **Controls**
-> Desktop — Arrow keys or A/D to steer, Space to drift, Shift for nitro, M to mute.
+> Desktop — Arrow keys or A/D to steer, Space to drift and hold a pile-up, Shift for nitro, M to mute.
 > Mobile — touch anywhere and drag: sideways steers, pull back to drift, release forward to
 > bank. A second finger anywhere is nitro.
 
-**Suggested tags:** driving, racing, drift, roguelite, arcade, 1 player, singleplayer
+**Suggested tags:** driving, racing, drift, crash, destruction, roguelite, arcade, 1 player, singleplayer
 
-**Screenshots:** `press/` — 1920×1080 captures of the title, a drift at ×6, a boss chase,
+**Screenshots:** `press/` — 1920×1080 captures of the title, a pile-up mid-chain, a boss chase,
 the chip draft, and the garage. Generated from the running game, so they are honest.
 
 > These PNGs are marketing assets. The game build itself still ships zero image and zero

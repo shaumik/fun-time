@@ -233,7 +233,7 @@ body{
 
 /* toasts */
 #toasts{
-  position:absolute;left:50%;top:calc(var(--u)*20);transform:translateX(-50%);
+  position:absolute;left:50%;top:calc(var(--u)*24);transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
@@ -560,7 +560,7 @@ body{
   text-shadow:0 0 calc(var(--u)*3.4) rgba(61,232,255,.5);
 }
 .ovRow{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.4);
+  display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.4);
   padding:calc(var(--u)*1.8) 0;
   border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);
   margin-bottom:calc(var(--u)*2.4);
@@ -570,7 +570,7 @@ body{
   font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
-.ovRow b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.ovRow b{font-size:calc(var(--u)*2.1);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .ovActs{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
 .ovFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.2)}
 .ovFoot .btn{flex:1;justify-content:center}
@@ -775,6 +775,7 @@ body{
               + max(14px,var(--u)*2.4) + max(10px,var(--u)*1.4) + var(--u)*1.6);
   }
   .spdv{font-size:calc(var(--u)*4.4)}
+  .hudDrv{gap:calc(var(--u)*1.9)}
   .nbar{width:calc(var(--u)*16)}
 
   /* screens */
@@ -1058,4 +1059,64 @@ body{
   .mapHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.8)}
   .mstats{text-align:left}
   #mapBuild{max-width:100%}
+}
+
+/* ============================================================
+   HULL
+   The resource you spend to score, so it sits under the objective
+   rail rather than in a corner — you must be able to read it without
+   taking your eyes off the road.
+   ============================================================ */
+.hudDrv{
+  display:flex;flex-direction:column;align-items:flex-start;
+  gap:calc(var(--u)*1.5);
+}
+.hull{
+  width:calc(var(--u)*22);
+  opacity:0;transition:opacity .25s;
+}
+.hull.on{opacity:1}
+.hullHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.4);
+}
+.hullHead span{
+  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.hullHead b{
+  font-size:calc(var(--u)*1.5);font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+.hullBar{
+  height:calc(var(--u)*.7);background:rgba(255,255,255,.10);
+  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+}
+.hullBar i{
+  display:block;height:100%;width:100%;border-radius:99px;
+  background:linear-gradient(90deg,#2FE08A,#7BF5B0);
+  box-shadow:0 0 calc(var(--u)*1.4) rgba(47,224,138,.65);
+  transition:width .16s linear,background .3s;
+}
+.hull.warn .hullBar i{background:linear-gradient(90deg,#E0A32F,var(--amber));
+  box-shadow:0 0 calc(var(--u)*1.4) rgba(255,177,61,.7)}
+.hull.crit .hullBar i{background:linear-gradient(90deg,#B01226,var(--red));
+  box-shadow:0 0 calc(var(--u)*1.8) rgba(255,51,85,.85)}
+.hull.crit .hullHead b{color:var(--red)}
+.hull.crit{animation:hullPulse .8s ease-in-out infinite}
+@keyframes hullPulse{50%{opacity:.62}}
+
+/* The wrecking chain sits in the objective column's normal flow rather than
+   at a hand-picked offset — an absolutely positioned counter here collided
+   with the hull bar and the toasts the moment all three were live at once. */
+.wreck{
+  font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--amber);white-space:nowrap;
+  opacity:0;transition:opacity .15s;
+  text-shadow:0 0 calc(var(--u)*2) rgba(255,177,61,.8);
+}
+.wreck.on{opacity:1}
+
+@media (max-aspect-ratio:1/1){
+  .hull{width:calc(var(--u)*20)}
 }

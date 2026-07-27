@@ -338,6 +338,33 @@ const A = {
     const g2 = env(sfxBus, 0.55 * p, 0.004, 0.26, t);
     o.connect(g2); o.start(t); o.stop(t + 0.36);
   },
+  /* the crunch: a body-panel transient over a low thump, pitched by force */
+  smash(power){
+    if (!ready) return;
+    const t = ac.currentTime, p = Math.min(1.7, power || 1);
+
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass'; f.Q.value = 1.1;
+    f.frequency.setValueAtTime(1800 * p, t);
+    f.frequency.exponentialRampToValueAtTime(240, t + 0.18);
+    const g = env(sfxBus, 0.5 * p, 0.002, 0.22, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.32);
+
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(180 * p, t);
+    o.frequency.exponentialRampToValueAtTime(34, t + 0.26);
+    const g2 = env(sfxBus, 0.62 * p, 0.003, 0.3, t);
+    o.connect(g2); o.start(t); o.stop(t + 0.4);
+
+    /* a bright metallic ring on top so it reads as sheet metal, not a thud */
+    const m = ac.createOscillator(); m.type = 'square';
+    m.frequency.value = 620 + Math.random() * 340;
+    const mf = ac.createBiquadFilter(); mf.type = 'highpass'; mf.frequency.value = 900;
+    const g3 = env(sfxBus, 0.14 * p, 0.002, 0.1, t);
+    m.connect(mf); mf.connect(g3); m.start(t); m.stop(t + 0.16);
+  },
+
   spark(){
     if (!ready) return;
     const t = ac.currentTime;

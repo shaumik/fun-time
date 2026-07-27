@@ -1,9 +1,10 @@
 # NEON HEAT
 
-A drift **roguelite** for web distribution. Pick a route through a branching board of city
-districts, sign a contract that pairs a boon with a bane before each one, bank a quota under
-those terms, and draft a chip on the way out. Three acts, each ending in a named pursuit
-unit.
+A demolition-drift **roguelite** for web distribution. Drift to charge a multiplier, ram
+traffic to cash it in, and pay for it out of a hull bar that only ever gets thinner. Pick a
+route through a branching board of city districts, sign a contract that pairs a boon with a
+bane before each one, bank a quota under those terms, and draft a chip on the way out.
+Three acts, each ending in a named pursuit unit.
 
 **128 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
 generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
@@ -22,7 +23,7 @@ back to in-memory for the session).
 | Input | Action |
 |---|---|
 | <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Steer |
-| <kbd>Space</kbd> or <kbd>S</kbd> | Drift — hold to accrue, release to bank |
+| <kbd>Space</kbd> or <kbd>S</kbd> | Drift — hold to charge and pile up wrecks, release to bank |
 | <kbd>Shift</kbd> or <kbd>W</kbd> | Nitro |
 | <kbd>Enter</kbd> | Start run / leave a district brief |
 | <kbd>1</kbd>–<kbd>4</kbd> | Pick a chip at the draft |
@@ -59,6 +60,12 @@ it is reading. The old pad layout is still there behind a **Controls** toggle on
 Turn authority drops as you go faster and drifting buys it back, so fast corners *require*
 the slide. A self-aligning torque clamps the slip angle so a slide holds an angle instead of
 winding up into a spin — that pair is the whole handling model.
+
+**Traffic is ammunition, not obstacle.** Drifting builds the multiplier; ramming cars is
+what converts it into points, and a pile-up compounds — the fourth car pays about twice the
+first. Each wreck costs hull, and banking welds some of it back, but never as much as it
+cost. Threading a gap pays thin and costs nothing, so a thin hull changes how you drive
+instead of ending you.
 
 Points accrue into a *pending* bank while you hold the drift and only pay out when you
 release. Wreck while holding a fat bank and it is gone.
