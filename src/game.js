@@ -730,7 +730,7 @@ function districtCfg(n, type, act){
    a visible route none of those are decisions.
    ============================================================ */
 const ACT_NAMES = ['The Grid', 'Ironside', 'Terminus'];
-const NODE_ICON = { run:'▲', elite:'◆', depot:'⬢', boss:'✶' };
+const NODE_ICON = { run:'▲', elite:'✦', depot:'⌂', boss:'☠' };
 const NODE_CAP  = { run:'Run', elite:'Elite', depot:'Depot', boss:'Pursuit' };
 const ROWS = 5;
 
@@ -2175,31 +2175,42 @@ function drawRoute(){
     el.style.top = p.y + 'px';
     el.dataset.rc = r + ',' + c;
     el.disabled = !can;
+    /* A pin carries the kind at a glance; the two lines under it carry the
+       decision. Icons alone are what makes Slay the Spire's map hard to
+       comb — the fix is icon plus colour plus size, not icon alone. */
     el.innerHTML =
-      `<span class="nhead"><i>${NODE_ICON[node.type]}</i>${NODE_CAP[node.type]}</span>` +
-      `<span class="nname">${node.name}</span>` +
-      `<span class="nrew">${node.reward}</span>` +
-      `<span class="ncost">${node.quota ? 'Quota ' + fmt(node.quota) : 'No driving'}` +
-      `${node.heat ? ' · Heat +' + node.heat : ''}</span>`;
+      `<span class="pin"><i>${NODE_ICON[node.type]}</i></span>` +
+      `<span class="plabel">` +
+        `<span class="pname">${node.name}</span>` +
+        `<span class="pmeta"><b>${node.reward}</b>` +
+        `${node.quota ? '<em>' + fmt(node.quota) + (node.heat ? ' · H+' + node.heat : '') + '</em>'
+                      : '<em>no driving</em>'}</span>` +
+      `</span>`;
     if (can) el.onclick = () => enterNode(r, c);
     wrap.appendChild(el);
   }));
 
-  /* cards have real width — pull any that hang off the board back inside */
+  /* keep every pin and its label inside the board */
   const box = {};
   [...wrap.children].forEach(el => {
-    const half = el.offsetWidth / 2 + 4;
+    const half = el.offsetWidth / 2 + 6;
     el.style.left = clamp(parseFloat(el.style.left), half, w - half) + 'px';
-    box[el.dataset.rc] = { x: parseFloat(el.style.left), y: parseFloat(el.style.top),
-                           hw: el.offsetWidth / 2, hh: el.offsetHeight / 2 };
+    /* The element is a column of pin-then-label centred on (x,y), so its
+       own top and bottom are what the routes must connect to. Anchoring to
+       the pin instead sent every line straight through the label below it. */
+    box[el.dataset.rc] = { x: parseFloat(el.style.left),
+                           top: parseFloat(el.style.top) - el.offsetHeight / 2,
+                           bot: parseFloat(el.style.top) + el.offsetHeight / 2 };
   });
 
-  /* Edges are drawn last, anchored to the card borders rather than their
-     centres — a line crossing the middle of a card reads as noise. */
+  /* Routes are drawn as street runs — up, across, up — with rounded
+     corners, rather than diagonals. Right angles are far easier to trace
+     than crossing straight lines, and a city is the right metaphor. */
   const svg = $('mapLines');
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  let lines = '';
+  let paths = '';
   for (let r = 0; r < ROWS - 1; r++) {
+    const lanes = run.route[r].length;
     run.route[r].forEach((node, c) => {
       const A = box[r + ',' + c];
       (node.next || []).forEach(nc => {
@@ -2207,14 +2218,27 @@ function drawRoute(){
         if (!A || !B) return;
         const cls = (run.row === r && run.col === c && isOpen(r + 1, nc)) ? 'open'
                   : (node.done && run.route[r + 1][nc].done) ? 'taken' : '';
-        /* leave from the top edge, arrive at the bottom edge */
-        const x1 = A.x + clamp((B.x - A.x) * 0.35, -A.hw * 0.8, A.hw * 0.8);
-        const x2 = B.x + clamp((A.x - B.x) * 0.35, -B.hw * 0.8, B.hw * 0.8);
-        lines += `<line x1="${x1}" y1="${A.y - A.hh}" x2="${x2}" y2="${B.y + B.hh}" class="${cls}"/>`;
+        const y1 = A.top - 4, y2 = B.bot + 4;
+        /* stagger the crossbar per source lane so parallel runs do not stack */
+        const mid = y1 + (y2 - y1) * (0.42 + (lanes > 1 ? c / lanes : 0) * 0.22);
+        const dx = B.x - A.x;
+        let d;
+        if (Math.abs(dx) < 6) {
+          d = `M${A.x},${y1} L${B.x},${y2}`;
+        } else {
+          const k = Math.min(18, Math.abs(dx) / 2, Math.abs(y1 - mid), Math.abs(mid - y2));
+          const sx = Math.sign(dx);
+          d = `M${A.x},${y1} L${A.x},${mid + k}` +
+              ` Q${A.x},${mid} ${A.x + sx * k},${mid}` +
+              ` L${B.x - sx * k},${mid}` +
+              ` Q${B.x},${mid} ${B.x},${mid - k}` +
+              ` L${B.x},${y2}`;
+        }
+        paths += `<path d="${d}" class="${cls}"/>`;
       });
     });
   }
-  svg.innerHTML = lines;
+  svg.innerHTML = paths;
 }
 addEventListener('resize', () => { if (G.state === 'map') drawRoute(); });
 

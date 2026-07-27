@@ -43,9 +43,17 @@ line with a draft bolted on the end, and calling that a roguelite was generous.
 **Every node states its terms on its face** — the place, what clearing it pays, the quota it
 demands and the Heat it adds. The first pass drew the board as bare dots labelled RUN and
 ELITE, which meant a fork between two Runs offered the player nothing to reason about. A
-choice you cannot evaluate is not a choice, so siblings in a row are now generated as
-*distinct* kinds rather than sampled independently, and every place on the board gets its
-own name.
+choice you cannot evaluate is not a choice, so siblings in a row are generated as *distinct*
+kinds rather than sampled independently, and every place on the board gets its own name.
+
+The board is drawn as a **transit map over a street plan**, not a flowchart. Routes run as
+street sections — up, across, up — with rounded corners, because right angles are far easier
+to trace than a field of crossing diagonals, and because a city is the right metaphor for a
+game about driving through one. Stations are pins whose *ring colour, icon and size* all
+carry the node's kind: Slay the Spire's map is widely criticised for exactly the opposite —
+small symbols with no distinction in size or colour, so players have to comb each path, and
+the community's own fix was to colour-code it. Routes are anchored to the top and bottom of
+each node block rather than to the pin, so a line never crosses the label it belongs to.
 
 **Contracts are chosen before you drive, not after.** Each pairs a boon with a bane, both
 stated on the card, and each changes how the district *plays* rather than only what the
