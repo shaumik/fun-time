@@ -118,12 +118,24 @@ overclocked — used identically on draft cards and the in-run build rail.
 No webfonts: the CSP on the hosted build blocks font CDNs and a silent fallback would wreck
 the HUD grid, so the stack is system-native with weight and tracking doing the work.
 
+## Mobile
+
+Portrait and landscape both play. The stage fills whatever viewport it is given; UI sizing
+derives from the narrow axis in portrait, and camera zoom is bounded by width as well as
+height so the full street is always framed — at the cost of a smaller car, which is the
+right trade for a top-down game held upright.
+
+Four thumb pads with a 60px floor, shown only while driving. On a phone the primary fail
+state should stay "missed the quota" rather than "fumbled a control", so the pads sit under
+natural thumb positions and the drift pad is the largest target on screen.
+
 ## Scope of this prototype
 
 Built: full drift model with self-aligning torque, procedural districts, quota and boss
 objectives, three boss archetypes with distinct mechanics, 17 chips and 6 curses with a
 weighted draft, traffic and pursuit AI, spike-strip hazards, off-screen threat indicators,
 particles and decals, bloom pipeline with adaptive quality, synthesised music and SFX,
-garage with four cars and four upgrade tracks, localStorage persistence, keyboard and touch.
+garage with four cars and four upgrade tracks, localStorage persistence, and a
+responsive layout with keyboard and touch input.
 
 Not built: leaderboards, daily rewards, a tutorial, and the real SDK handshake (shimmed).

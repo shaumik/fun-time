@@ -35,15 +35,15 @@ body{
   -webkit-tap-highlight-color:transparent;
 }
 
+/* Fill whatever viewport we are given. A hard 16:9 lock turned a 390x844
+   phone into a 390x219 letterbox strip using a quarter of the screen. */
 #stage{
   position:relative;
   width:100%;height:100%;
-  max-width:calc(100vh * 16 / 9);
-  max-height:calc(100vw * 9 / 16);
-  aspect-ratio:16/9;
   overflow:hidden;
   background:var(--void);
   user-select:none;
+  touch-action:none;
   isolation:isolate;
 }
 #c{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -260,17 +260,31 @@ body{
   border:1px solid var(--edge2);background:rgba(10,16,32,.5);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   color:var(--ice);border-radius:50%;
-  width:calc(var(--u)*11);height:calc(var(--u)*11);
+  /* 56px floor: proportional sizing alone produced 24px targets on a phone */
+  width:max(60px,calc(var(--u)*11));height:max(60px,calc(var(--u)*11));
   display:grid;place-items:center;
-  font:800 calc(var(--u)*1.5)/1 var(--sans);letter-spacing:.16em;
+  font:800 max(11px,calc(var(--u)*1.5))/1 var(--sans);letter-spacing:.14em;
   transition:background .1s,transform .1s;
 }
 .tbtn svg{width:45%;height:45%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .tbtn:active,.tbtn.down{background:rgba(61,232,255,.24);transform:scale(.94)}
-.tl{left:calc(var(--u)*3);bottom:calc(var(--u)*3)}
-.tr{left:calc(var(--u)*15.5);bottom:calc(var(--u)*3)}
-.td{right:calc(var(--u)*3);bottom:calc(var(--u)*3);width:calc(var(--u)*14);height:calc(var(--u)*14);border-color:var(--magenta);color:var(--magenta)}
+.tl{left:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4))}
+.tr{left:calc(max(14px,calc(var(--u)*2.4)) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
+    bottom:max(14px,calc(var(--u)*2.4))}
+.td{
+  right:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4));
+  width:max(78px,calc(var(--u)*14));height:max(78px,calc(var(--u)*14));
+  border-color:var(--magenta);color:var(--magenta);
+}
 .td:active,.td.down{background:rgba(255,46,136,.26)}
+/* nitro sits above the drift pad — same thumb, no reach */
+.tn{
+  right:max(14px,calc(var(--u)*2.4));
+  bottom:calc(max(78px,var(--u)*14) + max(14px,var(--u)*2.4) + max(10px,var(--u)*1.4));
+  border-color:var(--amber);color:var(--amber);
+  font-size:max(10px,calc(var(--u)*1.25));
+}
+.tn:active,.tn.down{background:rgba(255,177,61,.26)}
 
 /* ============ screens ============ */
 .screen{
@@ -678,6 +692,104 @@ body{
   font-weight:700;color:var(--dim);
 }
 
+/* Keyboard hints are noise on a touch device — and actively misleading,
+   since there is no Shift key to press. */
+@media (hover:none){
+  .hudBot .key,.hints,.dhint{display:none}
+  .btn .key{display:none}
+}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* ============================================================
+   PORTRAIT / SMALL VIEWPORTS
+   The HUD is a three-column rail designed for a wide screen. On a
+   phone held upright there is no room for it, so the rails stack and
+   the draft becomes a single column. Sizing is driven by --u, which
+   JS derives from the narrow axis in portrait.
+   ============================================================ */
+@media (max-aspect-ratio:1/1){
+  .hudTop{
+    top:calc(var(--u)*2.2);left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
+    flex-direction:column;align-items:stretch;gap:calc(var(--u)*1.4);
+  }
+  /* objective first: it is the thing you are actually playing against */
+  .hudMid{order:-1;min-width:0;gap:calc(var(--u)*.9)}
+  .obj{width:100%}
+  .stat,.stat.right{
+    display:flex;align-items:baseline;gap:calc(var(--u)*.9);
+    text-align:left;
+  }
+  .stat.right{justify-content:flex-end}
+  .stat .lbl{margin-bottom:0}
+  .val{font-size:calc(var(--u)*3.4)}
+  .dchip{margin-bottom:0;order:-1}
+  .cmult{font-size:calc(var(--u)*3.6)}
+  .cnote{display:none}
+
+  /* toasts sit mid-screen over empty road; at 20u they landed on the score */
+  #toasts{top:38%}
+
+  /* the build rail would eat the play area; float it under the score */
+  .build{
+    position:absolute;top:calc(var(--u)*13);left:0;
+    flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*46);
+    margin-top:0;gap:calc(var(--u)*.35);
+  }
+  .build i{font-size:calc(var(--u)*.95);padding:calc(var(--u)*.22) calc(var(--u)*.55)}
+
+  .hudBot{
+    left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
+    bottom:calc(max(78px,var(--u)*14) + max(60px,var(--u)*11)
+              + max(14px,var(--u)*2.4) + max(10px,var(--u)*1.4) + var(--u)*1.6);
+  }
+  .spdv{font-size:calc(var(--u)*4.4)}
+  .nbar{width:calc(var(--u)*16)}
+
+  /* screens */
+  .title{font-size:calc(var(--u)*9)}
+  .tag{font-size:calc(var(--u)*1.6);margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
+  .btns{flex-direction:column;align-items:stretch}
+  .btn{justify-content:center}
+  .hints{gap:calc(var(--u)*1.2)}
+  .bname{font-size:calc(var(--u)*5.6)}
+  .bobj{font-size:calc(var(--u)*1.7);margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
+
+  .dcards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .dcard{padding:calc(var(--u)*1.5) calc(var(--u)*1.5) calc(var(--u)*1.4)}
+  .dname{font-size:calc(var(--u)*2)}
+  .ddesc{font-size:calc(var(--u)*1.35)}
+  .dtitle{font-size:calc(var(--u)*3.4)}
+  .dhint{display:none}          /* no number row to press on a phone */
+
+  .panel{padding:calc(var(--u)*2.4)}
+  .ovScore{font-size:calc(var(--u)*6.4)}
+  .ovRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .ovRow div{flex-direction:row;justify-content:space-between;align-items:baseline}
+  .ovFoot{flex-direction:column}
+
+  .gCars{grid-template-columns:repeat(2,1fr)}
+  .gUps{grid-template-columns:1fr}
+  .gFoot{flex-direction:column}
+}
+
+/* Short landscape (a phone turned sideways) — vertical room is the
+   scarce axis, so trim the tall stacks rather than the columns. */
+@media (max-height:460px) and (min-aspect-ratio:1/1){
+  .cnote,.dhint{display:none}
+  .build{max-width:calc(var(--u)*20)}
+  .build i:nth-child(n+5){display:none}
+  .title{font-size:calc(var(--u)*9)}
+  .tag{margin:calc(var(--u)*1.4) 0 calc(var(--u)*2)}
+  .hints{display:none}
+  .bname{font-size:calc(var(--u)*6)}
+  .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
+  .ovScore{font-size:calc(var(--u)*7)}
+  .hudBot{bottom:calc(var(--u)*2.4)}
+  /* keep the speedo clear of the left-hand steering pad */
+  .speedo{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
+  .nitro{margin-right:calc(max(78px,var(--u)*14) + var(--u)*2)}
+  .tn{bottom:calc(max(78px,var(--u)*14) + max(14px,var(--u)*2.4) + max(8px,var(--u)*1))}
 }

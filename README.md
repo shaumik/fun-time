@@ -27,7 +27,20 @@ back to in-memory for the session).
 | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | Pick a chip at the draft |
 | <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
-Touch controls appear automatically on devices without hover.
+## Mobile
+
+Plays in portrait and landscape on a phone. The stage fills the viewport rather than
+letterboxing to 16:9 — a hard aspect lock turned a 390&times;844 phone into a 390&times;219 strip
+using a quarter of the screen.
+
+- Four on-screen pads (steer left/right, nitro, drift) with a 60px minimum target, appearing
+  only while driving so they never sit over the menus or the draft cards.
+- The HUD rails stack in portrait, the draft becomes a single column, and keyboard hints are
+  hidden on touch devices.
+- `--u`, the unit every UI size derives from, is taken from the narrow axis in portrait;
+  camera zoom is bounded by width as well as height so the full street always fits.
+- Rendering demotes itself on slower hardware, which on a phone means dropping to device
+  pixel ratio 1 and skipping the wide bloom tap.
 
 Turn authority drops as you go faster and drifting buys it back, so fast corners *require*
 the slide. A self-aligning torque clamps the slip angle so a slide holds an angle instead of

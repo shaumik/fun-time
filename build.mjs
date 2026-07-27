@@ -77,7 +77,7 @@ ${body}
     <kbd>&#8592;</kbd><kbd>&#8594;</kbd> steer
     <kbd>Space</kbd> drift
     <kbd>Shift</kbd> nitro
-    <span>— click the canvas first</span>
+    <span>— on a phone, on-screen pads appear while driving</span>
   </p>
 
   <h2>A drift roguelite, not another top-down racer</h2>

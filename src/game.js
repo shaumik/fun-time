@@ -156,7 +156,11 @@ function resize(){
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   bufA.width = bufB.width = Math.max(1, Math.round(W / 4));
   bufA.height = bufB.height = Math.max(1, Math.round(H / 4));
-  stage.style.setProperty('--u', (H / 100) + 'px');
+  /* In portrait the narrow axis governs legibility: height/100 on a 390x844
+     phone gives 8.4px units inside a 390px-wide column, which overflows. */
+  const portrait = W / H < 1.15;
+  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 3.2, 11);
+  stage.style.setProperty('--u', u.toFixed(2) + 'px');
   buildOverlays();
 }
 
@@ -208,7 +212,7 @@ window.addEventListener('resize', resize);
 
 /* ---------------- input ---------------- */
 const keys = Object.create(null);
-const touch = { left:0, right:0, drift:0 };
+const touch = { left:0, right:0, drift:0, nitro:0 };
 const IN = { steer:0, drift:0, nitro:0 };
 
 addEventListener('keydown', e => {
@@ -229,7 +233,7 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
 
 const touchEl = document.getElementById('touch');
-if (matchMedia('(hover:none)').matches) touchEl.classList.add('on');
+const hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
 touchEl.querySelectorAll('.tbtn').forEach(b => {
   const k = b.dataset.k;
   const on  = e => { e.preventDefault(); touch[k] = 1; b.classList.add('down'); };
@@ -245,7 +249,7 @@ function readInput(){
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   IN.steer = (r ? 1 : 0) - (l ? 1 : 0);
   IN.drift = (keys.Space || keys.ArrowDown || keys.KeyS || touch.drift) ? 1 : 0;
-  IN.nitro = (keys.ShiftLeft || keys.ShiftRight || keys.KeyW || keys.ArrowUp) ? 1 : 0;
+  IN.nitro = (keys.ShiftLeft || keys.ShiftRight || keys.KeyW || keys.ArrowUp || touch.nitro) ? 1 : 0;
 }
 
 /* ============================================================
@@ -554,8 +558,12 @@ function newWorld(ai){
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   for (let i = 0; i < 9; i++) addTraffic(20 + i * 22);
 }
-const baseZoom = () => clamp(H / 640, 0.72, 1.5)
+/* Zoom is bounded by width as well as height, otherwise a portrait phone
+   frames less than half the street and you cannot see what you are aiming at. */
+const baseZoom = () => clamp(Math.min(H / 640, W / 900), 0.40, 1.5)
   * (G.run ? G.run.M.zoomMul : 1);
+/* sit the car lower when there is vertical room to spare, to see further ahead */
+const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
 const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 
 function addTraffic(ahead){
@@ -1033,12 +1041,12 @@ function w2s(x, y){
   const dx = x - cam.x, dy = y - cam.y;
   return [
     W / 2 + cam.sx + (dx * ct - dy * st) * cam.zoom,
-    H * 0.62 + cam.sy + (dx * st + dy * ct) * cam.zoom
+    camY() + cam.sy + (dx * st + dy * ct) * cam.zoom
   ];
 }
 function applyCam(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  ctx.translate(W / 2 + cam.sx, H * 0.62 + cam.sy);
+  ctx.translate(W / 2 + cam.sx, camY() + cam.sy);
   ctx.scale(cam.zoom, cam.zoom);
   ctx.rotate(-cam.rot - Math.PI / 2);
   ctx.translate(-cam.x, -cam.y);
@@ -1346,7 +1354,7 @@ function drawCity(){
   const [a, b] = visibleRange();
   const pts = G.track.pts;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const cx = W / 2 + cam.sx, cy = H * 0.62 + cam.sy;
+  const cx = W / 2 + cam.sx, cy = camY() + cam.sy;
 
   const list = [];
   for (let i = b; i >= a; i--) {
@@ -1437,12 +1445,12 @@ function drawCity(){
   }
 
   /* depth fog: the top of the screen is the far distance, so fade it out */
-  const fog = ctx.createLinearGradient(0, 0, 0, H * 0.52);
+  const fog = ctx.createLinearGradient(0, 0, 0, camY() * 0.84);
   fog.addColorStop(0,    'rgba(5,6,14,0.72)');
   fog.addColorStop(0.45, 'rgba(5,6,14,0.30)');
   fog.addColorStop(1,    'rgba(5,6,14,0)');
   ctx.fillStyle = fog;
-  ctx.fillRect(0, 0, W, H * 0.52);
+  ctx.fillRect(0, 0, W, camY() * 0.84);
 }
 
 function drawLamps(){
@@ -1516,7 +1524,7 @@ function drawThreats(){
   if (!list.length) return;
 
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const cx = W / 2, cy = H * 0.62, pad = W * 0.055;
+  const cx = W / 2, cy = camY(), pad = Math.max(24, W * 0.055);
 
   for (const v of list) {
     const [sx, sy] = w2s(v.x, v.y);
@@ -1700,6 +1708,12 @@ function renderBuild(){
     html += '<i class="curse">' + c.name + '</i>';
   }
   UI.build.innerHTML = html;
+}
+
+/* The pads overlay the whole stage, so they must only exist while driving —
+   otherwise they sit on top of the draft cards and swallow taps. */
+function syncTouch(){
+  touchEl.classList.toggle('on', hasTouch && G.state === 'play');
 }
 
 function show(el){ el.classList.remove('hide'); }
@@ -2046,6 +2060,7 @@ function frame(now){
   });
 
   syncHUD();
+  syncTouch();
   render();
   requestAnimationFrame(frame);
 }
