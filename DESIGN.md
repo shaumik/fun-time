@@ -146,6 +146,34 @@ you cannot learn, so a ring marks the anchor and a dot shows what it is reading.
 On a phone the primary fail state should stay "missed the quota", not "fumbled a control".
 The pad layout is retained behind a menu toggle for anyone who prefers it.
 
+## Performance
+
+The renderer is fill-rate bound — the bloom composite costs in direct proportion to
+backing-store pixels — so framerate tracks window *area* almost exactly. Measured on one
+machine:
+
+| Backing store | FPS |
+|---|---|
+| 0.92 MP (1280×720) | 58 |
+| 2.07 MP (1920×1080) | 40 |
+| 3.69 MP (2560×1440) | 20 |
+
+The standalone build fills the whole browser window, so a maximised 1440p or Retina display
+renders three to four times the pixels a 720p one does. A fixed resolution cap is wrong on
+most machines, so the backing store is instead scaled adaptively to hold the frame budget,
+and CSS scales the result back up. Resolution is the first lever because it is continuous
+and nearly invisible; dropping effects is the last resort, once there is no resolution left
+to give.
+
+Two signals drive it, because neither alone works. Frame delta says whether we are missing
+the target, but it is clamped by vsync — on a 60Hz display a perfect frame still reads
+16.7ms, so it can never indicate headroom, and a renderer that had dropped resolution could
+never earn it back. Work time — what is actually spent in step plus render — is
+vsync-independent and is what says it is safe to give resolution back.
+
+All UI is DOM rather than canvas, so menus, the HUD and the draft cards stay pixel-sharp
+regardless of render scale. Only the game world softens.
+
 ## Scope of this prototype
 
 Built: full drift model with self-aligning torque, procedural districts, quota and boss

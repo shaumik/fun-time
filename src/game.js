@@ -206,7 +206,7 @@ function setQuality(t){
   QF.bloom = 1; QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
   QF.dpr = high ? 1.5 : 1;
-  if (typeof resize === 'function') resize();
+  if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
 /* ---------------- canvas ---------------- */
@@ -220,20 +220,45 @@ const bufA = document.createElement('canvas'), bA = bufA.getContext('2d');
 const bufB = document.createElement('canvas'), bB = bufB.getContext('2d');
 let vignette = null, grain = null;
 
+/* ---------------- resolution ----------------
+   This renderer is fill-rate bound: the bloom composite costs in direct
+   proportion to backing-store pixels, so framerate tracks window area
+   almost exactly. A maximised 1440p window is ~4x the pixels of a 720p
+   one. Rather than pick a fixed cap that is wrong on most machines, the
+   backing store is scaled adaptively to hold the frame budget, and CSS
+   scales the result back up to fill the stage. */
+const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
+let renderScale = 1;           // adaptive, 0.5 .. 1
+
+function applyBackingStore(){
+  const want = Math.min(window.devicePixelRatio || 1, QF.dpr) * renderScale;
+  const area = W * H;
+  const capped = area * want * want > MAX_PIXELS
+    ? Math.sqrt(MAX_PIXELS / area)
+    : want;
+  DPR = clamp(capped, 0.5, 3);
+  cv.width  = Math.max(1, Math.round(W * DPR));
+  cv.height = Math.max(1, Math.round(H * DPR));
+  /* the bloom buffers follow the real backing store, not the CSS size */
+  bufA.width  = bufB.width  = Math.max(1, Math.round(cv.width  / 4));
+  bufA.height = bufB.height = Math.max(1, Math.round(cv.height / 4));
+}
+
 function resize(){
   const r = stage.getBoundingClientRect();
-  W = Math.max(320, Math.round(r.width));
-  H = Math.max(180, Math.round(r.height));
-  DPR = Math.min(window.devicePixelRatio || 1, QF.dpr);
-  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  bufA.width = bufB.width = Math.max(1, Math.round(W / 4));
-  bufA.height = bufB.height = Math.max(1, Math.round(H / 4));
+  const nw = Math.max(320, Math.round(r.width));
+  const nh = Math.max(180, Math.round(r.height));
+  const moved = nw !== W || nh !== H;
+  W = nw; H = nh;
+  applyBackingStore();
   /* In portrait the narrow axis governs legibility: height/100 on a 390x844
      phone gives 8.4px units inside a 390px-wide column, which overflows. */
   const portrait = W / H < 1.15;
   const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 3.2, 11);
   stage.style.setProperty('--u', u.toFixed(2) + 'px');
-  buildOverlays();
+  /* plates are drawn at CSS size, so a resolution tweak must not rebuild
+     them — that is three full-screen canvases of work */
+  if (moved || !plates.length) buildOverlays();
 }
 
 /* Vignette and film grain are both static per-pixel effects, so they are
@@ -2241,17 +2266,41 @@ function renderGarage(){
    LOOP
    ============================================================ */
 let last = performance.now();
-let ftAvg = 16, ftN = 0, demoted = false;
+let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
+
+/* Trade pixels for frames until we hold the budget. Resolution is the first
+   lever because it is continuous and nearly invisible; dropping effects is
+   the last resort, once there is no resolution left to give.
+
+   Two signals, because neither alone is sufficient. Frame delta says whether
+   we are missing the target, but it is clamped by vsync — on a 60Hz display
+   a perfect frame still reads 16.7ms, so it can never indicate headroom.
+   Work time (what we actually spend in step + render) is vsync-independent
+   and is what tells us it is safe to give resolution back. */
+function autoTune(now){
+  if (now < tuneAt) return;
+  const missing = ftAvg > 19.5;                    // below ~51fps
+  const roomy   = ftAvg < 18 && workAvg < 6.5;     // hitting vsync, cheaply
+
+  if (missing && renderScale > 0.5) {
+    renderScale = Math.max(0.5, renderScale - 0.09);
+    applyBackingStore();
+    tuneAt = now + 700;
+  } else if (missing && !demoted) {
+    setQuality('low'); demoted = true;
+    tuneAt = now + 1200;
+  } else if (roomy && renderScale < 1) {
+    renderScale = Math.min(1, renderScale + 0.05);
+    applyBackingStore();
+    tuneAt = now + 1400;              // creep back up slowly to avoid hunting
+  }
+}
+
 function frame(now){
   const raw = Math.min(0.033, (now - last) / 1000);
   const ms = now - last;
   last = now;
-
-  /* one-way demotion: sustained slow frames drop the expensive passes */
-  if (!demoted) {
-    ftAvg = ftAvg * 0.94 + Math.min(ms, 120) * 0.06;
-    if (++ftN > 140 && ftAvg > 30) { setQuality('low'); demoted = true; }
-  }
+  const workT0 = performance.now();
 
   adTick(raw);
   const live = !adCb && !G.paused;
@@ -2272,6 +2321,11 @@ function frame(now){
   syncHUD();
   syncTouch();
   render();
+
+  workAvg = workAvg * 0.9 + (performance.now() - workT0) * 0.1;
+  ftAvg   = ftAvg   * 0.9 + Math.min(ms, 120) * 0.1;
+  if (++ftN > 40) autoTune(now);
+
   requestAnimationFrame(frame);
 }
 
@@ -2287,6 +2341,8 @@ requestAnimationFrame(frame);
 /* debug handle for tuning passes and automated playtests */
 window.__NH = {
   G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
+  get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
+  get workAvg(){ return workAvg; },
   beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
   get offers(){ return G.offers; }
 };

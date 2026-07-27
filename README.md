@@ -93,9 +93,11 @@ node build.mjs
 each call degrades to a simulated placement so the flow stays demonstrable. Two rewarded
 placements and one midgame interstitial are wired; banners are not.
 
-Rendering demotes itself: sustained slow frames drop the wide bloom tap, window detail,
-grain and device pixel ratio in one step. Audio starts on the first key or pointer press, as
-browsers require.
+**Performance is adaptive.** The renderer is fill-rate bound, so framerate tracks window
+area — a maximised 1440p window is ~4x the pixels of a 720p one. The backing store scales
+itself continuously to hold ~60fps and CSS scales it back up; effects are only dropped once
+there is no resolution left to give. All UI is DOM, so menus and the HUD stay sharp
+regardless. Audio starts on the first key or pointer press, as browsers require.
 
 `window.__NH` exposes game state, `QF` (quality flags), `setQuality()` and the district
 lifecycle (`nextDistrict`, `beginDistrict`, `takeOffer`) for tuning and automated playtests.
@@ -104,4 +106,5 @@ rather than by eye.
 
 ## Not built yet
 
-Leaderboards, daily rewards, a tutorial, and the real SDK handshake (currently shimmed).
+Leaderboards, daily rewards, a tutorial, and banner ads. The SDK integration is verified
+against a mock covering every call and callback, but has not run against the real SDK.
