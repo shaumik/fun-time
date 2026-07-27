@@ -40,6 +40,13 @@ costs you a district of scoring but repairs your build. If the board is not visi
 those are decisions — which is exactly what the first version got wrong: it was a straight
 line with a draft bolted on the end, and calling that a roguelite was generous.
 
+**Every node states its terms on its face** — the place, what clearing it pays, the quota it
+demands and the Heat it adds. The first pass drew the board as bare dots labelled RUN and
+ELITE, which meant a fork between two Runs offered the player nothing to reason about. A
+choice you cannot evaluate is not a choice, so siblings in a row are now generated as
+*distinct* kinds rather than sampled independently, and every place on the board gets its
+own name.
+
 **Contracts are chosen before you drive, not after.** Each pairs a boon with a bane, both
 stated on the card, and each changes how the district *plays* rather than only what the
 numbers say — Downpour cuts grip but pays +50% a bank, Blackout kills the city lights but

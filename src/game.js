@@ -692,8 +692,10 @@ const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
    the quota is replaced by a pursuit unit you damage by banking into it. */
 const DISTRICTS = [
   'Dockside', 'Sodium Row', 'The Spillway', 'Glasshouse', 'Nine Mile',
-  'Cathedral Hill', 'Ashfield', 'The Verge', 'Terminus'
+  'Cathedral Hill', 'Ashfield', 'The Verge', 'Kiln Street', 'Low Basin',
+  'Radial', 'Saltgate', 'Underpass 9', 'The Shallows', 'Foundry Line'
 ];
+const DEPOT_NAMES = ['Lockup', 'Chop Shop', 'The Yard', 'Back Alley', 'Cold Store'];
 const BOSSES = [
   { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
     blurb:'Rams hard and salts the road behind it.' },
@@ -709,7 +711,8 @@ function districtCfg(n, type, act){
   const elite = type === 'elite';
   return {
     n, boss, elite, type,
-    name: boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length],
+    name: (G.run && G.run.node && G.run.node.name) ||
+          (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
     len: Math.round(400 + n * 26),
     /* Elites cost more and pay a rare chip; the route choice has to bite */
@@ -731,23 +734,44 @@ const NODE_ICON = { run:'▲', elite:'◆', depot:'⬢', boss:'✶' };
 const NODE_CAP  = { run:'Run', elite:'Elite', depot:'Depot', boss:'Pursuit' };
 const ROWS = 5;
 
+/* What a node is worth, stated on its face. A fork between two nodes that
+   read the same is not a choice, so every node carries its reward and its
+   cost, and siblings in a row are forced to differ. */
+const NODE_INFO = {
+  run:   { reward:'1 chip',        rare:false, quotaMul:1.00, heat:0 },
+  elite: { reward:'Rare chip · 4', rare:true,  quotaMul:1.45, heat:1 },
+  depot: { reward:'Free chip or repair', rare:false, quotaMul:0, heat:0 },
+  boss:  { reward:'Rare chip · act', rare:true, quotaMul:1.15, heat:1 }
+};
+
 function pickNodeType(row){
   if (row === 0) return 'run';
   const r = Math.random();
   if (row === ROWS - 2) return r < 0.55 ? 'depot' : 'elite';   // breather before the boss
-  if (r < 0.50) return 'run';
+  if (r < 0.46) return 'run';
   if (r < 0.78) return 'elite';
   return 'depot';
 }
 
-function makeRoute(){
+function makeRoute(act){
   const rows = [];
   for (let r = 0; r < ROWS; r++) {
     if (r === ROWS - 1) { rows.push([{ type:'boss' }]); continue; }
-    const n = r === 0 ? 2 : (Math.random() < 0.45 ? 3 : 2);
-    const row = [];
-    for (let i = 0; i < n; i++) row.push({ type: pickNodeType(r) });
-    rows.push(row);
+    /* Draw distinct types rather than retrying a random pick: a fork whose
+       branches read the same is not a choice, and the row before the boss
+       only has two kinds to offer, so it can never hold three. */
+    const kinds = r === ROWS - 2 ? ['depot', 'elite'] : ['run', 'elite', 'depot'];
+    const n = Math.min(r === 0 ? 2 : (Math.random() < 0.5 ? 3 : 2), kinds.length);
+    const bag = kinds.slice();
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = rint(0, i + 1);
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    /* bias the shuffle so Run stays the common case when it is on offer */
+    if (n < bag.length && bag.indexOf('run') >= n && Math.random() < 0.55) {
+      bag[rint(0, n)] = 'run';
+    }
+    rows.push(bag.slice(0, n).map(t => ({ type: t })));
   }
   /* connect each node forward, then guarantee every node is reachable so
      the board never contains a dead branch */
@@ -768,13 +792,40 @@ function makeRoute(){
       a[i].next.push(j);
     });
   }
-  rows.forEach((row, r) => row.forEach((n, c) => { n.row = r; n.col = c; n.done = false; }));
+  /* Every place on the board gets its own name. Three nodes all reading
+     "Glasshouse" made the map look generated, which it is, but it should
+     not look it. */
+  const pool = DISTRICTS.slice();
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const depots = DEPOT_NAMES.slice();
+  for (let i = depots.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    [depots[i], depots[j]] = [depots[j], depots[i]];
+  }
+  let pi = 0, di = 0;
+  rows.forEach((row, r) => row.forEach((n, c) => {
+    n.row = r; n.col = c; n.done = false;
+    const info = NODE_INFO[n.type];
+    const idx = r + 1 + (act - 1) * (ROWS - 1);
+    n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
+           : n.type === 'depot' ? depots[di++ % depots.length]
+           : pool[pi++ % pool.length];
+    n.reward = info.reward;
+    n.rare = info.rare;
+    n.heat = info.heat;
+    n.quota = info.quotaMul
+      ? Math.round(2600 * Math.pow(1.30, idx - 1) * info.quotaMul / 10) * 10
+      : 0;
+  }));
   return rows;
 }
 
 function newRun(){
   return {
-    act: 1, route: makeRoute(), row: -1, col: -1,
+    act: 1, route: makeRoute(1), row: -1, col: -1,
     node: null, district: 0,
     chips: [], curses: [], contract: null,
     M: NHChips.defaults(), L: NHChips.levelDefaults(),
@@ -2089,17 +2140,16 @@ function showMap(){
 
 function nodePos(row, col, w, h){
   const rows = G.run.route;
-  const padY = h * 0.11;
+  const padY = h * 0.09 + 34;
   /* row 0 sits at the bottom, the boss at the top */
   const y = h - padY - (row / (ROWS - 1)) * (h - padY * 2);
   const n = rows[row].length;
   /* Spread by how many nodes the row holds rather than across the full
      width — two nodes pinned to the screen edges left a dead middle and
      made the branches hard to trace. */
-  const spread = n === 1 ? 0 : n === 2 ? 0.36 : 0.60;
+  const spread = n === 1 ? 0 : n === 2 ? 0.54 : 0.76;
   const t = n === 1 ? 0.5 : col / (n - 1);
-  const jitter = n > 1 ? Math.sin((row * 7 + col * 3) * 1.7) * w * 0.03 : 0;
-  return { x: w / 2 + (t - 0.5) * w * spread + jitter, y };
+  return { x: w / 2 + (t - 0.5) * w * spread, y };
 }
 
 function drawRoute(){
@@ -2112,23 +2162,6 @@ function drawRoute(){
   const open = openNodes();
   const isOpen = (r, c) => open.some(o => o.row === r && o.col === c);
 
-  const svg = $('mapLines');
-  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  let lines = '';
-  for (let r = 0; r < ROWS - 1; r++) {
-    run.route[r].forEach((node, c) => {
-      const a = nodePos(r, c, w, h);
-      (node.next || []).forEach(nc => {
-        const b = nodePos(r + 1, nc, w, h);
-        /* highlight only the edges you can actually take right now */
-        const cls = (run.row === r && run.col === c && isOpen(r + 1, nc)) ? 'open'
-                  : (node.done && run.route[r + 1][nc].done) ? 'taken' : '';
-        lines += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="${cls}"/>`;
-      });
-    });
-  }
-  svg.innerHTML = lines;
-
   const wrap = $('mapNodes');
   wrap.innerHTML = '';
   run.route.forEach((row, r) => row.forEach((node, c) => {
@@ -2140,12 +2173,48 @@ function drawRoute(){
       (can ? ' open' : '') + (node.done ? ' done' : '') + (here ? ' here' : '');
     el.style.left = p.x + 'px';
     el.style.top = p.y + 'px';
+    el.dataset.rc = r + ',' + c;
     el.disabled = !can;
-    el.innerHTML = `<span class="dot">${NODE_ICON[node.type]}</span>` +
-                   `<span class="cap">${NODE_CAP[node.type]}</span>`;
+    el.innerHTML =
+      `<span class="nhead"><i>${NODE_ICON[node.type]}</i>${NODE_CAP[node.type]}</span>` +
+      `<span class="nname">${node.name}</span>` +
+      `<span class="nrew">${node.reward}</span>` +
+      `<span class="ncost">${node.quota ? 'Quota ' + fmt(node.quota) : 'No driving'}` +
+      `${node.heat ? ' · Heat +' + node.heat : ''}</span>`;
     if (can) el.onclick = () => enterNode(r, c);
     wrap.appendChild(el);
   }));
+
+  /* cards have real width — pull any that hang off the board back inside */
+  const box = {};
+  [...wrap.children].forEach(el => {
+    const half = el.offsetWidth / 2 + 4;
+    el.style.left = clamp(parseFloat(el.style.left), half, w - half) + 'px';
+    box[el.dataset.rc] = { x: parseFloat(el.style.left), y: parseFloat(el.style.top),
+                           hw: el.offsetWidth / 2, hh: el.offsetHeight / 2 };
+  });
+
+  /* Edges are drawn last, anchored to the card borders rather than their
+     centres — a line crossing the middle of a card reads as noise. */
+  const svg = $('mapLines');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  let lines = '';
+  for (let r = 0; r < ROWS - 1; r++) {
+    run.route[r].forEach((node, c) => {
+      const A = box[r + ',' + c];
+      (node.next || []).forEach(nc => {
+        const B = box[(r + 1) + ',' + nc];
+        if (!A || !B) return;
+        const cls = (run.row === r && run.col === c && isOpen(r + 1, nc)) ? 'open'
+                  : (node.done && run.route[r + 1][nc].done) ? 'taken' : '';
+        /* leave from the top edge, arrive at the bottom edge */
+        const x1 = A.x + clamp((B.x - A.x) * 0.35, -A.hw * 0.8, A.hw * 0.8);
+        const x2 = B.x + clamp((A.x - B.x) * 0.35, -B.hw * 0.8, B.hw * 0.8);
+        lines += `<line x1="${x1}" y1="${A.y - A.hh}" x2="${x2}" y2="${B.y + B.hh}" class="${cls}"/>`;
+      });
+    });
+  }
+  svg.innerHTML = lines;
 }
 addEventListener('resize', () => { if (G.state === 'map') drawRoute(); });
 
@@ -2307,7 +2376,7 @@ function nextAct(){
   const run = G.run;
   if (run.act >= 3) { G.crashReason = 'Run complete'; endRun(true); return; }
   run.act++;
-  run.route = makeRoute();
+  run.route = makeRoute(run.act);
   run.row = -1; run.col = -1; run.node = null;
   toast('Act ' + run.act, 'gold');
   showMap();
