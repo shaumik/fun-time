@@ -125,9 +125,21 @@ derives from the narrow axis in portrait, and camera zoom is bounded by width as
 height so the full street is always framed — at the cost of a smaller car, which is the
 right trade for a top-down game held upright.
 
-Four thumb pads with a 60px floor, shown only while driving. On a phone the primary fail
-state should stay "missed the quota" rather than "fumbled a control", so the pads sit under
-natural thumb positions and the drift pad is the largest target on screen.
+Input is a gesture layer rather than on-screen buttons. Pads require aiming at a target
+while your attention is on the road — in a game where steering is a continuous input and a
+drift has to be held for seconds at a time, that is the wrong demand. The first touch
+becomes a virtual stick wherever it lands: sideways steers (analogue, which the keyboard
+cannot give), pulling back is the handbrake, releasing forward banks, and a second contact
+anywhere is nitro.
+
+Three details make it survivable in practice. The anchor trails the thumb, so the stick
+never saturates somewhere you cannot reach. The handbrake has hysteresis — engage at 42% of
+travel, release at 22% — so an unsteady grip does not chatter the drift on and off. And the
+stick draws itself the moment you touch: a target-free control you cannot see is a control
+you cannot learn, so a ring marks the anchor and a dot shows what it is reading.
+
+On a phone the primary fail state should stay "missed the quota", not "fumbled a control".
+The pad layout is retained behind a menu toggle for anyone who prefers it.
 
 ## Scope of this prototype
 

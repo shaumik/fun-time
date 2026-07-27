@@ -508,8 +508,13 @@ body{
   font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
 }
 
-.mute{
+.opts{
   position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*3);
+  display:flex;gap:calc(var(--u)*.8);
+}
+#btnCtrl{display:none}
+#btnCtrl.show{display:block}
+.mute{
   pointer-events:auto;cursor:pointer;font-family:var(--sans);
   font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
@@ -697,6 +702,28 @@ body{
 @media (hover:none){
   .hudBot .key,.hints,.dhint{display:none}
   .btn .key{display:none}
+}
+
+/* gesture hint — shown once at the start of a run, then it gets out of the way */
+.gsHint{
+  /* sits above the car and clear of the thumb zone it is describing */
+  position:absolute;left:50%;top:30%;transform:translate(-50%,calc(var(--u)*1.2));
+  text-align:center;opacity:0;pointer-events:none;
+  transition:opacity .4s,transform .4s;
+  padding:calc(var(--u)*1.4) calc(var(--u)*2);
+  background:rgba(6,9,18,.72);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid var(--edge);border-radius:calc(var(--u)*.9);
+  max-width:80vw;
+}
+.gsHint.on{opacity:1;transform:translate(-50%,0)}
+.gsHint b{
+  display:block;font-size:calc(var(--u)*1.8);font-weight:800;color:#fff;
+  letter-spacing:.04em;margin-bottom:calc(var(--u)*.5);
+}
+.gsHint span{
+  font-size:calc(var(--u)*1.2);font-weight:700;color:var(--dim);
+  letter-spacing:.1em;text-transform:uppercase;line-height:1.5;
 }
 
 @media (prefers-reduced-motion:reduce){

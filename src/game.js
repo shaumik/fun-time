@@ -28,7 +28,7 @@ const CL = {
 /* ---------------- persistence ---------------- */
 const Save = {
   key:'neonheat.v1',
-  data:{ best:0, deepest:0, coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
+  data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper', up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], runs:0 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -211,6 +211,7 @@ function buildOverlays(){
 window.addEventListener('resize', resize);
 
 /* ---------------- input ---------------- */
+const $ = id => document.getElementById(id);
 const keys = Object.create(null);
 const touch = { left:0, right:0, drift:0, nitro:0 };
 const IN = { steer:0, drift:0, nitro:0 };
@@ -231,6 +232,11 @@ addEventListener('keyup', e => { keys[e.code] = 0; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = 0; });
 
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
+stage.addEventListener('pointerdown', gsDown);
+stage.addEventListener('pointermove', gsMove);
+stage.addEventListener('pointerup', gsUp);
+stage.addEventListener('pointercancel', gsUp);
+stage.addEventListener('lostpointercapture', gsUp);
 
 const touchEl = document.getElementById('touch');
 const hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
@@ -244,12 +250,80 @@ touchEl.querySelectorAll('.tbtn').forEach(b => {
   b.addEventListener('pointerleave', off);
 });
 
+/* ---------------- gesture steering ----------------
+   Fixed pads mean hitting a target while your eyes are on the road, which
+   is the wrong ask on a phone. Instead the first finger down becomes a
+   virtual stick wherever it lands: sideways steers, pulling back is the
+   handbrake, and a second finger anywhere is nitro. Nothing to aim at. */
+const GS = {
+  on:false, id:-1, ax:0, ay:0, x:0, y:0,
+  steer:0, drift:0, nitro:0, extra:new Set()
+};
+const gsMaxX = () => clamp(W * 0.13, 38, 120);   // travel to full lock
+const gsMaxY = () => clamp(W * 0.09, 30, 82);    // travel to full handbrake
+
+function gsReset(){
+  GS.on = false; GS.id = -1; GS.steer = 0; GS.drift = 0; GS.extra.clear();
+}
+function gsDown(e){
+  /* Touch contacts only. A laptop with a touchscreen reports maxTouchPoints
+     but is still driven with the keyboard — a mouse click there should not
+     become a steering input. */
+  if (e.pointerType === 'mouse' || !swipeMode()) return;
+  const hint = $('gsHint');
+  if (hint) hint.classList.remove('on');   // it has served its purpose
+  if (!GS.on) {
+    GS.on = true; GS.id = e.pointerId;
+    GS.ax = GS.x = e.clientX; GS.ay = GS.y = e.clientY;
+    GS.steer = 0; GS.drift = 0;
+    /* capture so the stick keeps tracking if the thumb leaves the element */
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+  } else if (e.pointerId !== GS.id) {
+    GS.extra.add(e.pointerId);            // any second contact = nitro
+  }
+}
+function gsMove(e){
+  if (!GS.on || e.pointerId !== GS.id) return;
+  GS.x = e.clientX; GS.y = e.clientY;
+
+  /* the anchor trails the finger, so the stick never saturates out of reach */
+  const mx = gsMaxX();
+  let dx = GS.x - GS.ax;
+  if (dx >  mx) { GS.ax = GS.x - mx; dx =  mx; }
+  if (dx < -mx) { GS.ax = GS.x + mx; dx = -mx; }
+  GS.steer = clamp(dx / mx, -1, 1);
+
+  const my = gsMaxY();
+  let dy = GS.y - GS.ay;
+  if (dy > my) { GS.ay = GS.y - my; dy = my; }
+  if (dy < -my * 0.6) GS.ay = GS.y + my * 0.6;
+  /* hysteresis so a shaky thumb does not chatter the handbrake */
+  if (!GS.drift && dy > my * 0.42) GS.drift = 1;
+  else if (GS.drift && dy < my * 0.22) GS.drift = 0;
+}
+function gsUp(e){
+  GS.extra.delete(e.pointerId);
+  if (e.pointerId !== GS.id) return;
+  try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
+  GS.on = false; GS.id = -1; GS.steer = 0; GS.drift = 0;
+}
+function swipeMode(){ return hasTouch && Save.data.ctrl !== 'pads'; }
+
 function readInput(){
   const l = keys.ArrowLeft  || keys.KeyA || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
-  IN.steer = (r ? 1 : 0) - (l ? 1 : 0);
-  IN.drift = (keys.Space || keys.ArrowDown || keys.KeyS || touch.drift) ? 1 : 0;
-  IN.nitro = (keys.ShiftLeft || keys.ShiftRight || keys.KeyW || keys.ArrowUp || touch.nitro) ? 1 : 0;
+  let steer = (r ? 1 : 0) - (l ? 1 : 0);
+  let drift = (keys.Space || keys.ArrowDown || keys.KeyS || touch.drift) ? 1 : 0;
+  let nitro = (keys.ShiftLeft || keys.ShiftRight || keys.KeyW || keys.ArrowUp || touch.nitro) ? 1 : 0;
+
+  if (swipeMode() && GS.on) {
+    if (!steer) steer = GS.steer;         // analogue, unlike the keyboard
+    drift = drift || GS.drift;
+    nitro = nitro || (GS.extra.size > 0 ? 1 : 0);
+  }
+  IN.steer = steer;
+  IN.drift = drift;
+  IN.nitro = nitro;
 }
 
 /* ============================================================
@@ -1560,6 +1634,48 @@ function drawThreats(){
   }
 }
 
+/* The stick is invisible until you touch, then it shows exactly where it
+   anchored and what it is reading — otherwise a target-free control is a
+   control you cannot learn. */
+function drawStick(){
+  if (!swipeMode() || !GS.on || G.state !== 'play') return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const r = gsMaxX();
+  const drifting = GS.drift;
+
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = drifting ? hexA(CL.magenta, 0.55) : hexA(CL.cyan, 0.40);
+  ctx.beginPath(); ctx.arc(GS.ax, GS.ay, r, 0, TAU); ctx.stroke();
+
+  /* horizontal track: the axis that is actually doing the steering */
+  ctx.strokeStyle = drifting ? hexA(CL.magenta, 0.30) : hexA(CL.cyan, 0.22);
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(GS.ax - r, GS.ay); ctx.lineTo(GS.ax + r, GS.ay);
+  ctx.stroke();
+
+  const px = GS.ax + GS.steer * r;
+  const py = clamp(GS.y, GS.ay - r, GS.ay + gsMaxY());
+  ctx.strokeStyle = drifting ? hexA(CL.magenta, 0.5) : hexA(CL.cyan, 0.35);
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(GS.ax, GS.ay); ctx.lineTo(px, py); ctx.stroke();
+
+  blitGlow(drifting ? CL.magenta : CL.cyan, px, py, 26, 26, 0.55);
+  ctx.fillStyle = drifting ? CL.magenta : CL.cyan;
+  ctx.beginPath(); ctx.arc(px, py, 9, 0, TAU); ctx.fill();
+
+  if (drifting) {
+    ctx.fillStyle = hexA(CL.magenta, 0.9);
+    ctx.font = '800 ' + Math.round(clamp(H * 0.016, 10, 16)) + 'px ' +
+               'ui-sans-serif,system-ui,-apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('DRIFT', GS.ax, GS.ay + gsMaxY() + 26);
+    ctx.textAlign = 'left';
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 function post(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (plates.length) {
@@ -1594,6 +1710,7 @@ function render(){
   if (QF.city) drawCity();
   bloom();
   drawThreats();
+  drawStick();
   post();
 }
 
@@ -1640,7 +1757,6 @@ function mix(a, b, t){
 /* ============================================================
    UI
    ============================================================ */
-const $ = id => document.getElementById(id);
 const UI = {
   hud:$('hud'), score:$('score'), coins:$('coins'),
   combo:$('combo'), cmult:$('cmult'), cpts:$('cpts'), cfill:$('cfill'),
@@ -1713,7 +1829,12 @@ function renderBuild(){
 /* The pads overlay the whole stage, so they must only exist while driving —
    otherwise they sit on top of the draft cards and swallow taps. */
 function syncTouch(){
-  touchEl.classList.toggle('on', hasTouch && G.state === 'play');
+  touchEl.classList.toggle('on', hasTouch && !swipeMode() && G.state === 'play');
+  if (swipeMode()) {
+    touch.left = touch.right = touch.drift = touch.nitro = 0;
+    /* a wreck or a cleared district must not leave the stick latched */
+    if (G.state !== 'play' && GS.on) gsReset();
+  }
 }
 
 function show(el){ el.classList.remove('hide'); }
@@ -1776,6 +1897,12 @@ function beginDistrict(){
   G.state = 'play';
   UI.hud.classList.remove('off');
   if (G.run.cfg.boss) addBoss();
+  if (swipeMode() && G.run.district === 1) {
+    const el = $('gsHint');
+    el.classList.add('on');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('on'), 5200);
+  }
 }
 
 function clearDistrict(){
@@ -1878,6 +2005,14 @@ function commitCoins(mult){
 /* ---- buttons ---- */
 function setMute(m){ $('btnMute').textContent = m ? 'Sound off' : 'Sound on'; }
 $('btnMute').onclick   = e => { e.stopPropagation(); setMute(NHAudio.toggleMute()); };
+function setCtrlLabel(){
+  $('btnCtrl').textContent = Save.data.ctrl === 'pads' ? 'Controls: pads' : 'Controls: swipe';
+}
+$('btnCtrl').onclick = e => {
+  e.stopPropagation();
+  Save.data.ctrl = Save.data.ctrl === 'pads' ? 'swipe' : 'pads';
+  Save.flush(); setCtrlLabel(); NHAudio.ui(true);
+};
 $('btnGo').onclick     = () => beginDistrict();
 $('btnPlay').onclick   = () => { NHAudio.resume(); startRun(); };
 $('btnAgain').onclick  = () => { commitCoins(1); startRun(); };
@@ -2068,12 +2203,14 @@ function frame(now){
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft);
+setCtrlLabel();
+if (hasTouch) $('btnCtrl').classList.add('show');
 toMenu();
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */
 window.__NH = {
-  G, cam, CARS, Save, QF, setQuality, startRun, toMenu,
+  G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN,
   beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
   get offers(){ return G.offers; }
 };

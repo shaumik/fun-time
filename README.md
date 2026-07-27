@@ -33,8 +33,21 @@ Plays in portrait and landscape on a phone. The stage fills the viewport rather 
 letterboxing to 16:9 — a hard aspect lock turned a 390&times;844 phone into a 390&times;219 strip
 using a quarter of the screen.
 
-- Four on-screen pads (steer left/right, nitro, drift) with a 60px minimum target, appearing
-  only while driving so they never sit over the menus or the draft cards.
+**Controls are gesture-based, not pads.** Fixed buttons ask you to hit a target while your
+eyes are on the road, which is the wrong demand on a phone. Instead the first finger down
+becomes a virtual stick wherever it lands:
+
+| Gesture | Action |
+|---|---|
+| Drag sideways | Steer — analogue, unlike the keyboard |
+| Pull back | Handbrake: hold the drift |
+| Release forward | Straighten up and bank |
+| Second finger, anywhere | Nitro |
+
+The anchor trails your thumb so the stick never saturates out of reach, and the handbrake
+has hysteresis so a shaky grip doesn't chatter it. A ring shows where it anchored and what
+it is reading. The old pad layout is still there behind a **Controls** toggle on the menu.
+
 - The HUD rails stack in portrait, the draft becomes a single column, and keyboard hints are
   hidden on touch devices.
 - `--u`, the unit every UI size derives from, is taken from the narrow axis in portrait;
