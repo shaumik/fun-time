@@ -27,14 +27,29 @@ unlike .io it needs no servers and no concurrency floor to feel alive.
 ## The run
 
 ```
-menu → district brief → drive (quota or boss) → clear → draft 1 of 3 chips → next district
-                             │                                                    │
-                             └── fail (wreck / miss quota / boss escapes) → game over
+menu → ROUTE MAP ─┬─ Run   ─→ contract (boon + bane) → drive → clear → draft → back to map
+                  ├─ Elite ─→ harder contract, rare chip guaranteed
+                  ├─ Depot ─→ fit a free chip, or strip a curse. No driving.
+                  └─ Boss  ─→ pursuit unit at the top of the act
+        3 acts, each a fresh board. Wreck or miss a quota and the run ends.
 ```
 
-**Districts** get longer, hungrier and hotter. Quota grows 1.38× per district while the
-player's build grows through chips — the two curves are meant to stay close, so a run ends
-when the build stops keeping up rather than at a fixed wall.
+**The route is the strategic layer.** A branching board per act, climbed bottom to top, with
+two or three onward nodes at every step. An Elite costs more and pays a rare chip; a Depot
+costs you a district of scoring but repairs your build. If the board is not visible, none of
+those are decisions — which is exactly what the first version got wrong: it was a straight
+line with a draft bolted on the end, and calling that a roguelite was generous.
+
+**Contracts are chosen before you drive, not after.** Each pairs a boon with a bane, both
+stated on the card, and each changes how the district *plays* rather than only what the
+numbers say — Downpour cuts grip but pays +50% a bank, Blackout kills the city lights but
+accelerates the multiplier, Ghost Town empties the streets and raises the quota 45%.
+Risk is the currency: a risk-2 contract clears into a rare chip and a four-card draft, a
+safe one into a standard three.
+
+**Districts** get longer, hungrier and hotter. Quota grows 1.30× per district (×1.45 on an
+Elite) while the player's build grows through chips — the two curves are meant to stay
+close, so a run ends when the build stops keeping up rather than at a fixed wall.
 
 **The bet.** Drift points accrue into a *pending* bank that only pays out when you release
 the drift. Wreck while holding a fat bank and it is gone. Tying the payout to the button
@@ -44,7 +59,8 @@ cash in.
 **Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
 so the correct play is always slightly more dangerous than the comfortable one.
 
-**Chips.** Seventeen across four tags (Engine, Chain, Combo, Heat, Risk, Defence), stacking
+**Chips** are the permanent build, drafted *after* a district — the counterpart to
+contracts, which are temporary and chosen before. Seventeen across four tags (Engine, Chain, Combo, Heat, Risk, Defence), stacking
 up to three deep. Effects are declarative — every chip writes into one flat modifier table
 the physics and scoring read each frame — so builds stack and interact without special
 cases anywhere in the engine.

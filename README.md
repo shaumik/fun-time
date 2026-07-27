@@ -1,8 +1,9 @@
 # NEON HEAT
 
-A drift **roguelite** for web distribution. Climb a ladder of city districts, each demanding
-a points quota banked before the checkpoint. Clear one and you fit a chip from three. Every
-third district is a named pursuit unit with its own mechanic.
+A drift **roguelite** for web distribution. Pick a route through a branching board of city
+districts, sign a contract that pairs a boon with a bane before each one, bank a quota under
+those terms, and draft a chip on the way out. Three acts, each ending in a named pursuit
+unit.
 
 **128 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
 generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
@@ -24,7 +25,7 @@ back to in-memory for the session).
 | <kbd>Space</kbd> or <kbd>S</kbd> | Drift — hold to accrue, release to bank |
 | <kbd>Shift</kbd> or <kbd>W</kbd> | Nitro |
 | <kbd>Enter</kbd> | Start run / leave a district brief |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | Pick a chip at the draft |
+| <kbd>1</kbd>–<kbd>4</kbd> | Pick a chip at the draft |
 | <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
 ## Mobile
@@ -61,6 +62,10 @@ winding up into a spin — that pair is the whole handling model.
 
 Points accrue into a *pending* bank while you hold the drift and only pay out when you
 release. Wreck while holding a fat bank and it is gone.
+
+**Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; a contract
+chosen before every district (boon + bane, stated up front); a chip drafted after. Risk on
+the contract sets the quality of the draft. See [DESIGN.md](DESIGN.md).
 
 ## Layout
 

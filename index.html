@@ -99,6 +99,55 @@
     </div>
   </div>
 
+  <!-- ============ route map ============ -->
+  <div id="map" class="layer screen">
+    <div class="mapIn">
+      <div class="mapHead">
+        <div>
+          <div class="mkicker">Act <b id="mAct">1</b> of 3 &middot; choose your route</div>
+          <h2 class="mtitle" id="mTitle">The Grid</h2>
+        </div>
+        <div class="mstats">
+          <div><span>Score</span><b id="mScore">0</b></div>
+          <div><span>Cleared</span><b id="mCleared">0</b></div>
+        </div>
+      </div>
+      <div class="mapBoard" id="mapBoard">
+        <svg class="mapLines" id="mapLines" preserveAspectRatio="none"></svg>
+        <div class="mapNodes" id="mapNodes"></div>
+      </div>
+      <div class="mapFoot">
+        <div class="build" id="mapBuild"></div>
+        <div class="mapLegend">
+          <i class="lg run"></i>Run
+          <i class="lg elite"></i>Elite
+          <i class="lg depot"></i>Depot
+          <i class="lg boss"></i>Pursuit
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ contract choice ============ -->
+  <div id="contract" class="layer screen">
+    <div class="draftIn">
+      <div class="ckicker" id="cKicker">Dispatch</div>
+      <h2 class="dtitle">Take a contract</h2>
+      <div class="dsub" id="cSub">Choose the terms you drive under</div>
+      <div class="ccards" id="cCards"></div>
+    </div>
+  </div>
+
+  <!-- ============ depot ============ -->
+  <div id="depot" class="layer screen">
+    <div class="draftIn">
+      <div class="ckicker depotk">Depot</div>
+      <h2 class="dtitle">Off the street</h2>
+      <div class="dsub">One service, then back out there</div>
+      <div class="ccards" id="depotCards"></div>
+    </div>
+  </div>
+
   <!-- ============ district brief ============ -->
   <div id="brief" class="layer screen">
     <div class="briefIn">

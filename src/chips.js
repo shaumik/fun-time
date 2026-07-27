@@ -128,6 +128,86 @@ const CURSES = [
     apply(M){ M.zoomMul *= 0.85; } }
 ];
 
+/* ============================================================
+   CONTRACTS
+   Chosen *before* a district, not after. Each is a boon welded to a bane,
+   both stated up front, and each changes how the district actually drives
+   rather than only what the numbers say. This is the wager the player
+   makes going in; chips are the build they keep coming out.
+   ============================================================ */
+const CONTRACTS = [
+  { id:'clear', name:'Clear Night', risk:0,
+    bane:'Nothing out of the ordinary.',
+    boon:'Standard payout.',
+    apply(M, L){} },
+
+  { id:'downpour', name:'Downpour', risk:1,
+    bane:'Wet asphalt — grip down 30%.',
+    boon:'Every bank pays +50%.',
+    apply(M, L){ M.gripMul *= 0.70; M.bankMul += 0.5; L.wet = 1; } },
+
+  { id:'rush', name:'Rush Hour', risk:1,
+    bane:'Twice the traffic.',
+    boon:'Near misses pay triple and refill nitro.',
+    apply(M, L){ M.trafficMul += 1; M.nearMul += 2; M.nearNitro += 0.18; } },
+
+  { id:'blackout', name:'Blackout', risk:1,
+    bane:'City power is out. You drive on headlights.',
+    boon:'The multiplier climbs 60% faster.',
+    apply(M, L){ M.multRate += 0.25; L.blackout = 1; } },
+
+  { id:'dragnet', name:'Dragnet', risk:2,
+    bane:'Pursuit is already on you at Heat 2.',
+    boon:'Heat pays double.',
+    apply(M, L){ M.policeStart += 2; M.heatBonus += 1.0; } },
+
+  { id:'roadworks', name:'Roadworks', risk:2,
+    bane:'The road is littered with spike strips.',
+    boon:'Quota cut by 35%.',
+    apply(M, L){ L.hazards = 1; L.quotaMul *= 0.65; } },
+
+  { id:'ghost', name:'Ghost Town', risk:1,
+    bane:'Quota up 45%.',
+    boon:'Empty streets. Nothing in your way.',
+    apply(M, L){ L.quotaMul *= 1.45; M.trafficMul = 0; } },
+
+  { id:'overpressure', name:'Overpressure', risk:2,
+    bane:'Grip down 20% and the nitro tank will not refill.',
+    boon:'Top speed up 30%.',
+    apply(M, L){ M.gripMul *= 0.80; M.nitroRegen = 0; M.topMul += 0.30; } },
+
+  { id:'hairpin', name:'Hair Trigger', risk:2,
+    bane:'Touching a barrier ends your chain outright.',
+    boon:'The shallowest slide counts as a drift.',
+    apply(M, L){ M.brittle = 1; M.driftThresh = 0.09; } },
+
+  { id:'narrows', name:'The Narrows', risk:2,
+    bane:'Streets 25% tighter.',
+    boon:'The multiplier ceiling comes off — ×25.',
+    apply(M, L){ M.roadMul *= 0.75; M.multCap = Math.max(M.multCap, 25); } }
+];
+
+/* Offer a safe option alongside real wagers, weighted by how deep the run
+   is — later districts stop offering the free ride. */
+function rollContracts(district, elite){
+  const pool = CONTRACTS.filter(c => c.id !== 'clear');
+  const picks = [];
+  const used = new Set();
+  const want = 3;
+
+  if (!elite && district <= 2) { picks.push(CONTRACTS[0]); used.add('clear'); }
+
+  while (picks.length < want && used.size < CONTRACTS.length) {
+    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1));
+    if (!avail.length) break;
+    const c = avail[Math.floor(Math.random() * avail.length)];
+    used.add(c.id);
+    picks.push(c);
+  }
+  return picks;
+}
+const contractById = id => CONTRACTS.find(c => c.id === id);
+
 const byId = id => CHIPS.find(c => c.id === id);
 const curseById = id => CURSES.find(c => c.id === id);
 
@@ -135,7 +215,7 @@ const RARITY_W = { common: 60, uncommon: 30, rare: 10 };
 
 /* Draft three offers, no duplicates, skipping anything already maxed.
    Odds of an Overclocked (chip + curse) offer climb as the run deepens. */
-function roll(owned, district, takenCurses){
+function roll(owned, district, takenCurses, count, rareBias){
   const pool = CHIPS.filter(c => {
     const held = owned.filter(o => o === c.id).length;
     if (c.id === 'redline' || c.id === 'static') return held < 1;  // binary effects
@@ -144,13 +224,16 @@ function roll(owned, district, takenCurses){
 
   const picks = [];
   const used = new Set();
-  for (let n = 0; n < 3 && pool.length; n++) {
+  const want = count || 3;
+  /* hazard pay: a risky contract or an elite skews the table toward rares */
+  const W = rareBias ? { common: 18, uncommon: 38, rare: 44 } : RARITY_W;
+  for (let n = 0; n < want && pool.length; n++) {
     let total = 0;
     const avail = pool.filter(c => !used.has(c.id));
     if (!avail.length) break;
-    for (const c of avail) total += RARITY_W[c.rarity];
+    for (const c of avail) total += W[c.rarity];
     let r = Math.random() * total, chosen = avail[0];
-    for (const c of avail) { r -= RARITY_W[c.rarity]; if (r <= 0) { chosen = c; break; } }
+    for (const c of avail) { r -= W[c.rarity]; if (r <= 0) { chosen = c; break; } }
     used.add(chosen.id);
 
     /* one offer at most per draft carries a curse, and never on district 1 */
@@ -166,12 +249,22 @@ function roll(owned, district, takenCurses){
   return picks;
 }
 
-function build(ownedIds, curseIds){
-  const M = defaults();
-  for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
-  for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
-  return M;
+/* Level params a contract can bend, separate from the persistent modifier
+   table so they reset when the district ends. */
+function levelDefaults(){
+  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0 };
 }
 
-return { defaults, CHIPS, CURSES, byId, curseById, roll, build };
+function build(ownedIds, curseIds, contractId){
+  const M = defaults();
+  const L = levelDefaults();
+  for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
+  for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
+  const k = contractById(contractId);
+  if (k) k.apply(M, L);
+  return { M, L };
+}
+
+return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS,
+         byId, curseById, contractById, roll, rollContracts, build };
 })();

@@ -338,9 +338,9 @@ addEventListener('keydown', e => {
     if (G.state === 'menu' || G.state === 'over') startRun();
     else if (G.state === 'brief') beginDistrict();
   }
-  if (G.state === 'draft' && /^Digit[123]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
+  if (G.state === 'draft' && /^Digit[1234]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
-  if (e.code === 'Escape' && (G.state === 'play' || G.state === 'brief')) toMenu();
+  if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
@@ -703,28 +703,94 @@ const BOSSES = [
     blurb:'Faster than you, and it brought friends.' }
 ];
 
-function districtCfg(n){
-  const boss = n % 3 === 0;
-  const bi = Math.floor(n / 3) - 1;
+function districtCfg(n, type, act){
+  const boss = type === 'boss';
+  const bi = act - 1;
+  const elite = type === 'elite';
   return {
-    n, boss,
+    n, boss, elite, type,
     name: boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length],
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
-    len: Math.round(420 + n * 34),
-    quota: Math.round(2600 * Math.pow(1.38, n - 1)),
+    len: Math.round(400 + n * 26),
+    /* Elites cost more and pay a rare chip; the route choice has to bite */
+    quota: Math.round(2600 * Math.pow(1.30, n - 1) * (elite ? 1.45 : 1)),
     bossHp: Math.round(6500 * Math.pow(1.55, Math.max(0, bi))),
-    heatFloor: Math.min(2, Math.floor((n - 1) / 3))
+    heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
+}
+
+/* ============================================================
+   THE ROUTE
+   A branching board per act, climbed bottom to top. Which node you take
+   is the strategic layer: an Elite is harder but pays a rare chip, a
+   Depot costs you a district of scoring but repairs your build. Without
+   a visible route none of those are decisions.
+   ============================================================ */
+const ACT_NAMES = ['The Grid', 'Ironside', 'Terminus'];
+const NODE_ICON = { run:'▲', elite:'◆', depot:'⬢', boss:'✶' };
+const NODE_CAP  = { run:'Run', elite:'Elite', depot:'Depot', boss:'Pursuit' };
+const ROWS = 5;
+
+function pickNodeType(row){
+  if (row === 0) return 'run';
+  const r = Math.random();
+  if (row === ROWS - 2) return r < 0.55 ? 'depot' : 'elite';   // breather before the boss
+  if (r < 0.50) return 'run';
+  if (r < 0.78) return 'elite';
+  return 'depot';
+}
+
+function makeRoute(){
+  const rows = [];
+  for (let r = 0; r < ROWS; r++) {
+    if (r === ROWS - 1) { rows.push([{ type:'boss' }]); continue; }
+    const n = r === 0 ? 2 : (Math.random() < 0.45 ? 3 : 2);
+    const row = [];
+    for (let i = 0; i < n; i++) row.push({ type: pickNodeType(r) });
+    rows.push(row);
+  }
+  /* connect each node forward, then guarantee every node is reachable so
+     the board never contains a dead branch */
+  for (let r = 0; r < ROWS - 1; r++) {
+    const a = rows[r], b = rows[r + 1];
+    a.forEach((node, i) => {
+      const centre = a.length === 1 ? 0
+        : Math.round(i / (a.length - 1) * (b.length - 1));
+      const set = new Set([centre]);
+      if (Math.random() < 0.62 && centre > 0) set.add(centre - 1);
+      if (Math.random() < 0.62 && centre < b.length - 1) set.add(centre + 1);
+      node.next = [...set];
+    });
+    b.forEach((_, j) => {
+      if (a.some(n => n.next.includes(j))) return;
+      const i = a.length === 1 ? 0
+        : Math.min(a.length - 1, Math.round(j / Math.max(1, b.length - 1) * (a.length - 1)));
+      a[i].next.push(j);
+    });
+  }
+  rows.forEach((row, r) => row.forEach((n, c) => { n.row = r; n.col = c; n.done = false; }));
+  return rows;
 }
 
 function newRun(){
   return {
-    district: 0,
-    chips: [], curses: [],
-    M: NHChips.defaults(),
+    act: 1, route: makeRoute(), row: -1, col: -1,
+    node: null, district: 0,
+    chips: [], curses: [], contract: null,
+    M: NHChips.defaults(), L: NHChips.levelDefaults(),
     cfg: null, quota: 0, banked: 0, startIdx: 0,
     cleared: 0, crumpleLeft: 0
   };
+}
+
+/* which nodes the player may take from where they are standing */
+function openNodes(){
+  const run = G.run;
+  if (!run) return [];
+  if (run.row < 0) return run.route[0].map((_, c) => ({ row:0, col:c }));
+  const cur = run.route[run.row][run.col];
+  if (run.row >= ROWS - 1) return [];
+  return (cur.next || []).map(c => ({ row: run.row + 1, col: c }));
 }
 
 function newWorld(ai){
@@ -753,6 +819,8 @@ const baseZoom = () => clamp(Math.min(H / 640, W / 900), 0.40, 1.5)
 /* sit the car lower when there is vertical room to spare, to see further ahead */
 const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
 const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
+/* level conditions set by the chosen contract, reset when the district ends */
+const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults());
 
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
@@ -897,7 +965,7 @@ function stepHazards(dt){
   const car = G.car;
   for (let i = G.hazards.length - 1; i >= 0; i--) {
     const h = G.hazards[i];
-    h.life -= dt;
+    if (h.life < 9000) h.life -= dt;   // seeded strips are permanent for the district
     if (h.life <= 0 || h.hit) { G.hazards.splice(i, 1); continue; }
     if (G.state !== 'play' || G.ai || car.inv > 0) continue;
     if (hyp(h.x - car.x, h.y - car.y) < 46) {
@@ -1305,6 +1373,30 @@ function drawRoad(){
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 
+  /* wet asphalt throws long reflections of the barrier neon */
+  if (LVL().wet) {
+    ctx.save();
+    ctx.clip();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = roadHalf(p) * side * 0.62;
+        if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
+        else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
+      }
+      ctx.strokeStyle = hexA(side < 0 ? CL.cyan : CL.magenta, 0.13);
+      ctx.lineWidth = 46;
+      ctx.setLineDash([70, 34]);
+      ctx.lineDashOffset = -(G.dist * 0.35) % 104;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+  }
+
   /* lane divider + centre dashes */
   ctx.strokeStyle = 'rgba(198,210,232,0.13)';
   ctx.lineWidth = 2.5;
@@ -1380,7 +1472,7 @@ function drawParticles(){
 
 function drawHazards(){
   for (const h of G.hazards) {
-    const fade = clamp(h.life / 1.6, 0, 1);
+    const fade = clamp(Math.min(h.life, 1.6) / 1.6, 0, 1);
     ctx.save();
     ctx.translate(h.x, h.y);
     ctx.rotate(h.a);
@@ -1591,7 +1683,7 @@ function drawCity(){
       ctx.fillStyle = i % 2 ? '#141A2D' : '#0F1424';
       ctx.fill();
 
-      if (bd.lit && QF.windows) {
+      if (bd.lit && QF.windows && !LVL().blackout) {
         ctx.save();
         ctx.clip();
         /* dashed rows read as lit windows; solid rows read as wireframe */
@@ -1621,7 +1713,7 @@ function drawCity(){
     ctx.fill();
 
     /* neon roofline — the city's whole read comes from this one stroke */
-    if (bd.lit) {
+    if (bd.lit && !LVL().blackout) {
       ctx.strokeStyle = hexA(bd.hue, 1);
       ctx.lineWidth = Math.max(1.2, 2.4 * cam.zoom);
       ctx.stroke();
@@ -1634,15 +1726,17 @@ function drawCity(){
   }
 
   /* depth fog: the top of the screen is the far distance, so fade it out */
+  const dark = LVL().blackout;
   const fog = ctx.createLinearGradient(0, 0, 0, camY() * 0.84);
-  fog.addColorStop(0,    'rgba(5,6,14,0.72)');
-  fog.addColorStop(0.45, 'rgba(5,6,14,0.30)');
+  fog.addColorStop(0,    dark ? 'rgba(5,6,14,0.95)' : 'rgba(5,6,14,0.72)');
+  fog.addColorStop(0.45, dark ? 'rgba(5,6,14,0.62)' : 'rgba(5,6,14,0.30)');
   fog.addColorStop(1,    'rgba(5,6,14,0)');
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, W, camY() * 0.84);
 }
 
 function drawLamps(){
+  if (LVL().blackout) return;          // the power is out, that is the point
   const [a, b] = visibleRange();
   ctx.globalCompositeOperation = 'lighter';
   for (let i = a; i <= b; i++) {
@@ -1878,6 +1972,7 @@ const UI = {
   heat:$('heat'), spd:$('spd'), nfill:$('nfill'), toasts:$('toasts'),
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
+  map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), dchip:$('dchip'), build:$('build')
 };
@@ -1923,9 +2018,10 @@ function syncHUD(){
 }
 
 /* the build rail — a roguelite is unreadable if you cannot see your own deck */
-function renderBuild(){
+function renderBuild(target){
+  const el = target || UI.build;
   const run = G.run;
-  if (!run) { UI.build.innerHTML = ''; return; }
+  if (!run) { el.innerHTML = ''; return; }
   const counts = {};
   for (const id of run.chips) counts[id] = (counts[id] || 0) + 1;
   let html = '';
@@ -1938,7 +2034,7 @@ function renderBuild(){
     const c = NHChips.curseById(id);
     html += '<i class="curse">' + c.name + '</i>';
   }
-  UI.build.innerHTML = html;
+  el.innerHTML = html || '<i style="opacity:.5">No chips yet</i>';
 }
 
 /* The pads overlay the whole stage, so they must only exist while driving —
@@ -1960,6 +2056,7 @@ function toMenu(){
   G.run = null;
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
+  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
@@ -1970,15 +2067,212 @@ function startRun(){
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false;
   shownScore = 0;
-  nextDistrict();
+  showMap();
 }
 
-/* ---- district lifecycle ---- */
-function nextDistrict(){
+/* ============================================================
+   MAP SCREEN
+   ============================================================ */
+function showMap(){
+  const run = G.run;
+  G.state = 'map';
+  UI.hud.classList.add('off');
+  hide(UI.draft); hide(UI.contract); hide(UI.depot); hide(UI.brief);
+  $('mAct').textContent = run.act;
+  $('mTitle').textContent = ACT_NAMES[(run.act - 1) % ACT_NAMES.length];
+  $('mScore').textContent = fmt(G.score);
+  $('mCleared').textContent = run.cleared;
+  renderBuild(UI.mapBuild);
+  show(UI.map);
+  requestAnimationFrame(drawRoute);   // needs layout before it can measure
+}
+
+function nodePos(row, col, w, h){
+  const rows = G.run.route;
+  const padY = h * 0.11;
+  /* row 0 sits at the bottom, the boss at the top */
+  const y = h - padY - (row / (ROWS - 1)) * (h - padY * 2);
+  const n = rows[row].length;
+  /* Spread by how many nodes the row holds rather than across the full
+     width — two nodes pinned to the screen edges left a dead middle and
+     made the branches hard to trace. */
+  const spread = n === 1 ? 0 : n === 2 ? 0.36 : 0.60;
+  const t = n === 1 ? 0.5 : col / (n - 1);
+  const jitter = n > 1 ? Math.sin((row * 7 + col * 3) * 1.7) * w * 0.03 : 0;
+  return { x: w / 2 + (t - 0.5) * w * spread + jitter, y };
+}
+
+function drawRoute(){
+  const run = G.run;
+  if (!run || G.state !== 'map') return;
+  const board = $('mapBoard');
+  const w = board.clientWidth, h = board.clientHeight;
+  if (!w || !h) { requestAnimationFrame(drawRoute); return; }
+
+  const open = openNodes();
+  const isOpen = (r, c) => open.some(o => o.row === r && o.col === c);
+
+  const svg = $('mapLines');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  let lines = '';
+  for (let r = 0; r < ROWS - 1; r++) {
+    run.route[r].forEach((node, c) => {
+      const a = nodePos(r, c, w, h);
+      (node.next || []).forEach(nc => {
+        const b = nodePos(r + 1, nc, w, h);
+        /* highlight only the edges you can actually take right now */
+        const cls = (run.row === r && run.col === c && isOpen(r + 1, nc)) ? 'open'
+                  : (node.done && run.route[r + 1][nc].done) ? 'taken' : '';
+        lines += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="${cls}"/>`;
+      });
+    });
+  }
+  svg.innerHTML = lines;
+
+  const wrap = $('mapNodes');
+  wrap.innerHTML = '';
+  run.route.forEach((row, r) => row.forEach((node, c) => {
+    const p = nodePos(r, c, w, h);
+    const here = run.row === r && run.col === c;
+    const can = isOpen(r, c);
+    const el = document.createElement('button');
+    el.className = 'mnode ' + node.type +
+      (can ? ' open' : '') + (node.done ? ' done' : '') + (here ? ' here' : '');
+    el.style.left = p.x + 'px';
+    el.style.top = p.y + 'px';
+    el.disabled = !can;
+    el.innerHTML = `<span class="dot">${NODE_ICON[node.type]}</span>` +
+                   `<span class="cap">${NODE_CAP[node.type]}</span>`;
+    if (can) el.onclick = () => enterNode(r, c);
+    wrap.appendChild(el);
+  }));
+}
+addEventListener('resize', () => { if (G.state === 'map') drawRoute(); });
+
+/* ============================================================
+   ENTERING A NODE
+   ============================================================ */
+function enterNode(row, col){
+  const run = G.run;
+  run.row = row; run.col = col;
+  run.node = run.route[row][col];
+  NHAudio.ui(true);
+  hide(UI.map);
+  if (run.node.type === 'depot') showDepot();
+  else showContract();
+}
+
+/* ---- contract: the boon/bane wager taken before driving ---- */
+function showContract(){
+  const run = G.run;
+  const elite = run.node.type === 'elite';
+  const boss  = run.node.type === 'boss';
+  G.state = 'contract';
+  G.offers = NHChips.rollContracts(run.district + 1, elite || boss);
+
+  $('cKicker').className = 'ckicker' + (elite || boss ? ' elitek' : '');
+  $('cKicker').textContent = boss ? 'Pursuit inbound' : elite ? 'High risk dispatch' : 'Dispatch';
+  $('cSub').textContent = boss
+    ? 'Terms still apply while it hunts you'
+    : 'Choose the terms you drive under';
+
+  const wrap = $('cCards');
+  wrap.innerHTML = '';
+  G.offers.forEach((k, i) => {
+    const el = document.createElement('button');
+    el.className = 'ccard r' + k.risk;
+    el.innerHTML =
+      '<div class="crisk">Risk' +
+        [0,1,2].map(n => '<i class="' + (n < k.risk ? 'on' : '') + '"></i>').join('') +
+      '</div>' +
+      '<div class="cname">' + k.name + '</div>' +
+      '<div class="cline bane"><b>Bane</b><span>' + k.bane + '</span></div>' +
+      '<div class="cline boon"><b>Boon</b><span>' + k.boon + '</span></div>' +
+      '<div class="cpay">Clears into ' + (k.risk >= 2 ? 'a rare chip' : k.risk === 1 ? 'an upgraded draft' : 'a standard draft') + '</div>';
+    el.onclick = () => takeContract(i);
+    wrap.appendChild(el);
+  });
+  show(UI.contract);
+}
+
+function takeContract(i){
+  const k = G.offers[i];
+  if (!k) return;
+  G.run.contract = k.id;
+  NHAudio.chip();
+  hide(UI.contract);
+  beginNode();
+}
+
+/* ---- depot: repair the build instead of scoring ---- */
+function showDepot(){
+  const run = G.run;
+  G.state = 'depot';
+  const wrap = $('depotCards');
+  wrap.innerHTML = '';
+
+  const opts = [];
+  opts.push({
+    name: 'Salvage rack', risk: 0,
+    bane: 'You bank nothing here.',
+    boon: 'Fit a chip from four, no driving.',
+    pay: 'Free chip',
+    go(){
+      hide(UI.depot);
+      run.node.done = true;
+      showDraft(4, false, () => { advance(); });
+    }
+  });
+  if (run.curses.length) {
+    opts.push({
+      name: 'Strip a curse', risk: 0,
+      bane: 'You bank nothing here.',
+      boon: 'Cut one curse out of your build for good.',
+      pay: run.curses.length + ' fitted',
+      go(){
+        const gone = run.curses.pop();
+        run.M = NHChips.build(run.chips, run.curses).M;
+        G.car.mods = run.M;
+        toast('Stripped ' + NHChips.curseById(gone).name, 'gold');
+        NHAudio.clear();
+        hide(UI.depot);
+        run.node.done = true;
+        advance();
+      }
+    });
+  }
+  opts.push({
+    name: 'Push on', risk: 1,
+    bane: 'Nothing repaired.',
+    boon: 'Skip ahead and keep the heat off.',
+    pay: 'No cost',
+    go(){ hide(UI.depot); run.node.done = true; advance(); }
+  });
+
+  opts.forEach(o => {
+    const el = document.createElement('button');
+    el.className = 'ccard r' + o.risk;
+    el.innerHTML =
+      '<div class="crisk">Service</div>' +
+      '<div class="cname">' + o.name + '</div>' +
+      '<div class="cline bane"><b>Cost</b><span>' + o.bane + '</span></div>' +
+      '<div class="cline boon"><b>Gain</b><span>' + o.boon + '</span></div>' +
+      '<div class="cpay">' + o.pay + '</div>';
+    el.onclick = () => { NHAudio.ui(true); o.go(); };
+    wrap.appendChild(el);
+  });
+  show(UI.depot);
+}
+
+/* ---- start the district described by the current node + contract ---- */
+function beginNode(){
   const run = G.run;
   run.district++;
-  run.cfg = districtCfg(run.district);
-  run.quota = run.cfg.quota;
+  run.cfg = districtCfg(run.district, run.node.type, run.act);
+
+  const built = NHChips.build(run.chips, run.curses, run.contract);
+  run.M = built.M; run.L = built.L;
+  run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
   run.crumpleLeft = run.M.crumple;
 
@@ -1987,8 +2281,36 @@ function nextDistrict(){
   G.car.topBonus = 0;
   G.heat = run.cfg.heatFloor + run.M.policeStart;
   G.tier = Math.min(3, Math.floor(G.heat));
+  if (run.L.hazards) seedHazards();
 
   showBrief();
+}
+
+/* Roadworks scatters strips across the district up front, so the bane is
+   visible from the first corner rather than sprung on you later. */
+function seedHazards(){
+  for (let i = 0; i < 26; i++) {
+    const idx = G.car.idx + 40 + i * 14 + rint(-5, 5);
+    const p = G.track.at(idx, rnd(-0.72, 0.72) * roadHalf(G.track.pts[Math.min(idx, G.track.pts.length - 1)]));
+    G.hazards.push({ x:p.x, y:p.y, a:p.a, life:9999, hit:0 });
+  }
+}
+
+/* advance the marker and go back to the board */
+function advance(){
+  const run = G.run;
+  if (run.row >= ROWS - 1) { nextAct(); return; }
+  showMap();
+}
+
+function nextAct(){
+  const run = G.run;
+  if (run.act >= 3) { G.crashReason = 'Run complete'; endRun(true); return; }
+  run.act++;
+  run.route = makeRoute();
+  run.row = -1; run.col = -1; run.node = null;
+  toast('Act ' + run.act, 'gold');
+  showMap();
 }
 
 function showBrief(){
@@ -1999,8 +2321,10 @@ function showBrief(){
   $('bname').textContent = cfg.name;
   $('bobj').innerHTML = cfg.boss
     ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks.</b>'
-    : 'Bank <b>' + fmt(cfg.quota) + '</b> before the checkpoint.';
-  $('bsub').textContent = cfg.boss ? cfg.bossDef.sub : 'Heat floor ' + cfg.heatFloor;
+    : 'Bank <b>' + fmt(G.run.quota) + '</b> before the checkpoint.';
+  const k = NHChips.contractById(G.run.contract);
+  $('bsub').textContent = (cfg.boss ? cfg.bossDef.sub : cfg.elite ? 'Elite run' : 'Standard run') +
+    (k && k.id !== 'clear' ? '  ·  ' + k.name : '');
   UI.brief.classList.toggle('bossBrief', !!cfg.boss);
   renderBuild();
   show(UI.brief);
@@ -2022,13 +2346,19 @@ function beginDistrict(){
 
 function clearDistrict(){
   if (G.state !== 'play') return;
-  G.run.cleared++;
-  G.state = 'draft';
+  const run = G.run;
+  run.cleared++;
+  if (run.node) run.node.done = true;
   G.pending = 0; G.chain = 0; G.mult = 1;
   UI.hud.classList.add('off');
   NHAudio.clear();
   G.flash = 0.5;
-  showDraft();
+
+  /* the wager pays out here: risk and node type set the draft quality */
+  const k = NHChips.contractById(run.contract);
+  const risk = k ? k.risk : 0;
+  const rare = risk >= 2 || run.node.type === 'elite' || run.node.type === 'boss';
+  showDraft(risk >= 1 ? 4 : 3, rare, () => advance());
 }
 
 function failDistrict(why){
@@ -2043,12 +2373,18 @@ function failDistrict(why){
 }
 
 /* ---- the draft ---- */
-function showDraft(){
+let draftDone = null;
+function showDraft(count, rareBias, done){
   const run = G.run;
-  G.offers = NHChips.roll(run.chips, run.district, run.curses);
+  G.state = 'draft';
+  draftDone = done || (() => advance());
+  G.offers = NHChips.roll(run.chips, run.district, run.curses, count || 3, !!rareBias);
   const wrap = $('dcards');
   wrap.innerHTML = '';
-  $('dsub').textContent = 'District ' + run.district + ' cleared — ' + fmt(run.banked) + ' banked';
+  $('dsub').textContent = rareBias
+    ? 'Hazard pay — the good stuff'
+    : 'District ' + run.district + ' cleared — ' + fmt(run.banked) + ' banked';
+  wrap.style.gridTemplateColumns = 'repeat(' + Math.min(G.offers.length, 4) + ',1fr)';
 
   G.offers.forEach((offer, i) => {
     const c = offer.chip;
@@ -2070,18 +2406,20 @@ function showDraft(){
 
 function takeOffer(i){
   const offer = G.offers[i];
-  if (!offer) return;
+  if (!offer || G.state !== 'draft') return;
   const run = G.run;
   run.chips.push(offer.chip.id);
   if (offer.curse) { run.curses.push(offer.curse.id); NHAudio.curse(); }
   else NHAudio.chip();
-  run.M = NHChips.build(run.chips, run.curses);
+  run.M = NHChips.build(run.chips, run.curses).M;
   hide(UI.draft);
-  nextDistrict();
+  const cb = draftDone; draftDone = null;
+  if (cb) cb();
 }
 
-function endRun(){
+function endRun(won){
   G.state = 'over';
+  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.draft); hide(UI.brief);
   const isBest = G.score > Save.data.best;
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
@@ -2095,8 +2433,9 @@ function endRun(){
              : G.crashReason === 'wall' ? 'Wall'
              : G.crashReason || 'Busted';
   $('ovKicker').textContent = kick;
+  $('ovKicker').textContent = won ? 'City cleared' : kick;
   $('ovRank').textContent = G.run
-    ? 'Reached district ' + G.run.district + ' — ' + G.run.cleared + ' cleared'
+    ? 'Act ' + G.run.act + '  ·  ' + G.run.cleared + ' districts cleared'
     : '';
   $('ovScore').textContent = fmt(G.score);
   $('ovBest').textContent = fmt(Save.data.best);
@@ -2360,7 +2699,7 @@ try {
 Ads.boot();
 resize();
 newWorld(true);
-hide(UI.brief); hide(UI.draft);
+hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
 setCtrlLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
@@ -2372,7 +2711,8 @@ window.__NH = {
   G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
   get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
-  beginDistrict, takeOffer, districtCfg, nextDistrict, showDraft, bank,
+  beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
+  takeContract, openNodes, advance,
   get offers(){ return G.offers; }
 };
 })();
