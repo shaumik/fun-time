@@ -199,20 +199,42 @@
 
   <!-- ============ garage ============ -->
   <div id="garage" class="layer screen">
-    <div class="panel wide">
-      <div class="gHead">
-        <h2>Garage</h2>
-        <div class="gCoins"><span>Balance</span><b class="amber" id="gCoins">0</b></div>
+    <div class="gPanel">
+      <!-- pinned: the way out and the number you are spending never scroll away -->
+      <div class="gTop">
+        <div class="gId">
+          <span class="gKick">Garage</span>
+          <b id="gCarName">Viper</b>
+        </div>
+        <div class="gBal">
+          <span>Balance</span>
+          <b class="amber" id="gCoins">0</b>
+        </div>
+        <div class="gAct">
+          <button class="btn" id="btnBack">Menu</button>
+          <button class="btn primary" id="btnRace">Roll out<span class="key">Enter</span></button>
+        </div>
       </div>
-      <div class="gSec"><h3>Chassis</h3><span>Pick what you drive</span></div>
-      <div class="gCars" id="gCars"></div>
-      <div class="gSec"><h3>Tuning</h3><span>Five levels each, permanent</span></div>
-      <div class="gUps" id="gUps"></div>
-      <div class="gSec"><h3>Hardware</h3><span>Bought once, fitted for every run after</span></div>
-      <div class="gGear" id="gGear"></div>
-      <div class="gFoot">
-        <button class="btn primary" id="btnRace">Roll out</button>
-        <button class="btn" id="btnBack">Menu</button>
+
+      <div class="gTabs" id="gTabs" role="tablist">
+        <button class="gTab on" data-t="cars" role="tab">Chassis<em id="tabCars"></em></button>
+        <button class="gTab" data-t="ups" role="tab">Tuning<em id="tabUps"></em></button>
+        <button class="gTab" data-t="gear" role="tab">Hardware<em id="tabGear"></em></button>
+      </div>
+
+      <div class="gBody">
+        <div class="gPane on" data-p="cars">
+          <p class="gLead">Each chassis trades speed against grip and bulk. Buying one equips it.</p>
+          <div class="gCars" id="gCars"></div>
+        </div>
+        <div class="gPane" data-p="ups">
+          <p class="gLead">Five levels each. Permanent, and they carry across every run.</p>
+          <div class="gUps" id="gUps"></div>
+        </div>
+        <div class="gPane" data-p="gear">
+          <p class="gLead">Bought once, fitted forever. Each one changes how a run plays rather than what a number says.</p>
+          <div class="gGear" id="gGear"></div>
+        </div>
       </div>
     </div>
   </div>

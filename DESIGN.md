@@ -185,6 +185,17 @@ Three tiers of spend, in ascending permanence: **chassis** (four cars), **tuning
 tracks, five levels each), and **hardware** — bought once, fitted forever, and each one
 changes a verb rather than a number.
 
+It is laid out as a shop screen, not a settings panel. The first version stacked all three
+categories in one 1,300px scroll with **Roll out** at the bottom, which put the button that
+starts the game behind everything you might buy. Now the action bar is pinned — the way out
+and the balance you are spending never scroll away — and the categories are tabs. Each tab
+carries a count, and an amber badge wherever there is something you can afford right now,
+so a locked category does not look the same as an empty one. Anything out of reach states
+the shortfall as a number rather than just dimming. Chassis cards mark in amber the stats
+where that car beats the one you currently drive, because a column of pips means nothing
+without the comparison. The panel is top-aligned rather than centred: the panes differ a
+lot in height, and centring made the action bar jump on every tab switch.
+
 | Hardware | Cost | What it does |
 |---|---|---|
 | Ram Prow | 2,400 | Wrecks pay +25% and cost a fifth less hull. |

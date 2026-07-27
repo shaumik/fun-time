@@ -3094,75 +3094,105 @@ function previewCar(g, v){
   g.restore();
 }
 
-function renderGarage(){
-  $('gCoins').textContent = fmt(Save.data.coins);
+let gTab = 'cars';
 
+function renderGarage(){
+  const bal = Save.data.coins;
+  const cur = carById(Save.data.car);
+  $('gCoins').textContent = fmt(bal);
+  $('gCarName').textContent = cur.name;
+
+  /* ---- chassis ---- */
   const wrap = $('gCars');
   wrap.innerHTML = '';
   for (const c of CARS) {
     const owned = Save.data.owned.includes(c.id);
     const sel = Save.data.car === c.id;
-    const broke = !owned && Save.data.coins < c.price;
+    const broke = !owned && bal < c.price;
     const el = document.createElement('div');
-    el.className = 'car' + (sel ? ' sel' : '') + (owned ? '' : ' locked') + (broke ? ' broke' : '');
+    el.className = 'car' + (sel ? ' sel' : '') + (broke ? ' broke' : '');
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
     el.innerHTML =
       '<canvas width="220" height="120"></canvas>' +
       '<div class="nm">' + c.name + '</div>' +
-      '<div class="pr' + (owned ? ' owned' : '') + '">' + (owned ? (sel ? 'Equipped' : 'Owned') : fmt(c.price)) + '</div>' +
+      '<div class="pr' + (owned ? ' owned' : '') + '">' +
+        (owned ? (sel ? 'Equipped' : 'Equip') : fmt(c.price)) + '</div>' +
+      /* pips past the equipped car's rating are amber, so a card says at a
+         glance what this chassis gains and gives up against what you drive */
       '<div class="st">' + STAT_LABELS.map((lab, k) =>
         '<div class="row"><span>' + lab + '</span><b>' +
-        Array.from({ length:5 }, (_, i) => '<i class="' + (i < c.stats[k] ? 'on' : '') + '"></i>').join('') +
+        Array.from({ length:5 }, (_, i) => {
+          const on = i < c.stats[k];
+          const better = on && i >= cur.stats[k] && !sel;
+          return '<i class="' + (better ? 'gain' : on ? 'on' : '') + '"></i>';
+        }).join('') +
         '</b></div>').join('') + '</div>';
-    el.onclick = () => {
-      if (owned) { Save.data.car = c.id; }
-      else if (Save.data.coins >= c.price) {
+    const pick = () => {
+      if (owned) { Save.data.car = c.id; NHAudio.ui(true); }
+      else if (bal >= c.price) {
         Save.data.coins -= c.price;
         Save.data.owned.push(c.id);
         Save.data.car = c.id;
+        NHAudio.ui(true);
         toast(c.name + ' unlocked', 'gold');
       } else {
-        toast('Not enough coins', 'red');
+        toast('Short ' + fmt(c.price - bal) + ' coins', 'red');
+        NHAudio.ui(false);
         return;
       }
       Save.flush();
       G.spec = activeSpec();
       renderGarage();
     };
+    el.onclick = pick;
+    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
     wrap.appendChild(el);
     drawPreview(el.querySelector('canvas'), c);
   }
 
+  /* ---- tuning ---- */
   const ups = $('gUps');
   ups.innerHTML = '';
+  let upLvl = 0, upBuyable = false;
   for (const u of UPGRADES) {
     const lvl = Save.data.up[u.id];
+    upLvl += lvl;
     const maxed = lvl >= UP_MAX;
     const cost = upCost(u, lvl);
-    const afford = Save.data.coins >= cost;
+    const afford = bal >= cost;
+    if (!maxed && afford) upBuyable = true;
     const el = document.createElement('div');
-    el.className = 'up';
+    el.className = 'up' + (maxed ? ' maxed' : '');
     el.innerHTML =
-      '<div class="info"><div class="nm">' + u.name + '</div>' +
-      '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
-        '<i class="' + (i < lvl ? 'on' : '') + '"></i>').join('') + '</div></div>' +
-      '<button ' + (maxed || !afford ? 'disabled' : '') + '>' + (maxed ? 'Max' : fmt(cost)) + '</button>';
+      '<div class="info">' +
+        '<div class="nm">' + u.name + '</div>' +
+        '<div class="ds">' + u.desc + '</div>' +
+        '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
+          '<i class="' + (i < lvl ? 'on' : '') + '"></i>').join('') + '</div>' +
+      '</div>' +
+      '<button ' + (maxed || !afford ? 'disabled' : '') + '>' +
+        (maxed ? 'Max' : fmt(cost)) + '</button>';
     el.querySelector('button').onclick = () => {
       if (maxed || Save.data.coins < cost) return;
       Save.data.coins -= cost;
       Save.data.up[u.id]++;
       Save.flush();
+      NHAudio.ui(true);
       G.spec = activeSpec();
       renderGarage();
     };
     ups.appendChild(el);
   }
 
-  /* hardware — the part of the garage that makes a lost run worth something */
+  /* ---- hardware: the part that makes a lost run worth something ---- */
   const gear = $('gGear');
   gear.innerHTML = '';
+  let gearBuyable = false;
   for (const g of GEAR) {
     const owned = Hangar.has(g.id);
-    const broke = !owned && Save.data.coins < g.price;
+    const broke = !owned && bal < g.price;
+    if (!owned && !broke) gearBuyable = true;
     const el = document.createElement('div');
     el.className = 'gear' + (owned ? ' owned' : '') + (broke ? ' broke' : '');
     el.setAttribute('role', 'button');
@@ -3170,10 +3200,15 @@ function renderGarage(){
     el.innerHTML =
       '<div class="nm">' + g.name + '</div>' +
       '<div class="ds">' + g.desc + '</div>' +
-      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) + '</div>';
+      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) + '</div>' +
+      (broke ? '<div class="short">Short ' + fmt(g.price - bal) + '</div>' : '');
     const buy = () => {
       if (owned) return;
-      if (!Hangar.buy(g.id)) { toast('Not enough coins', 'red'); NHAudio.ui(false); return; }
+      if (!Hangar.buy(g.id)) {
+        toast('Short ' + fmt(g.price - Save.data.coins) + ' coins', 'red');
+        NHAudio.ui(false);
+        return;
+      }
       toast(g.name + ' fitted', 'gold');
       NHAudio.ui(true);
       renderGarage();
@@ -3182,7 +3217,35 @@ function renderGarage(){
     el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buy(); } };
     gear.appendChild(el);
   }
+
+  /* tab counters, and an amber badge wherever there is something you can
+     actually afford right now — otherwise a locked tab looks the same as an
+     empty one and you have to open all three to find out */
+  const carsOwned = Save.data.owned.length;
+  const carsBuyable = CARS.some(c => !Save.data.owned.includes(c.id) && bal >= c.price);
+  setTab('cars', carsOwned + '/' + CARS.length, carsBuyable);
+  setTab('ups',  upLvl + '/' + (UPGRADES.length * UP_MAX), upBuyable);
+  setTab('gear', Save.data.gear.length + '/' + GEAR.length, gearBuyable);
 }
+
+function setTab(id, text, buyable){
+  const btn = $('gTabs').querySelector('[data-t="' + id + '"]');
+  btn.querySelector('em').textContent = text;
+  btn.classList.toggle('buyable', !!buyable && !btn.classList.contains('on'));
+}
+
+function showTab(t){
+  gTab = t;
+  $('gTabs').querySelectorAll('.gTab').forEach(b =>
+    b.classList.toggle('on', b.dataset.t === t));
+  $('garage').querySelectorAll('.gPane').forEach(p =>
+    p.classList.toggle('on', p.dataset.p === t));
+  $('garage').querySelector('.gBody').scrollTop = 0;
+  renderGarage();          // re-run so the buyable badges settle on the new tab
+}
+$('gTabs').querySelectorAll('.gTab').forEach(b => {
+  b.onclick = () => { NHAudio.ui(true); showTab(b.dataset.t); };
+});
 
 /* The garage sits *between* runs rather than off to one side: a run that
    ended badly still earned coins, and this is where they turn into a
@@ -3191,7 +3254,7 @@ function toGarage(){
   hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.draft); hide(UI.brief);
   G.state = 'garage';
   show(UI.garage);
-  renderGarage();
+  showTab(gTab);
 }
 
 /* ============================================================
