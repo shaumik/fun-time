@@ -2803,15 +2803,6 @@ const NODE_INFO = {
   boss:  { reward:'Rare chip · act', rare:true, quotaMul:1.15, heat:1 }
 };
 
-function pickNodeType(row){
-  if (row === 0) return 'run';
-  const r = Math.random();
-  if (row === ROWS - 2) return r < 0.55 ? 'depot' : 'elite';   // breather before the boss
-  if (r < 0.46) return 'run';
-  if (r < 0.78) return 'elite';
-  return 'depot';
-}
-
 function makeRoute(act){
   const rows = [];
   for (let r = 0; r < ROWS; r++) {
@@ -2819,7 +2810,15 @@ function makeRoute(act){
     /* Draw distinct types rather than retrying a random pick: a fork whose
        branches read the same is not a choice, and the row before the boss
        only has two kinds to offer, so it can never hold three. */
-    const kinds = r === ROWS - 2 ? ['depot', 'elite'] : ['run', 'elite', 'depot'];
+    /* A Depot is worthless before you own anything: nothing to strip, and a
+       free chip is not worth skipping your first scoring district for. So
+       the opening fork is safe-vs-greedy, and Depots only appear once a
+       build exists to repair. The row before the boss is the classic
+       rest-or-push decision, so it drops Run. */
+    const kinds = r === 0            ? ['run', 'elite']
+                : r === 1            ? ['run', 'elite']
+                : r === ROWS - 2     ? ['depot', 'elite']
+                                     : ['run', 'elite', 'depot'];
     const n = Math.min(r === 0 ? 2 : (Math.random() < 0.5 ? 3 : 2), kinds.length);
     const bag = kinds.slice();
     for (let i = bag.length - 1; i > 0; i--) {
@@ -2891,6 +2890,13 @@ function newRun(){
     cfg: null, quota: 0, banked: 0, startIdx: 0,
     cleared: 0, crumpleLeft: 0
   };
+}
+
+/* A Depot offers a repair only when there is something to repair, so the
+   label has to be read at draw time rather than baked in at generation. */
+function nodeReward(node){
+  if (node.type !== 'depot') return node.reward;
+  return (G.run && G.run.curses.length) ? 'Free chip or strip a curse' : 'Free chip';
 }
 
 /* which nodes the player may take from where they are standing */
@@ -4241,7 +4247,7 @@ function drawRoute(){
       `<span class="pin"><i>${NODE_ICON[node.type]}</i></span>` +
       `<span class="plabel">` +
         `<span class="pname">${node.name}</span>` +
-        `<span class="pmeta"><b>${node.reward}</b>` +
+        `<span class="pmeta"><b>${nodeReward(node)}</b>` +
         `${node.quota ? '<em>' + fmt(node.quota) + (node.heat ? ' · H+' + node.heat : '') + '</em>'
                       : '<em>no driving</em>'}</span>` +
       `</span>`;

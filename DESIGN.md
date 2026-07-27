@@ -36,7 +36,15 @@ menu → ROUTE MAP ─┬─ Run   ─→ contract (boon + bane) → drive → c
 
 **The route is the strategic layer.** A branching board per act, climbed bottom to top, with
 two or three onward nodes at every step. An Elite costs more and pays a rare chip; a Depot
-costs you a district of scoring but repairs your build. If the board is not visible, none of
+costs you a district of scoring but repairs your build.
+
+Node kinds are gated by depth, because a choice can be dead as easily as it can be
+duplicated. A Depot on the opening row offers nothing — there are no curses to strip and a
+free chip is not worth skipping your first scoring district for — so the first two rows are
+always Run against Elite, a straight safe-or-greedy opening, and Depots only appear once
+there is a build to repair. The row before the boss drops Run entirely, making it the
+familiar rest-or-push decision. A Depot also reads its own label at draw time: with nothing
+fitted it promises a chip and not a repair. If the board is not visible, none of
 those are decisions — which is exactly what the first version got wrong: it was a straight
 line with a draft bolted on the end, and calling that a roguelite was generous.
 
