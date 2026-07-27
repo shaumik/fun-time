@@ -29,12 +29,15 @@ const CL = {
 const Save = {
   key:'neonheat.v1',
   data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper',
-         up:{ grip:0, nitro:0, armor:0, payout:0 }, owned:['viper'], gear:[], runs:0 },
+         up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
       if (raw) Object.assign(this.data, JSON.parse(raw));
       if (!Array.isArray(this.data.gear)) this.data.gear = [];   // saves predating hardware
+      /* saves predating the single-car change carry only four tracks */
+      for (const k of ['engine','grip','armor','impact','nitro','payout'])
+        if (typeof this.data.up[k] !== 'number') this.data.up[k] = 0;
     } catch (e) { /* storage blocked — run in-memory */ }
   },
   flush(){
@@ -214,7 +217,15 @@ function adTick(dt){
   }
 }
 
-/* ---------------- cars ---------------- */
+/* ---------------- cars ----------------
+   One player car. Four selectable chassis were four stat rolls that said the
+   same thing the tuning tracks already say, so the choice was between numbers
+   rather than between ways to play — and it made the tuning tracks weaker to
+   compensate. The silhouettes stay: they are the traffic and pursuit pool. */
+const PLAYER = {
+  id:'viper', name:'Viper', len:46, wid:23, nose:.60, tail:.78,
+  col:'#3DE8FF', col2:'#0A5A72', power:560, grip:7.4, top:620, armor:0
+};
 const CARS = [
   { id:'viper',   name:'Viper',   price:0,     len:46, wid:23, nose:.60, tail:.78,
     col:'#3DE8FF', col2:'#0A5A72', power:560, grip:7.4, top:620, armor:0, stats:[3,3,3] },
@@ -225,27 +236,37 @@ const CARS = [
   { id:'phantom', name:'Phantom', price:60000, len:48, wid:22, nose:.44, tail:.54,
     col:'#DCF6FF', col2:'#28536F', power:620, grip:8.2, top:700, armor:0, stats:[5,4,2] }
 ];
-const carById = id => CARS.find(c => c.id === id) || CARS[0];
-const STAT_LABELS = ['Speed', 'Grip', 'Bulk'];
-
+/* Six tracks rather than four: engine and impact carry what the chassis
+   choice used to, so removing it costs the player nothing. `read` states the
+   fitted value, because a row of pips is not a spec. */
 const UPGRADES = [
-  { id:'grip',   name:'Grip',   base:900,  desc:'Slide control' },
-  { id:'nitro',  name:'Boost',  base:1100, desc:'Power-up duration' },
-  { id:'armor',  name:'Hull',   base:1400, desc:'Hull capacity' },
-  { id:'payout', name:'Payout', base:1800, desc:'Coins per run' }
+  { id:'engine', name:'Engine', base:1000, desc:'Top speed',
+    read: l => Math.round(PLAYER.top * (1 + l * 0.05) * 0.52) + ' km/h' },
+  { id:'grip',   name:'Grip',   base:900,  desc:'Slide control',
+    read: l => (PLAYER.grip + l * 0.42).toFixed(1) + ' g' },
+  { id:'armor',  name:'Hull',   base:1400, desc:'Hull capacity',
+    read: l => (100 + l * 16) + ' hp' },
+  { id:'impact', name:'Impact', base:1600, desc:'Wreck payout',
+    read: l => '+' + Math.round(l * 10) + '%' },
+  { id:'nitro',  name:'Boost',  base:1100, desc:'Power-up duration',
+    read: l => '\u00d7' + (1 + l * 0.24).toFixed(2) },
+  { id:'payout', name:'Salvage', base:1800, desc:'Coins per run',
+    read: l => '\u00d7' + (1 + l * 0.14).toFixed(2) }
 ];
 const UP_MAX = 5;
 const upCost = (u, lvl) => Math.round(u.base * Math.pow(1.85, lvl));
 
 /* the spec the physics actually reads: car + upgrades folded together */
 function activeSpec(){
-  const c = carById(Save.data.car), u = Save.data.up;
-  return Object.assign({}, c, {
-    grip:  c.grip + u.grip * 0.42,
+  const u = Save.data.up;
+  return Object.assign({}, PLAYER, {
+    grip:     PLAYER.grip + u.grip * 0.42,
+    top:      PLAYER.top * (1 + u.engine * 0.05),
     boostMul: 1 + u.nitro * 0.24,
-    crashV: 430 + c.armor * 110,
-    hull: u.armor * 14 + c.armor * 20,
-    payout: 1 + u.payout * 0.14
+    wreckMul: 1 + u.impact * 0.10,
+    crashV:   430,
+    hull:     u.armor * 16,
+    payout:   1 + u.payout * 0.14
   });
 }
 
@@ -2804,6 +2825,7 @@ function beginNode(){
   run.M = built.M; run.L = built.L;
   /* hardware is applied after chips so it reads as the floor you start from */
   if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
+  run.M.wreckMul *= (G.spec.wreckMul || 1);          // the Impact track
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
   run.crumpleLeft = run.M.crumple;
@@ -3047,24 +3069,11 @@ $('btnDouble').onclick = () => {
 };
 
 /* ---- garage ---- */
-function drawPreview(cvs, spec){
-  const g = cvs.getContext('2d');
-  const w = cvs.width, h = cvs.height;
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  g.clearRect(0, 0, w, h);
-  const grd = g.createRadialGradient(w/2, h/2, 2, w/2, h/2, w * 0.5);
-  grd.addColorStop(0, hexA(spec.col, 0.16));
-  grd.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = grd; g.fillRect(0, 0, w, h);
-
-  const sc = Math.min(w / (spec.len * 1.3), h / (spec.wid * 1.7));
-  g.translate(w / 2, h / 2);
-  g.scale(sc, sc);
-  /* drawVehicle targets the module-level ctx, so previews get their own pass */
-  previewCar(g, { spec });
-}
-function previewCar(g, v){
+/* Only the bay draws this now, and it draws it at roughly 8x, so the stroke
+   has to be expressed in pre-scale units or the outline reads as a cartoon. */
+function previewCar(g, v, sc){
   const s = v.spec;
+  const lw = 2.6 / (sc || 1);
   g.save();
   const bg = g.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
   bg.addColorStop(0, s.col2);
@@ -3076,7 +3085,7 @@ function previewCar(g, v){
     g.fillRect(s.len * fx - wr, s.wid * fy - ww, wr * 2, ww * 2);
   carPath(g, s);
   g.fillStyle = bg; g.fill();
-  g.strokeStyle = hexA(s.col, 0.95); g.lineWidth = 1.6; g.stroke();
+  g.strokeStyle = hexA(s.col, 0.95); g.lineWidth = lw; g.stroke();
   g.beginPath();
   g.moveTo(s.len * 0.14, -s.wid * 0.30);
   g.lineTo(-s.len * 0.06, -s.wid * 0.36);
@@ -3094,80 +3103,274 @@ function previewCar(g, v){
   g.restore();
 }
 
-let gTab = 'cars';
+/* Safari shipped roundRect late; without this the whole bay throws on an
+   older iPhone rather than losing a few corner radii. */
+if (typeof CanvasRenderingContext2D !== 'undefined' &&
+    !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r){
+    const k = Math.min(typeof r === 'number' ? r : 0, Math.abs(w) / 2, Math.abs(h) / 2);
+    this.moveTo(x + k, y);
+    this.arcTo(x + w, y,     x + w, y + h, k);
+    this.arcTo(x + w, y + h, x,     y + h, k);
+    this.arcTo(x,     y + h, x,     y,     k);
+    this.arcTo(x,     y,     x + w, y,     k);
+    this.closePath();
+    return this;
+  };
+}
+
+/* ============================================================
+   THE BAY
+   A garage should look like a bay with your car in it, not like a form with
+   the car's statistics in it. So the left half is a rendered deck — plates,
+   oil, work lights, tyre marks — with the actual car on it wearing every
+   piece of hardware you have bought. Buying a part changes the picture, which
+   is the only reason to have a picture at all.
+   ============================================================ */
+let bayT = 0, bayRAF = 0;
+
+function drawBay(){
+  const cvs = $('gCanvas');
+  if (!cvs || G.state !== 'garage') { bayRAF = 0; return; }
+  const g = cvs.getContext('2d');
+  /* size the backing store from the element, capped — this is a still life,
+     it does not need retina pixels on a 4K monitor */
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const cw = Math.max(120, Math.round(cvs.clientWidth * dpr));
+  const ch = Math.max(120, Math.round(cvs.clientHeight * dpr));
+  if (cvs.width !== cw || cvs.height !== ch) { cvs.width = cw; cvs.height = ch; }
+  const W = cvs.width, H = cvs.height;
+  const spec = G.spec || activeSpec();
+  bayT += 1 / 60;
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W, H);
+
+  /* --- deck: poured concrete in bay-sized plates --- */
+  g.fillStyle = '#0B0E16';
+  g.fillRect(0, 0, W, H);
+  const PL = Math.round(H * 0.115);
+  g.strokeStyle = 'rgba(150,175,215,.055)';
+  g.lineWidth = 1;
+  for (let x = 0; x <= W; x += PL) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = 0; y <= H; y += PL) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+
+  /* stains and swarf — deterministic, so the floor does not crawl */
+  g.save();
+  for (let i = 0; i < 26; i++) {
+    const r = (i * 9301 + 49297) % 233280 / 233280;
+    const r2 = (i * 4517 + 7919) % 104729 / 104729;
+    const x = r * W, y = r2 * H, rad = 10 + r2 * 46;
+    g.globalAlpha = 0.05 + r * 0.05;
+    g.fillStyle = i % 3 ? '#000' : '#1B2438';
+    g.beginPath(); g.ellipse(x, y, rad, rad * (0.4 + r * 0.5), r * 3, 0, TAU); g.fill();
+  }
+  g.restore();
+
+  /* --- hazard chevrons marking the bay mouth --- */
+  g.save();
+  g.globalAlpha = 0.16;
+  const CH = Math.round(H * 0.062), CD = Math.round(H * 0.046);
+  for (let x = -H; x < W + H; x += CH * 2) {
+    g.fillStyle = '#FFB13D';
+    g.beginPath();
+    g.moveTo(x, H); g.lineTo(x + CH, H - CD); g.lineTo(x + CH * 2, H - CD); g.lineTo(x + CH, H);
+    g.closePath(); g.fill();
+  }
+  g.restore();
+
+  const cx = W / 2, cy = H * 0.54;
+
+  /* --- two overhead work lights, converging on the car --- */
+  const flick = 0.94 + Math.sin(bayT * 11) * 0.015 + Math.sin(bayT * 3.3) * 0.045;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  for (const side of [-1, 1]) {
+    const lx = cx + side * W * 0.30;
+    const lg = g.createLinearGradient(lx, 0, cx + side * W * 0.06, cy + 120);
+    lg.addColorStop(0, 'rgba(180,225,255,' + (0.13 * flick).toFixed(3) + ')');
+    lg.addColorStop(1, 'rgba(120,190,255,0)');
+    g.fillStyle = lg;
+    g.beginPath();
+    g.moveTo(lx - 26, 0); g.lineTo(lx + 26, 0);
+    g.lineTo(cx + side * W * 0.14, cy + 150);
+    g.lineTo(cx + side * W * 0.02, cy + 150);
+    g.closePath(); g.fill();
+  }
+  /* the pool the car actually sits in */
+  const pool = g.createRadialGradient(cx, cy, 8, cx, cy, W * 0.46);
+  pool.addColorStop(0, 'rgba(190,230,255,' + (0.16 * flick).toFixed(3) + ')');
+  pool.addColorStop(0.55, 'rgba(120,190,255,0.05)');
+  pool.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = pool;
+  g.beginPath(); g.ellipse(cx, cy, W * 0.46, H * 0.30, 0, 0, TAU); g.fill();
+  g.restore();
+
+  /* tyre marks leading out of the bay */
+  g.save();
+  g.globalAlpha = 0.16;
+  g.strokeStyle = '#000'; g.lineCap = 'round';
+  for (const off of [-46, 46]) {
+    g.lineWidth = 13;
+    g.beginPath();
+    g.moveTo(cx + off, cy + 90);
+    g.bezierCurveTo(cx + off * 1.3, cy + 150, cx + off * 2.2, cy + 190, cx + off * 3.4, H);
+    g.stroke();
+  }
+  g.restore();
+
+  /* --- the car ---
+     Sized to actually fill the bay: it is the subject of the screen, not an
+     illustration next to the numbers. */
+  const sc = Math.min(W / (spec.wid * 3.6), H / (spec.len * 1.7));
+  g.save();
+  g.translate(cx, cy);
+  g.scale(sc, sc);
+  g.rotate(-Math.PI / 2);          // nose up the screen
+
+  /* contact shadow */
+  g.save();
+  g.globalAlpha = 0.5;
+  g.fillStyle = '#000';
+  g.beginPath();
+  g.ellipse(-spec.len * 0.04, spec.wid * 0.10, spec.len * 0.62, spec.wid * 0.62, 0, 0, TAU);
+  g.filter = 'blur(6px)';
+  g.fill();
+  g.restore();
+
+  previewCar(g, { spec }, sc);
+  drawFitted(g, spec, sc);
+  g.restore();
+
+  bayRAF = requestAnimationFrame(drawBay);
+}
+
+/* Hardware, drawn onto the car in the order it bolts on. Every dimension is a
+   fraction of the body so a part cannot end up bigger than the car, and every
+   stroke is divided by the bay scale so it stays a panel line. */
+function drawFitted(g, s, sc){
+  const has = id => Hangar.has(id);
+  const lw = 2.2 / (sc || 1);
+  g.lineJoin = 'round';
+  g.lineWidth = lw;
+
+  if (has('shockplate')) {                       // flank plates, riveted
+    const th = s.wid * 0.085;
+    for (const side of [-1, 1]) {
+      g.fillStyle = '#1B2334';
+      g.strokeStyle = hexA(CL.cyan, 0.55);
+      g.beginPath();
+      g.roundRect(-s.len * 0.30, side * s.wid * 0.50 - th / 2, s.len * 0.62, th, th * 0.4);
+      g.fill(); g.stroke();
+      g.fillStyle = hexA(CL.cyan, 0.55);
+      for (let i = 0; i < 5; i++)
+        g.beginPath(),
+        g.arc(-s.len * 0.24 + i * s.len * 0.13, side * s.wid * 0.50, th * 0.22, 0, TAU),
+        g.fill();
+    }
+  }
+
+  if (has('prow')) {                             // ram bar across the nose
+    const th = s.len * 0.045;
+    g.fillStyle = '#232C40';
+    g.strokeStyle = hexA(CL.amber, 0.9);
+    g.beginPath();
+    g.roundRect(s.len * 0.50, -s.wid * 0.58, th, s.wid * 1.16, th * 0.35);
+    g.fill(); g.stroke();
+    for (const y of [-0.36, 0, 0.36]) {           // struts back to the body
+      g.beginPath();
+      g.roundRect(s.len * 0.41, y * s.wid - s.wid * 0.035, s.len * 0.10, s.wid * 0.07, 1);
+      g.fill(); g.stroke();
+    }
+  }
+
+  if (has('turbine')) {                          // bonnet scoop
+    g.fillStyle = '#0E1421';
+    g.strokeStyle = hexA(CL.cyan, 0.75);
+    g.beginPath();
+    g.moveTo(s.len * 0.30, -s.wid * 0.19);
+    g.lineTo(s.len * 0.13, -s.wid * 0.25);
+    g.lineTo(s.len * 0.13, s.wid * 0.25);
+    g.lineTo(s.len * 0.30, s.wid * 0.19);
+    g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.4);
+    for (let i = 0; i < 3; i++) {
+      const x = s.len * (0.17 + i * 0.045);
+      g.beginPath(); g.moveTo(x, -s.wid * 0.20); g.lineTo(x, s.wid * 0.20); g.stroke();
+    }
+  }
+
+  if (has('welder')) {                           // gas bottle strapped to the deck
+    g.fillStyle = '#26382C';
+    g.strokeStyle = 'rgba(47,224,138,.85)';
+    g.beginPath();
+    g.roundRect(-s.len * 0.42, -s.wid * 0.36, s.len * 0.17, s.wid * 0.26, s.wid * 0.06);
+    g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(47,224,138,.45)';      // hose, coiled once
+    g.beginPath();
+    g.moveTo(-s.len * 0.34, -s.wid * 0.10);
+    g.quadraticCurveTo(-s.len * 0.24, s.wid * 0.02, -s.len * 0.30, s.wid * 0.16);
+    g.stroke();
+  }
+
+  if (has('missile')) {                          // twin launch tubes on the roof
+    const th = s.wid * 0.10;
+    for (const side of [-1, 1]) {
+      g.fillStyle = '#191F30';
+      g.strokeStyle = hexA(CL.magenta, 0.85);
+      g.beginPath();
+      g.roundRect(-s.len * 0.10, side * s.wid * 0.30 - th / 2, s.len * 0.38, th, th * 0.45);
+      g.fill(); g.stroke();
+      g.fillStyle = hexA(CL.magenta, 0.9);
+      g.beginPath(); g.arc(s.len * 0.26, side * s.wid * 0.30, th * 0.34, 0, TAU); g.fill();
+    }
+  }
+
+  if (has('blackbox')) {                         // box and whip aerial on the boot
+    g.fillStyle = '#0E1420';
+    g.strokeStyle = hexA(CL.ice, 0.7);
+    g.beginPath();
+    g.roundRect(-s.len * 0.44, s.wid * 0.10, s.len * 0.12, s.wid * 0.22, s.wid * 0.04);
+    g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.8);
+    g.beginPath();
+    g.moveTo(-s.len * 0.38, s.wid * 0.21);
+    g.lineTo(-s.len * 0.38, s.wid * 0.60);
+    g.stroke();
+    g.fillStyle = hexA(CL.cyan, 0.9);
+    g.beginPath(); g.arc(-s.len * 0.38, s.wid * 0.60, s.wid * 0.035, 0, TAU); g.fill();
+  }
+}
 
 function renderGarage(){
   const bal = Save.data.coins;
-  const cur = carById(Save.data.car);
+  const spec = G.spec = activeSpec();
   $('gCoins').textContent = fmt(bal);
-  $('gCarName').textContent = cur.name;
 
-  /* ---- chassis ---- */
-  const wrap = $('gCars');
-  wrap.innerHTML = '';
-  for (const c of CARS) {
-    const owned = Save.data.owned.includes(c.id);
-    const sel = Save.data.car === c.id;
-    const broke = !owned && bal < c.price;
-    const el = document.createElement('div');
-    el.className = 'car' + (sel ? ' sel' : '') + (broke ? ' broke' : '');
-    el.setAttribute('role', 'button');
-    el.tabIndex = 0;
-    el.innerHTML =
-      '<canvas width="220" height="120"></canvas>' +
-      '<div class="nm">' + c.name + '</div>' +
-      '<div class="pr' + (owned ? ' owned' : '') + '">' +
-        (owned ? (sel ? 'Equipped' : 'Equip') : fmt(c.price)) + '</div>' +
-      /* pips past the equipped car's rating are amber, so a card says at a
-         glance what this chassis gains and gives up against what you drive */
-      '<div class="st">' + STAT_LABELS.map((lab, k) =>
-        '<div class="row"><span>' + lab + '</span><b>' +
-        Array.from({ length:5 }, (_, i) => {
-          const on = i < c.stats[k];
-          const better = on && i >= cur.stats[k] && !sel;
-          return '<i class="' + (better ? 'gain' : on ? 'on' : '') + '"></i>';
-        }).join('') +
-        '</b></div>').join('') + '</div>';
-    const pick = () => {
-      if (owned) { Save.data.car = c.id; NHAudio.ui(true); }
-      else if (bal >= c.price) {
-        Save.data.coins -= c.price;
-        Save.data.owned.push(c.id);
-        Save.data.car = c.id;
-        NHAudio.ui(true);
-        toast(c.name + ' unlocked', 'gold');
-      } else {
-        toast('Short ' + fmt(c.price - bal) + ' coins', 'red');
-        NHAudio.ui(false);
-        return;
-      }
-      Save.flush();
-      G.spec = activeSpec();
-      renderGarage();
-    };
-    el.onclick = pick;
-    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
-    wrap.appendChild(el);
-    drawPreview(el.querySelector('canvas'), c);
-  }
+  /* --- the spec plate: what is actually fitted, in units --- */
+  $('gPlate').innerHTML = UPGRADES.map(u => {
+    const lvl = Save.data.up[u.id];
+    return '<div class="gpRow"><span>' + u.name + '</span>' +
+           '<i>' + Array.from({ length:UP_MAX }, (_, k) =>
+             '<b class="' + (k < lvl ? 'on' : '') + '"></b>').join('') + '</i>' +
+           '<em>' + u.read(lvl) + '</em></div>';
+  }).join('');
 
-  /* ---- tuning ---- */
+  /* --- tuning --- */
   const ups = $('gUps');
   ups.innerHTML = '';
-  let upLvl = 0, upBuyable = false;
+  let upLvl = 0;
   for (const u of UPGRADES) {
     const lvl = Save.data.up[u.id];
     upLvl += lvl;
     const maxed = lvl >= UP_MAX;
     const cost = upCost(u, lvl);
     const afford = bal >= cost;
-    if (!maxed && afford) upBuyable = true;
     const el = document.createElement('div');
     el.className = 'up' + (maxed ? ' maxed' : '');
     el.innerHTML =
       '<div class="info">' +
-        '<div class="nm">' + u.name + '</div>' +
-        '<div class="ds">' + u.desc + '</div>' +
+        '<div class="nm">' + u.name + '<em>' + u.read(lvl) + '</em></div>' +
         '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
           '<i class="' + (i < lvl ? 'on' : '') + '"></i>').join('') + '</div>' +
       '</div>' +
@@ -3184,15 +3387,14 @@ function renderGarage(){
     };
     ups.appendChild(el);
   }
+  $('gwUps').textContent = upLvl + ' / ' + (UPGRADES.length * UP_MAX);
 
-  /* ---- hardware: the part that makes a lost run worth something ---- */
+  /* --- hardware: the part that makes a lost run worth something --- */
   const gear = $('gGear');
   gear.innerHTML = '';
-  let gearBuyable = false;
   for (const g of GEAR) {
     const owned = Hangar.has(g.id);
     const broke = !owned && bal < g.price;
-    if (!owned && !broke) gearBuyable = true;
     const el = document.createElement('div');
     el.className = 'gear' + (owned ? ' owned' : '') + (broke ? ' broke' : '');
     el.setAttribute('role', 'button');
@@ -3200,8 +3402,8 @@ function renderGarage(){
     el.innerHTML =
       '<div class="nm">' + g.name + '</div>' +
       '<div class="ds">' + g.desc + '</div>' +
-      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) + '</div>' +
-      (broke ? '<div class="short">Short ' + fmt(g.price - bal) + '</div>' : '');
+      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) +
+        (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</div>';
     const buy = () => {
       if (owned) return;
       if (!Hangar.buy(g.id)) {
@@ -3217,35 +3419,14 @@ function renderGarage(){
     el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buy(); } };
     gear.appendChild(el);
   }
+  $('gwGear').textContent = Save.data.gear.length + ' / ' + GEAR.length;
 
-  /* tab counters, and an amber badge wherever there is something you can
-     actually afford right now — otherwise a locked tab looks the same as an
-     empty one and you have to open all three to find out */
-  const carsOwned = Save.data.owned.length;
-  const carsBuyable = CARS.some(c => !Save.data.owned.includes(c.id) && bal >= c.price);
-  setTab('cars', carsOwned + '/' + CARS.length, carsBuyable);
-  setTab('ups',  upLvl + '/' + (UPGRADES.length * UP_MAX), upBuyable);
-  setTab('gear', Save.data.gear.length + '/' + GEAR.length, gearBuyable);
+  /* what is bolted on, listed under the car so the render has a legend */
+  $('gFitted').innerHTML = GEAR.filter(g => Hangar.has(g.id)).length
+    ? GEAR.filter(g => Hangar.has(g.id))
+        .map(g => '<i>' + g.name + '</i>').join('')
+    : '<i class="none">Nothing fitted</i>';
 }
-
-function setTab(id, text, buyable){
-  const btn = $('gTabs').querySelector('[data-t="' + id + '"]');
-  btn.querySelector('em').textContent = text;
-  btn.classList.toggle('buyable', !!buyable && !btn.classList.contains('on'));
-}
-
-function showTab(t){
-  gTab = t;
-  $('gTabs').querySelectorAll('.gTab').forEach(b =>
-    b.classList.toggle('on', b.dataset.t === t));
-  $('garage').querySelectorAll('.gPane').forEach(p =>
-    p.classList.toggle('on', p.dataset.p === t));
-  $('garage').querySelector('.gBody').scrollTop = 0;
-  renderGarage();          // re-run so the buyable badges settle on the new tab
-}
-$('gTabs').querySelectorAll('.gTab').forEach(b => {
-  b.onclick = () => { NHAudio.ui(true); showTab(b.dataset.t); };
-});
 
 /* The garage sits *between* runs rather than off to one side: a run that
    ended badly still earned coins, and this is where they turn into a
@@ -3254,7 +3435,8 @@ function toGarage(){
   hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.draft); hide(UI.brief);
   G.state = 'garage';
   show(UI.garage);
-  showTab(gTab);
+  renderGarage();
+  if (!bayRAF) bayRAF = requestAnimationFrame(drawBay);
 }
 
 /* ============================================================

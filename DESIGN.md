@@ -181,20 +181,27 @@ it sits *between* runs rather than off to one side, so a run that ended badly st
 something you keep, and the next attempt starts further along. Every path into a run goes
 through it — the menu's Start Run, the game-over screen's primary action, and Enter.
 
-Three tiers of spend, in ascending permanence: **chassis** (four cars), **tuning** (four
-tracks, five levels each), and **hardware** — bought once, fitted forever, and each one
-changes a verb rather than a number.
+**One car.** Four selectable chassis were four stat rolls saying what the tuning tracks
+already said — a choice between numbers rather than between ways to play, and it forced the
+tuning tracks to stay weak so the chassis choice still mattered. Removing it cost nothing
+that Engine and Impact do not now carry, and the silhouettes stay in the game as the traffic
+and pursuit pool.
 
-It is laid out as a shop screen, not a settings panel. The first version stacked all three
-categories in one 1,300px scroll with **Roll out** at the bottom, which put the button that
-starts the game behind everything you might buy. Now the action bar is pinned — the way out
-and the balance you are spending never scroll away — and the categories are tabs. Each tab
-carries a count, and an amber badge wherever there is something you can afford right now,
-so a locked category does not look the same as an empty one. Anything out of reach states
-the shortfall as a number rather than just dimming. Chassis cards mark in amber the stats
-where that car beats the one you currently drive, because a column of pips means nothing
-without the comparison. The panel is top-aligned rather than centred: the panes differ a
-lot in height, and centring made the action bar jump on every tab switch.
+Two tiers of spend: **tuning** (six tracks, five levels each, stated in units rather than
+pips — 371 km/h, 164 hp) and **hardware**, bought once, fitted forever, each changing a verb
+rather than a number.
+
+**It is a bay, not a form.** The left half is a rendered deck — poured plates, oil, work
+lights, hazard chevrons, tyre marks leading out — with your actual car on it wearing every
+part you have bought. The ram bar sits across the nose, the harpoon tubes run down the roof,
+the welder bottle is strapped to the boot. Buying a part changes the picture, which is the
+only reason to have a picture at all. Everything is drawn at runtime, like the rest of the
+game; there is still not a single image file.
+
+The right half is the work order, and the action bar is pinned above both. The first version
+of this screen put **Roll out** at the bottom of a 1,300px scroll, behind everything you
+might buy; now the way out and the balance you are spending never move. Anything out of
+reach states the shortfall as a number rather than just dimming.
 
 | Hardware | Cost | What it does |
 |---|---|---|

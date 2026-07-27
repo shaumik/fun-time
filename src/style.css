@@ -570,50 +570,42 @@ body{
 
 /* ============================================================
    GARAGE
-   This is a step in the loop now, not a side room, so it is laid out like
-   a shop screen rather than a settings panel: the way out and the number
-   you are spending are pinned and never scroll away, and the three
-   categories are tabs rather than a 1,300px stack you have to scroll past
-   to reach the button that starts the game.
+   A workshop bay, not a settings panel: a rendered deck with your actual car
+   on it wearing everything you have bolted on, and a work order beside it.
+   Steel edges, hazard tape and printed dockets rather than rounded web cards.
    ============================================================ */
+#garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
-  width:100%;max-width:calc(var(--u)*104);
-  height:auto;max-height:100%;min-height:calc(var(--u)*40);
+  width:100%;max-width:calc(var(--u)*116);
+  height:auto;max-height:100%;
   display:flex;flex-direction:column;
-  background:var(--panel);
-  backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
-  border:1px solid var(--edge);border-radius:calc(var(--u)*1.4);
-  box-shadow:0 calc(var(--u)*3) calc(var(--u)*8) rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07);
+  background:linear-gradient(180deg,#0E131E,#080B12);
+  border:1px solid rgba(150,175,215,.16);
+  border-top:1px solid rgba(180,215,255,.30);   /* light catching the top edge */
+  border-radius:calc(var(--u)*.6);
+  box-shadow:0 calc(var(--u)*3) calc(var(--u)*9) rgba(0,0,0,.75),
+             inset 0 1px 0 rgba(255,255,255,.06);
   animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
   overflow:hidden;
 }
-
-/* Top-aligned, not centred: the panes differ a lot in height, and centring
-   made the whole panel — action bar included — jump on every tab switch. */
-#garage.screen{align-items:flex-start;padding-top:calc(var(--u)*5)}
 
 /* --- pinned action bar --- */
 .gTop{
   flex:0 0 auto;
   display:flex;align-items:center;gap:calc(var(--u)*2.4);
-  padding:calc(var(--u)*2) calc(var(--u)*2.6);
-  border-bottom:1px solid var(--edge);
-  background:linear-gradient(180deg,rgba(61,232,255,.055),transparent);
+  padding:calc(var(--u)*1.8) calc(var(--u)*2.4);
+  background:linear-gradient(180deg,rgba(150,190,255,.06),transparent);
 }
-.gId{display:flex;flex-direction:column;gap:calc(var(--u)*.35);min-width:0}
+.gId{display:flex;flex-direction:column;gap:calc(var(--u)*.3);min-width:0}
 .gKick{
-  font-size:calc(var(--u)*1.1);letter-spacing:.34em;text-transform:uppercase;
-  font-weight:800;color:var(--cyan);
+  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
 }
 .gId b{
   font-size:calc(var(--u)*2.6);font-weight:800;color:#fff;
-  letter-spacing:.04em;text-transform:uppercase;line-height:1;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  letter-spacing:.14em;text-transform:uppercase;line-height:1;
 }
-.gBal{
-  margin-left:auto;text-align:right;
-  display:flex;flex-direction:column;gap:calc(var(--u)*.35);
-}
+.gBal{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:calc(var(--u)*.3)}
 .gBal span{
   font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
@@ -625,163 +617,178 @@ body{
 .gAct{display:flex;gap:calc(var(--u)*1);flex:0 0 auto}
 .gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:calc(var(--u)*1.5)}
 
-/* --- tabs --- */
-.gTabs{
-  flex:0 0 auto;display:flex;gap:calc(var(--u)*.4);
-  padding:calc(var(--u)*1.2) calc(var(--u)*2.6) 0;
-  border-bottom:1px solid var(--edge);
-}
-.gTab{
-  pointer-events:auto;cursor:pointer;font-family:var(--sans);
-  display:flex;align-items:center;gap:calc(var(--u)*.8);
-  background:none;border:none;
-  border-bottom:calc(var(--u)*.32) solid transparent;
-  padding:calc(var(--u)*.9) calc(var(--u)*1.6);
-  font-size:calc(var(--u)*1.4);font-weight:800;
-  letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
-  transition:color .14s,border-color .14s;
-}
-.gTab:hover{color:var(--ice)}
-.gTab.on{color:#fff;border-bottom-color:var(--cyan)}
-.gTab:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
-.gTab em{
-  font-style:normal;font-size:calc(var(--u)*1.05);font-weight:800;
-  letter-spacing:.04em;font-variant-numeric:tabular-nums;
-  color:var(--dim);background:rgba(255,255,255,.07);
-  border-radius:99px;padding:calc(var(--u)*.15) calc(var(--u)*.7);
-}
-.gTab.on em{color:#04121A;background:var(--cyan)}
-/* a category with something you can afford right now says so */
-.gTab.buyable em{color:#1A0C04;background:var(--amber)}
-
-/* --- panes --- */
-.gBody{
-  flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(var(--u)*2) calc(var(--u)*2.6) calc(var(--u)*2.6);
-}
-.gPane{display:none;animation:fade .2s ease both}
-.gPane.on{display:block}
-.gLead{
-  margin:0 0 calc(var(--u)*1.8);
-  font-size:calc(var(--u)*1.25);line-height:1.5;color:var(--dim);font-weight:500;
-  max-width:calc(var(--u)*62);
+/* hazard tape under the header — the one loud piece of shop furniture */
+.gTape{
+  flex:0 0 auto;height:calc(var(--u)*1);
+  background:repeating-linear-gradient(-45deg,
+    rgba(255,177,61,.62) 0 calc(var(--u)*1.1),
+    rgba(10,13,20,.85) calc(var(--u)*1.1) calc(var(--u)*2.2));
+  border-top:1px solid rgba(255,177,61,.28);
+  border-bottom:1px solid rgba(0,0,0,.6);
 }
 
-/* --- chassis --- */
-.gCars{display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.2)}
-.car{
-  cursor:pointer;text-align:center;position:relative;
-  background:rgba(255,255,255,.035);
-  border:1px solid var(--edge);border-radius:calc(var(--u)*.9);
-  padding:calc(var(--u)*1.2) calc(var(--u)*.8) calc(var(--u)*1.4);
-  transition:border-color .14s,background .14s,transform .1s;
+.gFloor{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(0,0.86fr) minmax(0,1fr);
 }
-.car:hover{background:rgba(255,255,255,.07);transform:translateY(-2px)}
-.car.sel{border-color:var(--cyan);background:rgba(61,232,255,.1);box-shadow:0 0 calc(var(--u)*2.4) rgba(61,232,255,.24)}
-.car.sel:hover{transform:none}
-.car.broke{opacity:.45}
-.car.broke .pr{color:var(--dim)}
-/* the bitmap is 220x120 — the box must match it or the car renders squashed */
-.car canvas{width:100%;aspect-ratio:220/120;height:auto;display:block}
-.car .nm{
-  font-size:calc(var(--u)*1.45);font-weight:800;letter-spacing:.18em;
-  text-transform:uppercase;color:#fff;margin-top:calc(var(--u)*.6);
+
+/* --- the bay --- */
+.gBay{
+  position:relative;min-width:0;min-height:calc(var(--u)*46);
+  border-right:1px solid rgba(150,175,215,.14);
+  display:flex;flex-direction:column;
 }
-.car .pr{
-  font-size:calc(var(--u)*1.25);font-weight:800;font-variant-numeric:tabular-nums;
-  color:var(--amber);margin-top:calc(var(--u)*.4);
+/* The deck fills the column and the backing store is sized from the element,
+   the same way the game canvas is. A fixed aspect either letterboxed the car
+   down to a thumbnail or left a third of the bay empty below it. */
+.gBay canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* stencilled onto the deck rather than floated over it */
+.gPlate{
+  position:absolute;z-index:1;left:calc(var(--u)*1.8);top:calc(var(--u)*1.8);
+  width:calc(var(--u)*23);
+  background:rgba(6,9,15,.62);
+  border:1px solid rgba(150,175,215,.18);
+  border-left:calc(var(--u)*.3) solid var(--cyan);
+  padding:calc(var(--u)*1) calc(var(--u)*1.2);
 }
-.car .pr.owned{color:var(--dim);letter-spacing:.16em;text-transform:uppercase;font-size:calc(var(--u)*1.05)}
-.car.sel .pr.owned{color:var(--cyan)}
-.car .st{
-  display:flex;flex-direction:column;gap:calc(var(--u)*.45);
-  margin-top:calc(var(--u)*1);
-  padding-top:calc(var(--u)*1);
-  border-top:1px solid var(--edge);
+.gpName{
+  font-size:calc(var(--u)*1.25);font-weight:800;color:#fff;
+  letter-spacing:.16em;text-transform:uppercase;margin-bottom:calc(var(--u)*.7);
 }
-.car .st .row{display:flex;align-items:center;gap:calc(var(--u)*.6)}
-.car .st .row span{
-  flex:0 0 calc(var(--u)*4.6);text-align:left;
-  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
+.gpName em{font-style:normal;color:var(--dim);font-weight:700;letter-spacing:.1em}
+.gpRow{
+  display:flex;align-items:center;gap:calc(var(--u)*.6);
+  padding:calc(var(--u)*.22) 0;
+}
+.gpRow span{
+  flex:0 0 calc(var(--u)*5.4);
+  font-size:calc(var(--u)*.95);letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
-.car .st .row b{display:flex;gap:calc(var(--u)*.3);flex:1}
-.car .st i{flex:1;height:calc(var(--u)*.42);border-radius:99px;background:rgba(255,255,255,.13)}
-.car .st i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.55)}
-/* Where this chassis beats the one you drive. Named `gain` rather than `up`
-   because `.up` is the tuning-row class — an element-agnostic selector, so
-   `i.up` inherited its padding and border and blew the pip row apart. */
-.car .st i.gain{background:var(--amber);box-shadow:0 0 calc(var(--u)*1) rgba(255,177,61,.6)}
-
-/* --- tuning --- */
-.gUps{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*1.2)}
-.up{
-  display:flex;align-items:center;gap:calc(var(--u)*1.4);
-  background:rgba(255,255,255,.035);
-  border:1px solid var(--edge);border-radius:calc(var(--u)*.9);
-  padding:calc(var(--u)*1.3) calc(var(--u)*1.5);
+.gpRow i{display:flex;gap:2px;flex:1}
+.gpRow i b{flex:1;height:calc(var(--u)*.38);background:rgba(255,255,255,.13)}
+.gpRow i b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.6)}
+.gpRow em{
+  flex:0 0 auto;font-style:normal;
+  font-size:calc(var(--u)*1);font-weight:800;color:var(--ice);
+  font-variant-numeric:tabular-nums;min-width:calc(var(--u)*6);text-align:right;
 }
-.up.maxed{border-color:rgba(61,232,255,.34);background:rgba(61,232,255,.06)}
-.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.4)}
+/* legend for the render: what those extra shapes on the car are */
+.gFitted{
+  position:relative;z-index:1;margin-top:auto;
+  background:linear-gradient(0deg,rgba(6,9,15,.92),rgba(6,9,15,.25));
+  display:flex;flex-wrap:wrap;gap:calc(var(--u)*.5);
+  padding:calc(var(--u)*1.2) calc(var(--u)*1.8) calc(var(--u)*1.6);
+  border-top:1px solid rgba(150,175,215,.10);
+}
+.gFitted i{
+  font-style:normal;
+  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+  border:1px solid rgba(61,232,255,.35);
+  background:rgba(61,232,255,.08);
+  padding:calc(var(--u)*.28) calc(var(--u)*.8);
+}
+.gFitted i.none{color:var(--dim);border-color:rgba(150,175,215,.18);background:none}
+
+/* --- the work order --- */
+.gWork{
+  min-width:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--u)*1.6) calc(var(--u)*2) calc(var(--u)*2.2);
+}
+.gwHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:calc(var(--u)*1);
+  margin:calc(var(--u)*1.6) 0 calc(var(--u)*1);
+  padding-bottom:calc(var(--u)*.6);
+  border-bottom:1px dashed rgba(150,175,215,.22);
+}
+.gwHead:first-child{margin-top:0}
+.gwHead h3{
+  margin:0;font-size:calc(var(--u)*1.4);font-weight:800;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);
+}
+.gwHead span{
+  font-size:calc(var(--u)*1.15);font-weight:800;color:var(--dim);
+  font-variant-numeric:tabular-nums;letter-spacing:.1em;
+}
+
+/* tuning: docket rows, flat and square */
+.gUps{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.up{
+  display:flex;align-items:center;gap:calc(var(--u)*1.2);
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.12);
+  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.28);
+  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+}
+.up.maxed{border-left-color:var(--cyan);background:rgba(61,232,255,.05)}
+.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
 .up .nm{
-  font-size:calc(var(--u)*1.4);font-weight:800;letter-spacing:.18em;
+  display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
+  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
   text-transform:uppercase;color:#fff;
 }
-.up .ds{font-size:calc(var(--u)*1.15);color:var(--dim);font-weight:600}
-.pips{display:flex;gap:calc(var(--u)*.3);margin-top:calc(var(--u)*.35)}
-.pips i{flex:1;height:calc(var(--u)*.5);border-radius:99px;background:rgba(255,255,255,.13)}
-.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1.2) rgba(61,232,255,.65)}
+.up .nm em{
+  font-style:normal;letter-spacing:.04em;text-transform:none;
+  font-size:calc(var(--u)*1.2);color:var(--cyan);font-variant-numeric:tabular-nums;
+}
+.pips{display:flex;gap:2px}
+.pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
+.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.6)}
 .up button{
-  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*9);
+  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.25);font-weight:800;letter-spacing:.1em;
+  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.1em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
-  border:none;border-radius:calc(var(--u)*.6);
-  padding:calc(var(--u)*.9) calc(var(--u)*1.3);
+  border:none;border-radius:calc(var(--u)*.25);
+  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
   transition:filter .14s,transform .08s;
 }
 .up button:hover{filter:brightness(1.12)}
 .up button:active{transform:translateY(1px)}
 .up button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
-.up button[disabled]{background:rgba(255,255,255,.08);color:var(--dim);cursor:not-allowed}
-.up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.12)}
+.up button[disabled]{background:rgba(255,255,255,.07);color:var(--dim);cursor:not-allowed}
+.up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.10)}
 
-/* --- hardware: the reason a lost run still moves you forward --- */
-.gGear{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.2)}
+/* hardware: parts on a rack — the reason a lost run still moves you forward */
+.gGear{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.6)}
 .gear{
   position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.035);
-  border:1px solid var(--edge);border-left:calc(var(--u)*.4) solid var(--amber);
-  border-radius:calc(var(--u)*.9);
-  padding:calc(var(--u)*1.4) calc(var(--u)*1.5);
-  display:flex;flex-direction:column;gap:calc(var(--u)*.7);
-  min-height:calc(var(--u)*15);
-  transition:background .14s,border-color .14s,transform .1s;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.12);
+  border-left:calc(var(--u)*.28) solid var(--amber);
+  padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.45);
+  transition:background .14s,border-color .14s;
 }
-.gear:hover{background:rgba(255,177,61,.10);transform:translateY(-2px)}
-.gear:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.gear:hover{background:rgba(255,177,61,.10)}
+.gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .gear .nm{
-  font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.14em;
+  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
-.gear .ds{font-size:calc(var(--u)*1.25);line-height:1.45;color:var(--ice);opacity:.8}
+.gear .ds{font-size:calc(var(--u)*1.15);line-height:1.4;color:var(--ice);opacity:.75}
 .gear .pr{
-  margin-top:auto;padding-top:calc(var(--u)*.6);
-  font-size:calc(var(--u)*1.4);font-weight:800;
+  margin-top:auto;padding-top:calc(var(--u)*.4);
+  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
+  font-size:calc(var(--u)*1.3);font-weight:800;
   font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
 }
-.gear.owned{border-left-color:var(--cyan);background:rgba(61,232,255,.08);cursor:default}
-.gear.owned:hover{transform:none;background:rgba(61,232,255,.08)}
-.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.15)}
-.gear.broke{opacity:.45;border-left-color:var(--dim)}
-.gear.broke:hover{transform:none;background:rgba(255,255,255,.035)}
-.gear.broke .pr{color:var(--dim)}
 /* the shortfall, so "too expensive" is a number rather than a dimmed card */
-.gear .short{
-  font-size:calc(var(--u)*1.05);color:var(--dim);font-weight:700;
-  letter-spacing:.12em;text-transform:uppercase;
+.gear .pr em{
+  font-style:normal;font-size:calc(var(--u)*1);color:var(--dim);
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
 }
+.gear.owned{
+  border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
+}
+.gear.owned:hover{background:rgba(61,232,255,.07)}
+.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.1)}
+.gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
+.gear.broke:hover{background:rgba(255,255,255,.03)}
+.gear.broke .pr{color:var(--dim)}
 
 /* ============ simulated ad ============ */
 #ad{
@@ -924,27 +931,29 @@ body{
 
   .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
 
-  /* Garage on a phone: the action bar wraps to two rows so Roll out stays
-     full width and thumb-sized, and every grid collapses to one column. */
-  #garage.screen{padding:calc(var(--u)*1.4);align-items:flex-start}
-  .gPanel{max-height:100%;min-height:0}
+  /* Garage on a phone: the action bar wraps so Roll out stays full width and
+     thumb-sized, and the bay sits above the work order rather than beside it. */
+  #garage.screen{padding:calc(var(--u)*1.2);align-items:flex-start}
+  .gPanel{max-height:100%}
   .gTop{
     flex-wrap:wrap;gap:calc(var(--u)*1.2);
-    padding:calc(var(--u)*1.6) calc(var(--u)*1.8);
+    padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
   }
   .gId b{font-size:calc(var(--u)*2.2)}
   .gBal b{font-size:calc(var(--u)*2.4)}
   .gAct{order:3;width:100%;flex-direction:row-reverse}
   .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
   .gAct #btnBack{flex:0 0 auto}
-  .gTabs{padding:calc(var(--u)*.8) calc(var(--u)*1) 0;justify-content:space-between}
-  .gTab{padding:calc(var(--u)*.9) calc(var(--u)*.7);font-size:calc(var(--u)*1.25);letter-spacing:.12em}
-  .gBody{padding:calc(var(--u)*1.6) calc(var(--u)*1.8) calc(var(--u)*2.2)}
-  .gLead{font-size:calc(var(--u)*1.25);margin-bottom:calc(var(--u)*1.4)}
-  .gCars{grid-template-columns:repeat(2,1fr)}
-  .gUps{grid-template-columns:1fr}
+  .gFloor{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:0}
+  .gBay{border-right:none;border-bottom:1px solid rgba(150,175,215,.14)}
+
+  .gBay{min-height:calc(var(--u)*34)}
+  /* The plate would sit across the car's nose at this width, and the tuning
+     rows directly below already carry the same numbers. */
+  .gPlate{display:none}
+  .gFitted{padding:calc(var(--u)*1) calc(var(--u)*1.4) calc(var(--u)*1.2);border-top:none}
+  .gWork{padding:calc(var(--u)*1.4) calc(var(--u)*1.6) calc(var(--u)*2)}
   .gGear{grid-template-columns:1fr}
-  .gear{min-height:0}
 }
 
 /* Short landscape (a phone turned sideways) — vertical room is the

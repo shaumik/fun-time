@@ -41,9 +41,9 @@ Paste-ready. Edit to taste.
 > Plate that makes wrecks free, and Surge, which stops the clock dead.
 >
 > Coins from a failed run still buy something you keep. The garage sits between every run —
-> four chassis, four tuning tracks, and permanent hardware: a harpoon that auto-fires into
-> the nearest car, plating that detonates everything around you every fifth link, a welder
-> that repairs the hull between chains.
+> six tuning tracks and permanent hardware you can see bolted onto the car: a harpoon that
+> auto-fires into the nearest car, plating that detonates everything around you every fifth
+> link, a welder that repairs the hull between chains.
 >
 > Every district demands a points quota before the checkpoint, and you choose the route and
 > the terms you drive under before each one. Clear it and you fit one chip from three. Some
@@ -74,7 +74,7 @@ The submission form asks these directly. Answers for this build:
 > **Yes, using LocalStorage** (refer to Automatic Progress Save)
 
 Saves live under the `neonheat.v1` key: best score, deepest district, coins, owned cars,
-upgrade levels, purchased hardware and the control-scheme preference. The Data Module is not used, so pick the
+tuning levels, purchased hardware and the control-scheme preference. The Data Module is not used, so pick the
 LocalStorage option — CrazyGames then syncs that key to a signed-in player's account
 automatically, which gives cloud saves with no code change. Writes are wrapped in
 try/catch, so a blocked storage context degrades to in-memory rather than throwing.

@@ -62,9 +62,11 @@ ending you.
 **Power-ups** sit in the traffic lanes and fire the moment you touch them — Boost, Repair,
 Ram Plate (free wrecks), and Surge, which stops the clock.
 
-**The garage sits between runs.** Coins earned by a failed run buy chassis, tuning, and
-permanent hardware — a harpoon that auto-fires, plating that detonates every fifth link, a
-welder that repairs you between chains. See [DESIGN.md](DESIGN.md).
+**The garage sits between runs**, and it is a bay rather than a form: a rendered deck with
+your car on it, wearing every part you have bolted on. Coins earned by a failed run buy
+tuning across six tracks and permanent hardware — a harpoon that auto-fires, plating that
+detonates every fifth link, a welder that repairs you between chains. See
+[DESIGN.md](DESIGN.md).
 
 **Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; a contract
 chosen before every district (boon + bane, stated up front); a chip drafted after. Risk on
