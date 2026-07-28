@@ -1402,6 +1402,7 @@ body{overflow:auto;display:block;background:#02030A}
       <div class="best">Deepest run <b id="menuBest">District 1</b></div>
       <div class="opts">
         <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
+        <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
         <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
       </div>
     </div>
@@ -1620,7 +1621,7 @@ window.NHAudio = (() => {
 'use strict';
 
 let ac = null, master = null, musicBus = null, sfxBus = null;
-let ready = false, muted = false;
+let ready = false, muted = false, engineOff = false;
 /* Ducking is separate from the user's mute so an ad can silence the game
    without destroying the setting they chose. */
 let ducked = false;
@@ -1700,8 +1701,18 @@ function init(){
   comp.threshold.value = -18; comp.ratio.value = 3.2; comp.attack.value = 0.004;
   comp.connect(master);
 
-  musicBus = ac.createGain(); musicBus.gain.value = 0.55; musicBus.connect(comp);
-  sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.85; sfxBus.connect(comp);
+  /* Take the glare off the whole mix in one place. Synthesised material has
+     no tape, no room and no mic to round it off, so every edge that would
+     normally be softened by the recording chain arrives intact — which is
+     what makes it tiring long before it makes it loud. */
+  const air = ac.createBiquadFilter();
+  air.type = 'lowpass'; air.frequency.value = 8200; air.Q.value = 0.6;
+  const shelf = ac.createBiquadFilter();
+  shelf.type = 'highshelf'; shelf.frequency.value = 3400; shelf.gain.value = -7;
+  air.connect(shelf); shelf.connect(comp);
+
+  musicBus = ac.createGain(); musicBus.gain.value = 0.50; musicBus.connect(air);
+  sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.80; sfxBus.connect(air);
 
   buildEngine();
   buildSqueal();
@@ -1728,21 +1739,21 @@ function resume(){
 function buildEngine(){
   engFilt = ac.createBiquadFilter();
   engFilt.type = 'lowpass';
-  engFilt.frequency.value = 1200;
+  engFilt.frequency.value = 260;
   engFilt.Q.value = 0.7;                       // no resonant peak to honk
 
   engGain = ac.createGain();
   engGain.gain.value = 0;
 
-  engOsc1 = ac.createOscillator(); engOsc1.type = 'triangle'; engOsc1.frequency.value = 190;
-  engOsc2 = ac.createOscillator(); engOsc2.type = 'triangle'; engOsc2.frequency.value = 190;
+  engOsc1 = ac.createOscillator(); engOsc1.type = 'triangle'; engOsc1.frequency.value = 50;
+  engOsc2 = ac.createOscillator(); engOsc2.type = 'triangle'; engOsc2.frequency.value = 50;
   engOsc2.detune.value = 8;                    // slow beating, so it breathes
-  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 48;
+  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 25;
 
   /* the inverter: a quiet octave-and-a-bit above, which is what makes an EV
      read as electric rather than as a flute */
-  engHi = ac.createOscillator(); engHi.type = 'sine'; engHi.frequency.value = 384;
-  engHiGain = ac.createGain(); engHiGain.gain.value = 0.30;
+  engHi = ac.createOscillator(); engHi.type = 'sine'; engHi.frequency.value = 100;
+  engHiGain = ac.createGain(); engHiGain.gain.value = 0.08;
   engHi.connect(engHiGain); engHiGain.connect(engFilt);
 
   /* a touch of vibrato keeps it from reading as a test tone */
@@ -1785,24 +1796,31 @@ function kick(at, vel){
   const o = ac.createOscillator(); o.type = 'sine';
   o.frequency.setValueAtTime(150, at);
   o.frequency.exponentialRampToValueAtTime(44, at + 0.11);
-  const g = env(musicBus, 0.9 * vel, 0.004, 0.20, at);
+  const g = env(musicBus, 0.72 * vel, 0.006, 0.22, at);
   o.connect(g); o.start(at); o.stop(at + 0.3);
 }
 function snare(at, vel){
+  /* Band-passed, not high-passed. A highpass at 1.6k lets everything above it
+     through, so the crack carried the full top octave on every backbeat. */
   const n = noiseSource(false);
-  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1600;
-  const g = env(musicBus, 0.34 * vel, 0.003, 0.15, at);
-  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.25);
+  const f = ac.createBiquadFilter(); f.type = 'bandpass';
+  f.frequency.value = 1500; f.Q.value = 0.8;
+  const g = env(musicBus, 0.22 * vel, 0.004, 0.17, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.28);
 
-  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 190;
-  const g2 = env(musicBus, 0.16 * vel, 0.003, 0.09, at);
-  o.connect(g2); o.start(at); o.stop(at + 0.16);
+  /* more body under it, so it reads as a drum rather than as a hiss */
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 185;
+  const g2 = env(musicBus, 0.20 * vel, 0.004, 0.11, at);
+  o.connect(g2); o.start(at); o.stop(at + 0.18);
 }
 function hat(at, vel){
+  /* This was noise high-passed at 7.2 kHz on sixteenths — the most fatiguing
+     band there is, ticking away non-stop. Now a narrow band well below it. */
   const n = noiseSource(false);
-  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7200;
-  const g = env(musicBus, 0.10 * vel, 0.002, 0.035, at);
-  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.08);
+  const f = ac.createBiquadFilter(); f.type = 'bandpass';
+  f.frequency.value = 5200; f.Q.value = 1.4;
+  const g = env(musicBus, 0.040 * vel, 0.002, 0.028, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.06);
 }
 function bassNote(at, freq){
   const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
@@ -1810,14 +1828,16 @@ function bassNote(at, freq){
   f.type = 'lowpass';
   f.frequency.setValueAtTime(220 + intensity * 260, at);
   f.frequency.exponentialRampToValueAtTime(120, at + 0.16);
-  f.Q.value = 9;
-  const g = env(musicBus, 0.30, 0.006, 0.15, at);
+  f.Q.value = 2.4;              // was 9 — a resonant squelch on every note
+  const g = env(musicBus, 0.28, 0.008, 0.16, at);
   o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.24);
 }
 function arpNote(at, freq, vel){
-  const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = freq;
-  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600; f.Q.value = 3;
-  const g = env(musicBus, 0.085 * vel, 0.004, 0.13, at);
+  /* triangle rather than square: the odd harmonics of a square are what made
+     the arpeggio glassy once the filter opened up */
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1900; f.Q.value = 0.9;
+  const g = env(musicBus, 0.075 * vel, 0.006, 0.15, at);
   o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.2);
 }
 let padVoices = [];
@@ -1892,6 +1912,10 @@ const A = {
   },
   /* what the sound button should actually read */
   isSilenced(){ return muted || siteMuted; },
+  /* The engine is the one voice you hear without pause for a whole run, so
+     it gets its own switch. Killing it must not cost you the music. */
+  setEngine(on){ engineOff = !on; },
+  engineOn(){ return !engineOff; },
   /* the graph, for automated mix checks — see the engine-voice notes */
   _probe(){ return ready ? { ac, sfxBus, musicBus, engGain } : null; },
   isForced(){ return siteMuted; },
@@ -1920,16 +1944,22 @@ const A = {
        flat 0.055 whatever you were doing, which is why it nagged. */
     const drive = st.playing ? 1 : 0.22;
     const load = Math.min(1, spd / 620);
-    engGain.gain.setTargetAtTime((0.012 + load * 0.020) * drive, t, 0.10);
+    engGain.gain.setTargetAtTime(engineOff ? 0 : (0.005 + load * 0.009) * drive, t, 0.10);
 
-    const f = 185 + spd * 1.02 + (st.boost ? 150 : 0);
+    /* Heard from across the street, not from inside the car. The previous
+       pass put the fundamental at 258-958Hz, which is a sustained tone right
+       in the band the ear is most sensitive to — quieter than the growl it
+       replaced and far more tiring. Down an octave and a half, and buried
+       under a low filter, it reads as a drivetrain you are near rather than
+       a note being played at you. */
+    const f = 46 + spd * 0.135 + (st.boost ? 22 : 0);
     engOsc1.frequency.setTargetAtTime(f, t, 0.07);
     engOsc2.frequency.setTargetAtTime(f, t, 0.07);
     engSub.frequency.setTargetAtTime(f * 0.25, t, 0.07);
     engHi.frequency.setTargetAtTime(f * 2.01, t, 0.07);
     /* the inverter shimmer only shows up once there is load on the motor */
-    engHiGain.gain.setTargetAtTime(0.10 + load * 0.34, t, 0.12);
-    engFilt.frequency.setTargetAtTime(900 + spd * 2.4 + (st.boost ? 2200 : 0), t, 0.08);
+    engHiGain.gain.setTargetAtTime(0.05 + load * 0.10, t, 0.12);
+    engFilt.frequency.setTargetAtTime(210 + spd * 0.42 + (st.boost ? 260 : 0), t, 0.08);
 
     const sq = st.playing ? Math.min(1, (st.drift || 0) * (spd > 240 ? 1 : 0)) : 0;
     sqGain.gain.setTargetAtTime(0.055 * sq, t, 0.05);
@@ -2441,7 +2471,8 @@ const CL = {
 const Save = {
   key:'neonheat.v1',
   data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper',
-         up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0 },
+         up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0,
+         engineSfx:1 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -5501,6 +5532,16 @@ $('btnMute').onclick   = e => { e.stopPropagation(); NHAudio.toggleMute(); setMu
 function setCtrlLabel(){
   $('btnCtrl').textContent = Save.data.ctrl === 'pads' ? 'Controls: pads' : 'Controls: swipe';
 }
+function setEngineLabel(){
+  const on = Save.data.engineSfx !== 0;
+  NHAudio.setEngine(on);
+  $('btnEngine').textContent = on ? 'Engine on' : 'Engine off';
+}
+$('btnEngine').onclick = e => {
+  e.stopPropagation();
+  Save.data.engineSfx = Save.data.engineSfx === 0 ? 1 : 0;
+  Save.flush(); setEngineLabel(); NHAudio.ui(true);
+};
 $('btnCtrl').onclick = e => {
   e.stopPropagation();
   Save.data.ctrl = Save.data.ctrl === 'pads' ? 'swipe' : 'pads';
@@ -6005,6 +6046,7 @@ resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
 setCtrlLabel();
+setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
 toMenu();

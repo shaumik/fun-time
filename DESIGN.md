@@ -233,15 +233,35 @@ Fully synthesised, no files. A four-layer synthwave bed over an i–VI–III–V
 whose *arrangement* is the intensity dial: kick alone early, then snare and hats, then a
 square arpeggio and a wider filter as the run gets deeper and hotter.
 
-**The car is electric.** The engine started as two detuned sawtooths through a resonant
-lowpass — a combustion growl with a honk sitting in it, which is fine for one lap and
-grating for twenty. It is now a motor whine: two triangles beating about 10 Hz apart, a
-quiet inverter partial an octave above, a sine hum underneath, gentle vibrato so it does not
-read as a test tone, and no resonance anywhere. The fundamental rises from 258 Hz at a crawl
-to 958 Hz flat out, and measured against an analyser there is essentially **no energy above
-3 kHz** — that band is what makes a continuous voice nag. It is also mixed to scale with
-speed rather than sitting at a fixed level, from roughly −35 dBFS idling to −28 flat out, so
-the music carries the scene and the car sits under it.
+**The car is a distant electric drivetrain.** This took two passes and the first was worse
+than what it replaced. The original was two detuned sawtooths through a resonant lowpass — a
+combustion growl with a honk in it. Replacing it with a motor *whine* at 258–958 Hz fixed
+the honk and created something more tiring: a sustained pure tone sitting in the band the ear
+is most sensitive to. Quieter and more fatiguing is a real combination, and it is worth
+remembering that "cleaner" and "easier to listen to" are not the same axis.
+
+It now sits an octave and a half lower — 54 Hz idling to about 150 Hz flat out — under a
+lowpass that never opens past ~530 Hz, with the inverter partial dropped to a hint. Measured
+on an analyser at full speed, the 2–5 kHz band is 72 dB below the low band and above 5 kHz is
+98 dB below: there is nothing up there at all. It reads as a drivetrain you are near rather
+than a note being played at you.
+
+**And it has its own switch.** The engine is the one voice you hear without pause for a
+whole run, so turning it off must not cost you the music. Verified: engine off measures
+exactly zero while the music bed is unchanged.
+
+**The bed is shaped once, globally.** Synthesised material has no tape, no room and no
+microphone to round it off, so every edge that a recording chain would soften arrives
+intact — which is what makes it tiring long before it makes it loud. A −7 dB shelf above
+3.4 kHz and a lowpass at 8.2 kHz sit across the whole mix.
+
+Three specific offenders went with it. The hats were noise **high-passed at 7.2 kHz** on
+sixteenths, which is the most fatiguing band there is, ticking non-stop; they are now a
+narrow band at 5.2 kHz at 40% of the level. The snare was high-passed at 1.6 kHz, so its
+crack carried the entire top octave on every backbeat; it is band-passed now, with more body
+under it. And the bass ran through a **Q of 9**, a resonant squelch on every note, now 2.4.
+The arpeggio moved from square to triangle, because the odd harmonics of a square are what
+made it glassy once the filter opened.
 
 The other gameplay voices are tyre squeal (band-passed noise following slip), a two-tone
 siren driven by an LFO, and one-shots for banking, wrecks, threads, pickups, chip picks,

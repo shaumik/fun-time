@@ -27,6 +27,9 @@ back to in-memory for the session).
 | <kbd>1</kbd>–<kbd>4</kbd> | Pick a chip at the draft |
 | <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
+The menu also carries an **Engine** toggle: the car is the one voice you hear without pause
+for a whole run, so silencing it must not cost you the music.
+
 ## Mobile
 
 Plays in portrait and landscape on a phone. The stage fills the viewport rather than

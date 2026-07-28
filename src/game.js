@@ -29,7 +29,8 @@ const CL = {
 const Save = {
   key:'neonheat.v1',
   data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper',
-         up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0 },
+         up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0,
+         engineSfx:1 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -3089,6 +3090,16 @@ $('btnMute').onclick   = e => { e.stopPropagation(); NHAudio.toggleMute(); setMu
 function setCtrlLabel(){
   $('btnCtrl').textContent = Save.data.ctrl === 'pads' ? 'Controls: pads' : 'Controls: swipe';
 }
+function setEngineLabel(){
+  const on = Save.data.engineSfx !== 0;
+  NHAudio.setEngine(on);
+  $('btnEngine').textContent = on ? 'Engine on' : 'Engine off';
+}
+$('btnEngine').onclick = e => {
+  e.stopPropagation();
+  Save.data.engineSfx = Save.data.engineSfx === 0 ? 1 : 0;
+  Save.flush(); setEngineLabel(); NHAudio.ui(true);
+};
 $('btnCtrl').onclick = e => {
   e.stopPropagation();
   Save.data.ctrl = Save.data.ctrl === 'pads' ? 'swipe' : 'pads';
@@ -3593,6 +3604,7 @@ resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
 setCtrlLabel();
+setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
 toMenu();
