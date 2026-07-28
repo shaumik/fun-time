@@ -71,6 +71,12 @@ and everything banks automatically; wreck your hull first and it is gone. Thread
 pays thin but puts time back on the clock, so a thin hull changes how you drive rather than
 ending you.
 
+**The convoy.** A quarter of the way into every district, three armoured haulers are
+announced and run in formation. They outpace ordinary traffic so catching them means
+committing; their armour bounces a bump at cruising pace, so cracking one needs Boost, a
+Surge or real speed; and they leave if you dawdle. Taking all three pays a bonus worth a
+quarter of the district's quota.
+
 **Power-ups** sit in the traffic lanes and fire the moment you touch them — Boost, Repair,
 Ram Plate (free wrecks), and Surge, which stops the clock.
 

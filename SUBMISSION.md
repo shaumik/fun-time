@@ -40,6 +40,10 @@ Paste-ready. Edit to taste.
 > Power-ups lie in the lanes and fire the instant you touch them: raw Boost, Repair, a Ram
 > Plate that makes wrecks free, and Surge, which stops the clock dead.
 >
+> Partway through every district, three armoured haulers are called in. They outrun normal
+> traffic and shrug off a bump at cruising speed, so taking them means committing — and they
+> pay a quarter of your quota if you crack all three before they get away.
+>
 > Coins from a failed run still buy something you keep. The garage sits between every run —
 > six tuning tracks and permanent hardware you can see bolted onto the car: a harpoon that
 > auto-fires into the nearest car, plating that detonates everything around you every fifth

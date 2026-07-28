@@ -367,6 +367,21 @@ const A = {
       o.connect(g); o.start(t + i * 0.045); o.stop(t + i * 0.045 + 0.2);
     });
   },
+  /* Convoy inbound. Two rising thirds, low enough to cut through the bed
+     without being another bright ping. */
+  warn(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [[196, 0], [262, 0.13]].forEach(([f, d]) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.setValueAtTime(f, t + d);
+      o.frequency.linearRampToValueAtTime(f * 1.02, t + d + 0.22);
+      const lp = ac.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1400; lp.Q.value = 0.7;
+      const g = env(sfxBus, 0.26, 0.012, 0.24, t + d);
+      o.connect(lp); lp.connect(g); o.start(t + d); o.stop(t + d + 0.4);
+    });
+  },
   nearMiss(){
     if (!ready) return;
     const t = ac.currentTime;

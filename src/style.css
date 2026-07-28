@@ -1264,6 +1264,27 @@ body{
 .hull.crit{animation:hullPulse .8s ease-in-out infinite}
 @keyframes hullPulse{50%{opacity:.62}}
 
+/* The convoy banner. It sits in the objective column because it is a second
+   objective, and it is amber because that is what the haulers are. */
+.convoy{
+  display:flex;align-items:center;gap:calc(var(--u)*.8);
+  font-size:calc(var(--u)*1.35);font-weight:800;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--amber);white-space:nowrap;
+  border:1px solid rgba(255,177,61,.5);
+  background:rgba(255,177,61,.10);
+  padding:calc(var(--u)*.3) calc(var(--u)*1);
+  border-radius:99px;
+  opacity:0;transform:translateY(calc(var(--u)*-.6));
+  transition:opacity .2s,transform .2s;
+}
+.convoy.on{opacity:1;transform:none;animation:convoyPulse 1.1s ease-in-out infinite}
+.convoy span::before{content:'Convoy'}
+.convoy b{
+  font-variant-numeric:tabular-nums;color:#1A0C04;background:var(--amber);
+  border-radius:99px;padding:0 calc(var(--u)*.7);letter-spacing:.06em;
+}
+@keyframes convoyPulse{50%{border-color:rgba(255,177,61,.95)}}
+
 /* The wrecking chain sits in the objective column's normal flow rather than
    at a hand-picked offset — an absolutely positioned counter here collided
    with the hull bar and the toasts the moment all three were live at once. */

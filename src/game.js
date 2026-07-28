@@ -783,6 +783,7 @@ const G = {
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], power:{ shield:0, surge:0 }, missileT:0, shockAt:5,
+  convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0
 };
 
@@ -963,7 +964,7 @@ function newWorld(ai){
   setTheme(G.run ? G.run.act : 1);
   G.track = new Track();
   G.spec = activeSpec();
-  G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = [];
+  G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
   G.car.mods = G.run ? G.run.M : NHChips.defaults();
@@ -977,6 +978,7 @@ function newWorld(ai){
   G.ghost = 0; G.pulseWarn = 0;
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
+  G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
@@ -1470,6 +1472,152 @@ function fireMissile(){
   toast('Harpoon', 'pink');
 }
 
+
+/* ============================================================
+   THE CONVOY
+   A district used to have exactly one objective and it was a number: hit the
+   quota, move on. Nothing in it was worth *wanting*. The convoy is the thing
+   you chase — announced before it arrives, armoured so a casual bump bounces
+   off, and gone if you do not commit. Every district now has a question in
+   it besides "am I at the number yet".
+   ============================================================ */
+const CONVOY_SIZE = 3;
+const TRUCK = {
+  id:'hauler', len:74, wid:34, nose:0.86, tail:0.94,
+  col:'#FFB13D', col2:'#4A2E06', power:480, grip:8.2, top:455, armor:2
+};
+
+function spawnConvoy(){
+  const car = G.car;
+  const base = car.idx + 26;
+  G.track.ensure(base + 20);
+  /* one lane, nose to tail — a formation reads as a target, a scatter does
+     not, and it means one good run down the line can take all three */
+  const lane = LANES[rint(0, LANES.length)] * 0.7;
+  for (let k = 0; k < CONVOY_SIZE; k++) {
+    const idx = base + k * 5;
+    const p = G.track.pts[idx];
+    const pos = G.track.at(idx, lane * roadHalf(p));
+    const v = new Vehicle(Object.assign({}, TRUCK), 'convoy');
+    v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
+    v.lane = lane * roadHalf(p);
+    v.vx = Math.cos(pos.a) * TRUCK.top; v.vy = Math.sin(pos.a) * TRUCK.top;
+    v.armour = 2;                       // survives a bump; not a boost
+    G.convoy.push(v);
+  }
+  G.convoyState = 'live';
+  G.convoyLeft = CONVOY_SIZE;
+  toast('Convoy ahead — crack it', 'gold');
+  NHAudio.warn();
+}
+
+/* What breaks armour: speed, boost, or hardware. A bump at cruising pace
+   should bounce, so that catching the convoy is a decision to commit rather
+   than something that happens to you on the way past. */
+function convoyHit(v, rel){
+  const car = G.car;
+  const M = G.run.M;
+  const heavy = car.boost || rel > 430 || G.power.surge > 0;
+  G.hitCool = 0.12;
+
+  if (!heavy && v.armour > 1) {
+    v.armour--;
+    v.hitFlash = 1;
+    car.vx *= 0.72; car.vy *= 0.72;
+    G.shake = Math.max(G.shake, 20);
+    hitstop(0.05, 18);
+    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1)), 'traffic');
+    NHAudio.hit(1.3);
+    for (let i = 0; i < 16; i++) {
+      const a = rnd(0, TAU), sp = rnd(120, 420);
+      spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
+            rnd(0.2, 0.5), rnd(3, 7), '255,210,140', true, -4);
+    }
+    toast('Armoured — hit it harder', 'red');
+    return;
+  }
+
+  /* cracked: pays like five ordinary wrecks and counts as one chain link */
+  v.wrecked = 1; v.hitFlash = 1;
+  const nx = (v.x - car.x), ny = (v.y - car.y), d = hyp(nx, ny) || 1;
+  v.vx += nx / d * 520; v.vy += ny / d * 520;
+  v.spin = rnd(-9, 9);
+  G.totalWreck++;
+  G.convoyLeft--;
+
+  /* Worth a bit over an ordinary wreck per hit — the prize is the formation,
+     not the individual truck. */
+  const gain = Math.round(320 * G.mult * M.bankMul * M.wreckMul * (G.run.L.wreckPay || 1));
+  G.pending += gain;
+  G.chain += 1;
+  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  G.topMult = Math.max(G.topMult, G.mult);
+  G.chainT = G.chainMax = chainTime();
+  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1)), 'traffic');
+
+  hitstop(0.09, 30);
+  G.flash = Math.max(G.flash, 0.6);
+  NHAudio.smash(1.6);
+  for (let i = 0; i < 44; i++) {
+    const a = rnd(0, TAU), sp = rnd(180, 760);
+    spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.3, 0.9), rnd(4, 11),
+          i % 3 ? '255,196,120' : '255,120,90', true, -6);
+  }
+  toast('Hauler cracked +' + fmt(gain), 'gold');
+
+  if (G.convoyLeft <= 0) {
+    /* Pegged to the quota rather than to the multiplier. Multiplied, this
+       paid 26,000 against a 7,000 target and turned the district into a
+       formality; as a fraction of what you actually need it stays a strong
+       prize at any depth — roughly a quarter of the way home — without ever
+       replacing playing the district. */
+    const bonus = Math.round(G.run.quota * 0.25);
+    G.pending += bonus;
+    G.convoyState = 'done';
+    G.flash = Math.max(G.flash, 0.85);
+    toast('CONVOY TAKEN +' + fmt(bonus), 'pink');
+    NHAudio.bank(G.mult);
+  }
+}
+
+function stepConvoy(dt){
+  const run = G.run;
+  if (!run || !run.cfg || run.cfg.boss) return;
+  const car = G.car;
+  const travelled = car.idx - run.startIdx;
+
+  if (G.convoyState === 'pending' && travelled > run.cfg.len * 0.22) spawnConvoy();
+
+  for (let i = G.convoy.length - 1; i >= 0; i--) {
+    const v = G.convoy[i];
+    if (v.wrecked) {
+      v.a += v.spin * dt;
+      v.spin *= Math.exp(-1.1 * dt);
+      v.vx *= Math.exp(-0.85 * dt); v.vy *= Math.exp(-0.85 * dt);
+      v.x += v.vx * dt; v.y += v.vy * dt;
+      v.hitFlash = Math.max(0, v.hitFlash - dt * 3);
+      if (v.idx < car.idx - 26) G.convoy.splice(i, 1);
+      continue;
+    }
+    autoDrive(v, dt, false);
+    /* they outrun ordinary traffic, so letting them go is a real outcome */
+    if (v.idx > car.idx + 140) {
+      G.convoy.splice(i, 1);
+      G.convoyLeft--;
+      if (G.convoyLeft <= 0 && G.convoyState === 'live') {
+        G.convoyState = 'done';
+        toast('Convoy got away', 'red');
+      }
+      continue;
+    }
+    const d = hyp(v.x - car.x, v.y - car.y);
+    if (d < (v.spec.len + car.spec.len) * 0.52 && G.hitCool <= 0) {
+      convoyHit(v, hyp(v.vx - car.vx, v.vy - car.vy));
+    }
+  }
+}
+
 /* -------- scoring -------- */
 function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; G.chainT = 0; return; }
@@ -1659,6 +1807,7 @@ function step(dt){
 
     stepHazards(dt);
     stepAir(dt);
+    stepConvoy(dt);
     if (G.boss) stepBoss(dt);
 
     /* reaching the checkpoint decides the district */
@@ -2353,7 +2502,8 @@ function drawPickups(){
    is off screen gets a chevron pinned to the edge, pointing at it. */
 function drawThreats(){
   if (G.state !== 'play' && G.state !== 'crash') return;
-  const list = G.boss ? G.police.concat([G.boss]) : G.police;
+  const live = G.convoy.filter(v => !v.wrecked);
+  const list = (G.boss ? G.police.concat([G.boss]) : G.police).concat(live);
   if (!list.length) return;
 
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -2508,6 +2658,7 @@ function render(){
   drawHazards();
   drawPickups();
   for (const t of G.traffic) drawVehicle(t, { lights:false });
+  for (const v of G.convoy) drawVehicle(v, { lights:true });
   for (const p of G.police) drawVehicle(p);
   if (G.boss) drawVehicle(G.boss);
   drawVehicle(G.car);
@@ -2574,7 +2725,8 @@ const UI = {
   daily:$('daily'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
-  objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build')
+  objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
+  convoy:$('convoy'), convoyLeft:$('convoyLeft')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -2629,6 +2781,10 @@ function syncHUD(){
   UI.hullFill.style.width = hf * 100 + '%';
   UI.wreck.classList.toggle('on', G.chain > 1);
   if (G.chain > 1) UI.wreck.textContent = G.chain + ' car pile-up';
+
+  const chasing = G.convoyState === 'live' && G.convoyLeft > 0;
+  UI.convoy.classList.toggle('on', chasing);
+  if (chasing) UI.convoyLeft.textContent = G.convoyLeft;
 
   UI.heat.classList.toggle('on', G.heat > 0.05 || G.tier > 0);
   UI.heat.classList.toggle('max', G.tier >= 3);

@@ -94,6 +94,20 @@ The generator is untouched; only what it is dressed in changes. That is the chea
 change available — the road you drive is identical, and the place you are driving through
 is not.
 
+**The convoy** is the thing in a district worth *wanting*. A district used to have exactly
+one objective and it was a number — hit the quota, move on — with nothing in it you would go
+out of your way for. A quarter of the way in, three armoured haulers are announced and run
+in formation down one lane. They outpace ordinary traffic, so catching them is a decision to
+commit; their armour bounces a bump at cruising pace, so cracking one needs Boost, a Surge,
+or genuine speed; and they are gone if you dawdle. Every district now has a second question
+in it: *did I take the convoy?*
+
+The completion bonus is pegged to a quarter of the district's quota rather than to the
+multiplier. Multiplied it paid 26,000 against a 7,000 target and turned the district into a
+formality; as a fraction of what you actually need it stays a strong prize at any depth
+without ever replacing playing the district. In testing a bot cracked two haulers, took the
+third, and died with 8,788 unbanked — which is the shape the event should have.
+
 **Districts** get longer, hungrier and hotter. Quota grows 1.30× per district (×1.45 on an
 Elite) while the player's build grows through chips — the two curves are meant to stay
 close, so a run ends when the build stops keeping up rather than at a fixed wall.
