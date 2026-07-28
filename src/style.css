@@ -1430,3 +1430,46 @@ body{
   .bdW,.bdT{display:none}
   .ovFoot{flex-direction:column}
 }
+
+
+/* ============================================================
+   LEVELS
+   The bar lives directly under the quota because it is the other thing
+   filling up, and the level-up screen borrows the draft's card language so
+   a perk reads as the same class of object as a chip.
+   ============================================================ */
+.xp{width:calc(var(--u)*30)}
+.xpHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.35);
+}
+.xpHead span{
+  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.xpHead b{color:#fff;font-variant-numeric:tabular-nums}
+.xpHead i{
+  font-style:normal;font-size:calc(var(--u)*1.05);font-weight:800;
+  color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em;
+}
+.xpBar{
+  height:calc(var(--u)*.42);background:rgba(255,255,255,.10);
+  border-radius:99px;overflow:hidden;
+}
+.xpBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7BF5B0,#3DE8FF);
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(123,245,176,.7);
+  transition:width .2s linear;
+}
+.xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
+
+.luKick{
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;
+}
+.luKick b{color:#fff;font-variant-numeric:tabular-nums}
+#levelup .dcard{border-top-color:#7BF5B0}
+#levelup .dcard:hover{background:rgba(123,245,176,.09)}
+#levelup .dcard.uncommon{border-top-color:var(--magenta)}
+#levelup .dcard.rare{border-top-color:var(--amber)}

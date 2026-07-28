@@ -35,7 +35,21 @@ function defaults(){
     zoomMul: 1,        // curse: tighter camera
     hullMax: 1,        // hull capacity multiplier
     hullCost: 1,       // hull taken per wreck
-    bankHeal: 0        // extra hull welded back on each bank
+    bankHeal: 0,       // extra hull welded back on each bank
+
+    /* everything below hooks the toys rather than the base loop */
+    ballTime: 1,       // wrecking ball duration scale
+    droneTime: 1,      // escort drone duration scale
+    arcHops: 0,        // extra chain-lightning hops
+    wellPull: 1,       // singularity radius/strength scale
+    convoyPay: 1,      // hauler payout scale
+    convoyArmour: 0,   // armour knocked off every hauler
+    rocketBonus: 0,    // extra rockets per Bazooka
+    startShield: 0,    // seconds of Ram Plate at each district start
+    startDrones: 0,    // seconds of Escort Drones at each district start
+    coinPerWreck: 0,   // garage coins per wreck
+    scoreMul: 1,       // flat multiplier on everything banked
+    chainStep: 0       // extra links granted every fifth wreck
   };
 }
 
@@ -132,6 +146,177 @@ const CHIPS = [
     desc:'Every wreck banks 45% more.',
     apply(M){ M.wreckMul += 0.45; } }
 ];
+
+
+/* ============================================================
+   PERKS
+   The in-run levelling pool. A chip is drafted between districts and is a
+   build decision; a perk arrives mid-drive at a level-up and is a reward for
+   the last thirty seconds. Forty-five of them so that fifteen levels never
+   show you the same three twice, and so that two runs diverge early.
+
+   They are deliberately weighted toward the *toys* rather than toward the
+   base numbers: a perk that says "+9% top speed" is a stat line, and a perk
+   that says "your wrecking ball never stops" changes what the run is.
+   ============================================================ */
+const PERKS = [
+  /* ---- the chain ---- */
+  { id:'p_clock',   name:'Long Fuse',      rarity:'common',   tag:'Chain',
+    desc:'The chain clock runs 0.5s longer.', apply(M){ M.chainTime += 0.5; } },
+  { id:'p_step',    name:'Momentum',       rarity:'uncommon', tag:'Chain',
+    desc:'Every fifth wreck in a chain counts as two.', apply(M){ M.chainStep += 1; } },
+  { id:'p_thread',  name:'Needle',         rarity:'common',   tag:'Chain',
+    desc:'Threading a gap puts another 0.4s on the clock.', apply(M){ M.nearChain += 0.4; } },
+  { id:'p_rate',    name:'Snowball',       rarity:'uncommon', tag:'Chain',
+    desc:'The multiplier climbs 25% faster.', apply(M){ M.multRate += 0.15; } },
+  { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
+    desc:'The multiplier ceiling comes off — ×22.',
+    apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+
+  /* ---- the ball ---- */
+  { id:'p_ball1',   name:'Heavy Iron',     rarity:'common',   tag:'Ball',
+    desc:'The wrecking ball lasts 60% longer.', apply(M){ M.ballTime += 0.6; } },
+  { id:'p_ball2',   name:'Second Chain',   rarity:'rare',     tag:'Ball',
+    desc:'Wrecking balls last two and a half times as long.',
+    apply(M){ M.ballTime += 1.5; } },
+
+  /* ---- the drones ---- */
+  { id:'p_dr1',     name:'Long Patrol',    rarity:'common',   tag:'Drones',
+    desc:'Escort drones stay 60% longer.', apply(M){ M.droneTime += 0.6; } },
+  { id:'p_dr2',     name:'Standing Escort',rarity:'rare',     tag:'Drones',
+    desc:'Every district starts with 8s of escort drones.',
+    apply(M){ M.startDrones += 8; } },
+
+  /* ---- the arc ---- */
+  { id:'p_arc1',    name:'Conductor',      rarity:'uncommon', tag:'Arc',
+    desc:'Arc lightning jumps one extra car.', apply(M){ M.arcHops += 1; } },
+  { id:'p_arc2',    name:'Substation',     rarity:'rare',     tag:'Arc',
+    desc:'Arc lightning jumps two extra cars.', apply(M){ M.arcHops += 2; } },
+
+  /* ---- the well ---- */
+  { id:'p_well1',   name:'Event Horizon',  rarity:'uncommon', tag:'Well',
+    desc:'Singularities pull half again as hard, and wider.',
+    apply(M){ M.wellPull += 0.5; } },
+  { id:'p_well2',   name:'Collapse',       rarity:'rare',     tag:'Well',
+    desc:'Singularities pull twice as hard and last 60% longer.',
+    apply(M){ M.wellPull += 1; M.powerTime += 0.6; } },
+
+  /* ---- the convoy ---- */
+  { id:'p_cv1',     name:'Hijacker',       rarity:'uncommon', tag:'Convoy',
+    desc:'Haulers pay 60% more.', apply(M){ M.convoyPay += 0.6; } },
+  { id:'p_cv2',     name:'Can Opener',     rarity:'rare',     tag:'Convoy',
+    desc:'Haulers lose a layer of armour — one good hit cracks them.',
+    apply(M){ M.convoyArmour += 1; } },
+
+  /* ---- power-ups ---- */
+  { id:'p_pu1',     name:'Scrap Sense',    rarity:'common',   tag:'Power',
+    desc:'Half again as many power-ups on the road.', apply(M){ M.pickupRate += 0.5; } },
+  { id:'p_pu2',     name:'Slow Burn',      rarity:'common',   tag:'Power',
+    desc:'Timed power-ups last 40% longer.', apply(M){ M.powerTime += 0.4; } },
+  { id:'p_pu3',     name:'Munitions',      rarity:'uncommon', tag:'Power',
+    desc:'The Bazooka carries three extra rockets.', apply(M){ M.rocketBonus += 3; } },
+  { id:'p_pu4',     name:'Cold Start',     rarity:'uncommon', tag:'Power',
+    desc:'Every district starts with 6s of Ram Plate.', apply(M){ M.startShield += 6; } },
+  { id:'p_pu5',     name:'Deep Cell',      rarity:'common',   tag:'Power',
+    desc:'Boost pickups burn 70% longer.', apply(M){ M.boostTime += 0.7; } },
+
+  /* ---- hull ---- */
+  { id:'p_h1',      name:'Spot Weld',      rarity:'common',   tag:'Hull',
+    desc:'Hull +25%.', apply(M){ M.hullMax += 0.25; } },
+  { id:'p_h2',      name:'Bull Bar',       rarity:'common',   tag:'Hull',
+    desc:'Wrecks cost 30% less hull.', apply(M){ M.hullCost *= 0.70; } },
+  { id:'p_h3',      name:'Field Kit',      rarity:'uncommon', tag:'Hull',
+    desc:'Every bank welds back an extra 10 hull.', apply(M){ M.bankHeal += 10; } },
+  { id:'p_h4',      name:'Ablative',       rarity:'rare',     tag:'Hull',
+    desc:'Hull +50%, and wrecks cost 40% less.',
+    apply(M){ M.hullMax += 0.5; M.hullCost *= 0.6; } },
+  { id:'p_h5',      name:'Crumple Zone',   rarity:'uncommon', tag:'Hull',
+    desc:'Survive one totalled hull per district.', apply(M){ M.crumple += 1; } },
+
+  /* ---- pay ---- */
+  { id:'p_pay1',    name:'Fence',          rarity:'common',   tag:'Pay',
+    desc:'Every wreck banks 25% more.', apply(M){ M.wreckMul += 0.25; } },
+  { id:'p_pay2',    name:'Blood Money',    rarity:'rare',     tag:'Pay',
+    desc:'Everything you bank pays 45% more.', apply(M){ M.scoreMul += 0.45; } },
+  { id:'p_pay3',    name:'Chop Shop',      rarity:'uncommon', tag:'Pay',
+    desc:'Every wreck is worth 14 coins in the garage.',
+    apply(M){ M.coinPerWreck += 14; } },
+  { id:'p_pay4',    name:'Insurance',      rarity:'uncommon', tag:'Pay',
+    desc:'Threading pays double.', apply(M){ M.nearMul += 1; } },
+
+  /* ---- the car ---- */
+  { id:'p_c1',      name:'Big Bore',       rarity:'common',   tag:'Engine',
+    desc:'Top speed +8%.', apply(M){ M.topMul += 0.08; } },
+  { id:'p_c2',      name:'Cold Rubber',    rarity:'common',   tag:'Handling',
+    desc:'Grip +22%.', apply(M){ M.gripMul += 0.22; } },
+  { id:'p_c3',      name:'Wide Streets',   rarity:'uncommon', tag:'Handling',
+    desc:'Every street is 15% wider.', apply(M){ M.roadMul *= 1.15; } },
+  { id:'p_c4',      name:'Overdrive',      rarity:'rare',     tag:'Engine',
+    desc:'Top speed +18% and the camera pulls back.',
+    apply(M){ M.topMul += 0.18; M.zoomMul *= 1.10; } },
+
+  /* ---- traffic ---- */
+  { id:'p_t1',      name:'Rush Hour',      rarity:'common',   tag:'Risk',
+    desc:'Half again as much traffic to hit.', apply(M){ M.trafficMul += 0.5; } },
+  { id:'p_t2',      name:'Gridlock',       rarity:'uncommon', tag:'Risk',
+    desc:'Double traffic, and wrecks pay 20% more.',
+    apply(M){ M.trafficMul += 1; M.wreckMul += 0.2; } },
+
+  /* ---- heat ---- */
+  { id:'p_he1',     name:'Adrenal Feed',   rarity:'uncommon', tag:'Heat',
+    desc:'+55% scoring while Heat is 2 or higher.', apply(M){ M.heatBonus += 0.55; } },
+  { id:'p_he2',     name:'Ghost Plates',   rarity:'common',   tag:'Heat',
+    desc:'Banking makes pursuit lose you for 3s.', apply(M){ M.ghostOnBank += 3; } },
+  { id:'p_he3',     name:'Static Discharge',rarity:'uncommon',tag:'Heat',
+    desc:'Banking spins out any pursuit close behind.', apply(M){ M.shockOnBank = 1; } },
+  { id:'p_he4',     name:'Marked Man',     rarity:'rare',     tag:'Heat',
+    desc:'Pursuit starts a tier hotter, and everything pays 30% more.',
+    apply(M){ M.policeStart += 1; M.scoreMul += 0.30; } },
+
+  /* ---- the greedy ones ---- */
+  { id:'p_g1',      name:'Glass Cannon',   rarity:'rare',     tag:'Risk',
+    desc:'Wrecks pay double. Hull cut by a third.',
+    apply(M){ M.wreckMul += 1; M.hullMax *= 0.66; } },
+  { id:'p_g2',      name:'Featherweight',  rarity:'uncommon', tag:'Risk',
+    desc:'Top speed +14%, but every wreck costs half again as much hull.',
+    apply(M){ M.topMul += 0.14; M.hullCost *= 1.5; } },
+  { id:'p_g3',      name:'Redline',        rarity:'rare',     tag:'Risk',
+    desc:'The chain clock is 0.6s shorter, and every wreck pays 70% more.',
+    apply(M){ M.chainTime -= 0.6; M.wreckMul += 0.7; } },
+  { id:'p_g4',      name:'Tunnel Vision',  rarity:'uncommon', tag:'Risk',
+    desc:'The camera sits tighter, and scoring is up 25%.',
+    apply(M){ M.zoomMul *= 0.88; M.scoreMul += 0.25; } },
+  { id:'p_g5',      name:'Last Stand',     rarity:'rare',     tag:'Hull',
+    desc:'Below a third hull, everything pays double.',
+    apply(M){ M.lastStand = 1; } },
+  { id:'p_g6',      name:'Salvage Rights', rarity:'common',   tag:'Pay',
+    desc:'Clearing a district repairs the hull completely.',
+    apply(M){ M.clearHeal = 1; } }
+];
+
+const perkById = id => PERKS.find(p => p.id === id);
+
+/* Three offers, no repeats of what is already fitted. Rarity odds improve
+   with level so the late choices feel like the reward for getting there. */
+function rollPerks(owned, level){
+  const pool = PERKS.filter(p => !owned.includes(p.id));
+  const W = level >= 11 ? { common: 22, uncommon: 40, rare: 38 }
+          : level >= 6  ? { common: 42, uncommon: 40, rare: 18 }
+                        : { common: 62, uncommon: 31, rare: 7 };
+  const picks = [];
+  const used = new Set();
+  for (let n = 0; n < 3 && pool.length; n++) {
+    const avail = pool.filter(p => !used.has(p.id));
+    if (!avail.length) break;
+    let total = 0;
+    for (const p of avail) total += W[p.rarity];
+    let r = Math.random() * total, chosen = avail[0];
+    for (const p of avail) { r -= W[p.rarity]; if (r <= 0) { chosen = p; break; } }
+    used.add(chosen.id);
+    picks.push(chosen);
+  }
+  return picks;
+}
 
 /* Overclocked offers pair a stronger chip with a permanent drawback.
    The drawback is always legible up front — no hidden costs. */
@@ -297,16 +482,17 @@ function levelDefaults(){
   return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1 };
 }
 
-function build(ownedIds, curseIds, contractId){
+function build(ownedIds, curseIds, contractId, perkIds){
   const M = defaults();
   const L = levelDefaults();
   for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
+  for (const id of (perkIds || [])) { const p = perkById(id); if (p) p.apply(M, L); }
   for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
   const k = contractById(contractId);
   if (k) k.apply(M, L);
   return { M, L };
 }
 
-return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS,
-         byId, curseById, contractById, roll, rollContracts, build };
+return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS, PERKS,
+         byId, curseById, contractById, perkById, roll, rollContracts, rollPerks, build };
 })();

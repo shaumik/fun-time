@@ -457,6 +457,7 @@ addEventListener('keydown', e => {
     else if (G.state === 'brief') beginDistrict();
   }
   if (G.state === 'draft' && /^Digit[1234]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
+  if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
   if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
 });
@@ -791,7 +792,7 @@ const G = {
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
-  crashT:0, slow:1, flash:0, revived:false,
+  crashT:0, slow:1, flash:0, revived:false, pendingLevels:0,
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
@@ -948,6 +949,7 @@ function makeRoute(act){
 function newRun(){
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
+    xp: 0, level: 1, perks: [],
     node: null, district: 0,
     chips: [], curses: [], contract: null,
     M: NHChips.defaults(), L: NHChips.levelDefaults(),
@@ -1003,6 +1005,14 @@ function newWorld(ai){
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
+  /* perks that arm you the moment a district starts */
+  const PM = G.run ? G.run.M : null;
+  if (PM && PM.startShield) G.power.shield = Math.max(G.power.shield, PM.startShield);
+  if (PM && PM.startDrones) {
+    G.power.drones = PM.startDrones;
+    G.drones = [-1, 1].map(side => ({ x:G.car.x, y:G.car.y, side, vx:0, vy:0,
+                                      target:null, dwell:0, ang:0 }));
+  }
   G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0));
   G.hp = G.hpMax;
   G.ai = !!ai;
@@ -1319,6 +1329,13 @@ function smash(v, rel){
   toast('Wreck +' + fmt(gain), 'gold');
   if (Hangar.has('shockplate') && G.chain >= G.shockAt) { G.shockAt = G.chain + 5; shockwave(); }
   arcFrom(v);
+  addXP(1);
+  if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
+  /* Momentum: every fifth link is worth two */
+  if (M.chainStep && G.chain % 5 === 0) {
+    G.chain += M.chainStep;
+    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  }
 }
 
 
@@ -1437,7 +1454,7 @@ function takePickup(k){
       break;
     case 'rockets':
       /* a burst, unlike the Harpoon rack's steady 9s cycle */
-      G.rockets += 4;
+      G.rockets += 4 + (M.rocketBonus || 0);
       G.rocketT = Math.min(G.rocketT || 0.5, 0.5);
       break;
     case 'frenzy':
@@ -1461,7 +1478,7 @@ function takePickup(k){
       break;
     case 'ball': {
       /* a real pendulum, thrown out behind you */
-      G.power.ball = Math.max(G.power.ball, 11 * M.powerTime);
+      G.power.ball = Math.max(G.power.ball, 11 * M.powerTime * M.ballTime);
       G.ball = { x:car.x, y:car.y, vx:0, vy:0, ang:car.a + Math.PI };
       break;
     }
@@ -1478,7 +1495,7 @@ function takePickup(k){
       break;
     }
     case 'drones': {
-      G.power.drones = Math.max(G.power.drones, 11 * M.powerTime);
+      G.power.drones = Math.max(G.power.drones, 11 * M.powerTime * M.droneTime);
       /* one per shoulder, each acquiring independently */
       G.drones = [-1, 1].map(side => ({
         x:car.x, y:car.y, side, vx:0, vy:0, target:null, dwell:0, ang:0
@@ -1777,7 +1794,7 @@ function stepBall(dt){
 function arcFrom(src, depth){
   if (G.power.arc <= 0) return;
   const hops = depth || 0;
-  if (hops >= 3) return;
+  if (hops >= 3 + ((G.run && G.run.M.arcHops) || 0)) return;
   const M = G.run.M;
   let best = null, bd = 1e9;
   for (const t of G.traffic) {
@@ -1824,8 +1841,9 @@ function stepWells(dt){
       if (t.wrecked) continue;
       const dx = w.x - t.x, dy = w.y - t.y;
       const d = hyp(dx, dy);
-      if (d > 620) continue;
-      const pull = (1 - d / 620) * 1900 * dt;
+      const R = 620 * (M ? M.wellPull : 1);
+      if (d > R) continue;
+      const pull = (1 - d / R) * 1900 * (M ? M.wellPull : 1) * dt;
       t.vx += dx / d * pull; t.vy += dy / d * pull;
       if (d < 46 && M) {
         t.wrecked = 1; t.hitFlash = 1; t.spin = rnd(-16, 16);
@@ -1969,6 +1987,84 @@ function fireMissile(){
 }
 
 
+
+/* ============================================================
+   LEVELS
+   The addictive part is not the perk, it is the *cadence* of being handed a
+   choice. XP comes off the things you were already doing — wrecks, banks,
+   haulers, clears — so a level-up is always the reward for the last thirty
+   seconds rather than for a menu you walked through. Fifteen levels, three
+   offers each, drawn from forty-five: no run sees the same board twice, and
+   two runs diverge inside the first district.
+   ============================================================ */
+const LEVEL_CAP = 15;
+const xpFor = l => 18 + l * 2;          // ~462 XP to cap, roughly a full run
+
+function addXP(n){
+  const run = G.run;
+  if (!run || run.level >= LEVEL_CAP) return;
+  run.xp += n;
+  while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
+    run.xp -= xpFor(run.level);
+    run.level++;
+    G.pendingLevels++;
+  }
+}
+
+/* Offered at the next safe moment rather than mid-corner. */
+function maybeLevelUp(){
+  if (G.pendingLevels <= 0 || G.state !== 'play') return;
+  G.pendingLevels--;
+  const run = G.run;
+  G.offers = NHChips.rollPerks(run.perks, run.level);
+  if (!G.offers.length) return;
+
+  G.state = 'levelup';
+  UI.hud.classList.add('off');
+  $('luLevel').textContent = run.level;
+  const wrap = $('luCards');
+  wrap.innerHTML = '';
+  G.offers.forEach((p, i) => {
+    const el = document.createElement('button');
+    el.className = 'dcard ' + p.rarity;
+    el.innerHTML =
+      '<div class="drar">' + p.rarity + ' &middot; ' + p.tag + '</div>' +
+      '<div class="dname">' + p.name + '</div>' +
+      '<div class="ddesc">' + p.desc + '</div>';
+    el.onclick = () => takePerk(i);
+    wrap.appendChild(el);
+  });
+  show(UI.levelup);
+  NHAudio.curse ? NHAudio.chip() : 0;
+}
+
+function takePerk(i){
+  const p = G.offers[i];
+  if (!p) return;
+  G.run.perks.push(p.id);
+  rebuildMods();
+  NHAudio.chip();
+  hide(UI.levelup);
+  UI.hud.classList.remove('off');
+  G.state = 'play';
+  toast(p.name + ' fitted', 'gold');
+  /* a hull bump applies immediately rather than at the next district */
+  const was = G.hpMax;
+  G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0));
+  if (G.hpMax > was) G.hp += G.hpMax - was;
+  maybeLevelUp();                      // two levels at once is possible
+}
+
+/* Perks change mid-district, so the modifier table has to be rebuilt live. */
+function rebuildMods(){
+  const run = G.run;
+  const built = NHChips.build(run.chips, run.curses, run.contract, run.perks);
+  run.M = built.M; run.L = built.L;
+  if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
+  run.M.wreckMul *= (G.spec.wreckMul || 1);
+  if (G.car) G.car.mods = run.M;
+}
+
 /* ============================================================
    THE CONVOY
    A district used to have exactly one objective and it was a number: hit the
@@ -2013,7 +2109,7 @@ function spawnConvoy(){
 function convoyHit(v, rel){
   const car = G.car;
   const M = G.run.M;
-  const heavy = car.boost || rel > 430 || G.power.surge > 0;
+  const heavy = car.boost || rel > 430 || G.power.surge > 0 || (M.convoyArmour || 0) > 0;
   G.hitCool = 0.12;
 
   if (!heavy && v.armour > 1) {
@@ -2119,10 +2215,12 @@ function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; G.chainT = 0; return; }
   const M = G.run.M;
   const heatMul = 1 + G.tier * 0.35 + (G.tier >= 2 ? M.heatBonus : 0);
-  const gained = Math.floor(G.pending * heatMul * M.bankMul);
+  const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
+              * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
 
   G.score += gained;
   G.run.banked += gained;
+  addXP(Math.min(8, Math.round(gained / 2200)));
   G.heat = Math.min(3.0, G.heat + gained / 14000);
   NHAudio.bank(G.mult);
 
@@ -2304,6 +2402,7 @@ function step(dt){
     stepHazards(dt);
     stepAir(dt);
     stepConvoy(dt);
+    maybeLevelUp();
     if (G.boss) stepBoss(dt);
 
     /* reaching the checkpoint decides the district */
@@ -3375,7 +3474,8 @@ const UI = {
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
-  daily:$('daily'), board:$('board'),
+  daily:$('daily'), board:$('board'), levelup:$('levelup'),
+  xp:$('xp'), xpLvl:$('xpLvl'), xpNext:$('xpNext'), xpFill:$('xpFill'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
@@ -3451,6 +3551,15 @@ function syncHUD(){
   UI.wreck.classList.toggle('on', G.chain > 1);
   if (G.chain > 1) UI.wreck.textContent = G.chain + ' car pile-up';
 
+  const run0 = G.run;
+  if (run0) {
+    const maxed = run0.level >= LEVEL_CAP;
+    UI.xp.classList.toggle('max', maxed);
+    UI.xpLvl.textContent = run0.level;
+    UI.xpNext.textContent = maxed ? 'MAX' : run0.xp + ' / ' + xpFor(run0.level);
+    UI.xpFill.style.width = (maxed ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
+  }
+
   const chasing = G.convoyState === 'live' && G.convoyLeft > 0;
   UI.convoy.classList.toggle('on', chasing);
   if (chasing) UI.convoyLeft.textContent = G.convoyLeft;
@@ -3524,7 +3633,7 @@ function toMenu(){
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
-  hide(UI.daily); hide(UI.board);
+  hide(UI.daily); hide(UI.board); hide(UI.levelup);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
@@ -3534,6 +3643,7 @@ function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  G.pendingLevels = 0;
   shownScore = 0;
   showMap();
 }
@@ -3781,11 +3891,7 @@ function beginNode(){
   run.district = run.node.district;
   run.cfg = districtCfg(run.district, run.node.type, run.act);
 
-  const built = NHChips.build(run.chips, run.curses, run.contract);
-  run.M = built.M; run.L = built.L;
-  /* hardware is applied after chips so it reads as the floor you start from */
-  if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
-  run.M.wreckMul *= (G.spec.wreckMul || 1);          // the Impact track
+  rebuildMods();
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
   run.crumpleLeft = run.M.crumple;
@@ -3860,6 +3966,8 @@ function beginDistrict(){
 }
 
 function clearDistrict(){
+  if (G.run && G.run.M && G.run.M.clearHeal) G.hp = G.hpMax;
+  addXP(14);
   if (G.state !== 'play') return;
   const run = G.run;
   run.cleared++;
@@ -3935,6 +4043,7 @@ function takeOffer(i){
 function endRun(won){
   G.state = 'over';
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.draft); hide(UI.brief);
+  hide(UI.levelup);
   const isBest = G.score > Save.data.best;
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
@@ -4658,7 +4767,7 @@ Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
-hide(UI.daily); hide(UI.board);
+hide(UI.daily); hide(UI.board); hide(UI.levelup);
 setCtrlLabel();
 setEngineLabel();
 setMute();
@@ -4672,7 +4781,7 @@ window.__NH = {
   get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
   beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
-  takeContract, openNodes, advance,
+  takeContract, openNodes, advance, addXP, takePerk, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   endRun, showBoard, recordRun, failDistrict, damage,

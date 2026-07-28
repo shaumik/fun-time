@@ -324,6 +324,62 @@ shorten it.
 
 Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 
+## Levels
+
+The addictive part of a roguelite is not the perk, it is the *cadence* of being handed a
+choice. So there is a levelling track inside every run: **fifteen levels, three offers each,
+drawn from a pool of forty-five.** No run sees the same board twice and two runs diverge
+inside the first district.
+
+XP comes off the things you were already doing — one per wreck, five per hauler, fourteen a
+district cleared, and a slice of every bank — so a level-up always reads as the reward for
+the last thirty seconds rather than for a menu you walked through. The curve totals 462 XP,
+which is roughly a full three-act run: capping is an achievement, not a formality.
+
+Perks are weighted deliberately toward the *toys* rather than the base numbers. "+9% top
+speed" is a stat line; "your wrecking ball lasts two and a half times as long", "arc
+lightning jumps two extra cars", "every district starts with escort drones" change what the
+run *is*. Rarity odds shift with level, so late choices feel like the reward for having got
+there — commons dominate before level 6 and rares are 38% of the table past level 11.
+
+They stack live: taking a perk rebuilds the modifier table mid-district and relinks it to the
+car, so a hull perk pays out the instant you take it rather than at the next brief.
+
+| Layer | Lives for | Chosen |
+|---|---|---|
+| Perk | the run | On level-up, three at a time, forty-five in the pool |
+| Chip | the run | After a district clears |
+| Contract | one district | Before you drive it |
+| Hardware | forever | Bought in the garage |
+
+## Levels
+
+The addictive part of a roguelite is not the perk, it is the *cadence* of being handed a
+choice. So there is a levelling track inside every run: **fifteen levels, three offers each,
+drawn from a pool of forty-five.** No run sees the same board twice, and two runs diverge
+inside the first district.
+
+XP comes off the things you were already doing — one per wreck, five per hauler, fourteen a
+district cleared, a slice of every bank — so a level-up always reads as the reward for the
+last thirty seconds rather than for a menu you walked through. The curve totals 462 XP,
+roughly a full three-act run: capping is an achievement, not a formality.
+
+Perks are weighted deliberately toward the *toys* rather than the base numbers. "+9% top
+speed" is a stat line; "your wrecking ball lasts two and a half times as long", "arc
+lightning jumps two extra cars", "every district starts with escort drones" change what the
+run *is*. Rarity odds shift with level so late choices feel earned — commons dominate before
+level 6, and rares are 38% of the table past level 11.
+
+They stack live: taking a perk rebuilds the modifier table mid-district and relinks it to the
+car, so a hull perk pays out the instant you take it rather than at the next brief.
+
+| Layer | Lives for | Chosen |
+|---|---|---|
+| Perk | the run | On level-up, three at a time, forty-five in the pool |
+| Chip | the run | After a district clears |
+| Contract | one district | Before you drive it |
+| Hardware | forever | Bought in the garage |
+
 ## The garage
 
 A roguelite that only resets is a roguelike. The garage is the other half of the contract:

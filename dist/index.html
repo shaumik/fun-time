@@ -1442,6 +1442,49 @@ body{
   .ovFoot{flex-direction:column}
 }
 
+
+/* ============================================================
+   LEVELS
+   The bar lives directly under the quota because it is the other thing
+   filling up, and the level-up screen borrows the draft's card language so
+   a perk reads as the same class of object as a chip.
+   ============================================================ */
+.xp{width:calc(var(--u)*30)}
+.xpHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.35);
+}
+.xpHead span{
+  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.xpHead b{color:#fff;font-variant-numeric:tabular-nums}
+.xpHead i{
+  font-style:normal;font-size:calc(var(--u)*1.05);font-weight:800;
+  color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em;
+}
+.xpBar{
+  height:calc(var(--u)*.42);background:rgba(255,255,255,.10);
+  border-radius:99px;overflow:hidden;
+}
+.xpBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7BF5B0,#3DE8FF);
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(123,245,176,.7);
+  transition:width .2s linear;
+}
+.xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
+
+.luKick{
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;
+}
+.luKick b{color:#fff;font-variant-numeric:tabular-nums}
+#levelup .dcard{border-top-color:#7BF5B0}
+#levelup .dcard:hover{background:rgba(123,245,176,.09)}
+#levelup .dcard.uncommon{border-top-color:var(--magenta)}
+#levelup .dcard.rare{border-top-color:var(--amber)}
+
 </style>
 </head>
 <body>
@@ -1469,6 +1512,11 @@ body{
           <div class="cpts" id="cpts">0</div>
           <div class="cbar"><i id="cfill"></i></div>
           <div class="cnote">Chain</div>
+        </div>
+
+        <div class="xp" id="xp">
+          <div class="xpHead"><span>Level <b id="xpLvl">1</b></span><i id="xpNext">0 / 20</i></div>
+          <div class="xpBar"><i id="xpFill"></i></div>
         </div>
 
         <div class="wreck" id="wreckChain"></div>
@@ -1606,6 +1654,17 @@ body{
       <div class="bsub" id="bsub">Heat floor 0</div>
       <p class="bobj" id="bobj">Bank <b>4,200</b> before the checkpoint.</p>
       <button class="btn primary" id="btnGo">Roll out<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ level up ============ -->
+  <div id="levelup" class="layer screen">
+    <div class="draftIn">
+      <div class="luKick">Level <b id="luLevel">2</b></div>
+      <h2 class="dtitle">Take a perk</h2>
+      <div class="dsub">It stays with you for the rest of the run</div>
+      <div class="dcards" id="luCards"></div>
+      <div class="dhint">Press <b>1</b> <b>2</b> <b>3</b> to choose</div>
     </div>
   </div>
 
@@ -2284,7 +2343,21 @@ function defaults(){
     zoomMul: 1,        // curse: tighter camera
     hullMax: 1,        // hull capacity multiplier
     hullCost: 1,       // hull taken per wreck
-    bankHeal: 0        // extra hull welded back on each bank
+    bankHeal: 0,       // extra hull welded back on each bank
+
+    /* everything below hooks the toys rather than the base loop */
+    ballTime: 1,       // wrecking ball duration scale
+    droneTime: 1,      // escort drone duration scale
+    arcHops: 0,        // extra chain-lightning hops
+    wellPull: 1,       // singularity radius/strength scale
+    convoyPay: 1,      // hauler payout scale
+    convoyArmour: 0,   // armour knocked off every hauler
+    rocketBonus: 0,    // extra rockets per Bazooka
+    startShield: 0,    // seconds of Ram Plate at each district start
+    startDrones: 0,    // seconds of Escort Drones at each district start
+    coinPerWreck: 0,   // garage coins per wreck
+    scoreMul: 1,       // flat multiplier on everything banked
+    chainStep: 0       // extra links granted every fifth wreck
   };
 }
 
@@ -2381,6 +2454,177 @@ const CHIPS = [
     desc:'Every wreck banks 45% more.',
     apply(M){ M.wreckMul += 0.45; } }
 ];
+
+
+/* ============================================================
+   PERKS
+   The in-run levelling pool. A chip is drafted between districts and is a
+   build decision; a perk arrives mid-drive at a level-up and is a reward for
+   the last thirty seconds. Forty-five of them so that fifteen levels never
+   show you the same three twice, and so that two runs diverge early.
+
+   They are deliberately weighted toward the *toys* rather than toward the
+   base numbers: a perk that says "+9% top speed" is a stat line, and a perk
+   that says "your wrecking ball never stops" changes what the run is.
+   ============================================================ */
+const PERKS = [
+  /* ---- the chain ---- */
+  { id:'p_clock',   name:'Long Fuse',      rarity:'common',   tag:'Chain',
+    desc:'The chain clock runs 0.5s longer.', apply(M){ M.chainTime += 0.5; } },
+  { id:'p_step',    name:'Momentum',       rarity:'uncommon', tag:'Chain',
+    desc:'Every fifth wreck in a chain counts as two.', apply(M){ M.chainStep += 1; } },
+  { id:'p_thread',  name:'Needle',         rarity:'common',   tag:'Chain',
+    desc:'Threading a gap puts another 0.4s on the clock.', apply(M){ M.nearChain += 0.4; } },
+  { id:'p_rate',    name:'Snowball',       rarity:'uncommon', tag:'Chain',
+    desc:'The multiplier climbs 25% faster.', apply(M){ M.multRate += 0.15; } },
+  { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
+    desc:'The multiplier ceiling comes off — ×22.',
+    apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+
+  /* ---- the ball ---- */
+  { id:'p_ball1',   name:'Heavy Iron',     rarity:'common',   tag:'Ball',
+    desc:'The wrecking ball lasts 60% longer.', apply(M){ M.ballTime += 0.6; } },
+  { id:'p_ball2',   name:'Second Chain',   rarity:'rare',     tag:'Ball',
+    desc:'Wrecking balls last two and a half times as long.',
+    apply(M){ M.ballTime += 1.5; } },
+
+  /* ---- the drones ---- */
+  { id:'p_dr1',     name:'Long Patrol',    rarity:'common',   tag:'Drones',
+    desc:'Escort drones stay 60% longer.', apply(M){ M.droneTime += 0.6; } },
+  { id:'p_dr2',     name:'Standing Escort',rarity:'rare',     tag:'Drones',
+    desc:'Every district starts with 8s of escort drones.',
+    apply(M){ M.startDrones += 8; } },
+
+  /* ---- the arc ---- */
+  { id:'p_arc1',    name:'Conductor',      rarity:'uncommon', tag:'Arc',
+    desc:'Arc lightning jumps one extra car.', apply(M){ M.arcHops += 1; } },
+  { id:'p_arc2',    name:'Substation',     rarity:'rare',     tag:'Arc',
+    desc:'Arc lightning jumps two extra cars.', apply(M){ M.arcHops += 2; } },
+
+  /* ---- the well ---- */
+  { id:'p_well1',   name:'Event Horizon',  rarity:'uncommon', tag:'Well',
+    desc:'Singularities pull half again as hard, and wider.',
+    apply(M){ M.wellPull += 0.5; } },
+  { id:'p_well2',   name:'Collapse',       rarity:'rare',     tag:'Well',
+    desc:'Singularities pull twice as hard and last 60% longer.',
+    apply(M){ M.wellPull += 1; M.powerTime += 0.6; } },
+
+  /* ---- the convoy ---- */
+  { id:'p_cv1',     name:'Hijacker',       rarity:'uncommon', tag:'Convoy',
+    desc:'Haulers pay 60% more.', apply(M){ M.convoyPay += 0.6; } },
+  { id:'p_cv2',     name:'Can Opener',     rarity:'rare',     tag:'Convoy',
+    desc:'Haulers lose a layer of armour — one good hit cracks them.',
+    apply(M){ M.convoyArmour += 1; } },
+
+  /* ---- power-ups ---- */
+  { id:'p_pu1',     name:'Scrap Sense',    rarity:'common',   tag:'Power',
+    desc:'Half again as many power-ups on the road.', apply(M){ M.pickupRate += 0.5; } },
+  { id:'p_pu2',     name:'Slow Burn',      rarity:'common',   tag:'Power',
+    desc:'Timed power-ups last 40% longer.', apply(M){ M.powerTime += 0.4; } },
+  { id:'p_pu3',     name:'Munitions',      rarity:'uncommon', tag:'Power',
+    desc:'The Bazooka carries three extra rockets.', apply(M){ M.rocketBonus += 3; } },
+  { id:'p_pu4',     name:'Cold Start',     rarity:'uncommon', tag:'Power',
+    desc:'Every district starts with 6s of Ram Plate.', apply(M){ M.startShield += 6; } },
+  { id:'p_pu5',     name:'Deep Cell',      rarity:'common',   tag:'Power',
+    desc:'Boost pickups burn 70% longer.', apply(M){ M.boostTime += 0.7; } },
+
+  /* ---- hull ---- */
+  { id:'p_h1',      name:'Spot Weld',      rarity:'common',   tag:'Hull',
+    desc:'Hull +25%.', apply(M){ M.hullMax += 0.25; } },
+  { id:'p_h2',      name:'Bull Bar',       rarity:'common',   tag:'Hull',
+    desc:'Wrecks cost 30% less hull.', apply(M){ M.hullCost *= 0.70; } },
+  { id:'p_h3',      name:'Field Kit',      rarity:'uncommon', tag:'Hull',
+    desc:'Every bank welds back an extra 10 hull.', apply(M){ M.bankHeal += 10; } },
+  { id:'p_h4',      name:'Ablative',       rarity:'rare',     tag:'Hull',
+    desc:'Hull +50%, and wrecks cost 40% less.',
+    apply(M){ M.hullMax += 0.5; M.hullCost *= 0.6; } },
+  { id:'p_h5',      name:'Crumple Zone',   rarity:'uncommon', tag:'Hull',
+    desc:'Survive one totalled hull per district.', apply(M){ M.crumple += 1; } },
+
+  /* ---- pay ---- */
+  { id:'p_pay1',    name:'Fence',          rarity:'common',   tag:'Pay',
+    desc:'Every wreck banks 25% more.', apply(M){ M.wreckMul += 0.25; } },
+  { id:'p_pay2',    name:'Blood Money',    rarity:'rare',     tag:'Pay',
+    desc:'Everything you bank pays 45% more.', apply(M){ M.scoreMul += 0.45; } },
+  { id:'p_pay3',    name:'Chop Shop',      rarity:'uncommon', tag:'Pay',
+    desc:'Every wreck is worth 14 coins in the garage.',
+    apply(M){ M.coinPerWreck += 14; } },
+  { id:'p_pay4',    name:'Insurance',      rarity:'uncommon', tag:'Pay',
+    desc:'Threading pays double.', apply(M){ M.nearMul += 1; } },
+
+  /* ---- the car ---- */
+  { id:'p_c1',      name:'Big Bore',       rarity:'common',   tag:'Engine',
+    desc:'Top speed +8%.', apply(M){ M.topMul += 0.08; } },
+  { id:'p_c2',      name:'Cold Rubber',    rarity:'common',   tag:'Handling',
+    desc:'Grip +22%.', apply(M){ M.gripMul += 0.22; } },
+  { id:'p_c3',      name:'Wide Streets',   rarity:'uncommon', tag:'Handling',
+    desc:'Every street is 15% wider.', apply(M){ M.roadMul *= 1.15; } },
+  { id:'p_c4',      name:'Overdrive',      rarity:'rare',     tag:'Engine',
+    desc:'Top speed +18% and the camera pulls back.',
+    apply(M){ M.topMul += 0.18; M.zoomMul *= 1.10; } },
+
+  /* ---- traffic ---- */
+  { id:'p_t1',      name:'Rush Hour',      rarity:'common',   tag:'Risk',
+    desc:'Half again as much traffic to hit.', apply(M){ M.trafficMul += 0.5; } },
+  { id:'p_t2',      name:'Gridlock',       rarity:'uncommon', tag:'Risk',
+    desc:'Double traffic, and wrecks pay 20% more.',
+    apply(M){ M.trafficMul += 1; M.wreckMul += 0.2; } },
+
+  /* ---- heat ---- */
+  { id:'p_he1',     name:'Adrenal Feed',   rarity:'uncommon', tag:'Heat',
+    desc:'+55% scoring while Heat is 2 or higher.', apply(M){ M.heatBonus += 0.55; } },
+  { id:'p_he2',     name:'Ghost Plates',   rarity:'common',   tag:'Heat',
+    desc:'Banking makes pursuit lose you for 3s.', apply(M){ M.ghostOnBank += 3; } },
+  { id:'p_he3',     name:'Static Discharge',rarity:'uncommon',tag:'Heat',
+    desc:'Banking spins out any pursuit close behind.', apply(M){ M.shockOnBank = 1; } },
+  { id:'p_he4',     name:'Marked Man',     rarity:'rare',     tag:'Heat',
+    desc:'Pursuit starts a tier hotter, and everything pays 30% more.',
+    apply(M){ M.policeStart += 1; M.scoreMul += 0.30; } },
+
+  /* ---- the greedy ones ---- */
+  { id:'p_g1',      name:'Glass Cannon',   rarity:'rare',     tag:'Risk',
+    desc:'Wrecks pay double. Hull cut by a third.',
+    apply(M){ M.wreckMul += 1; M.hullMax *= 0.66; } },
+  { id:'p_g2',      name:'Featherweight',  rarity:'uncommon', tag:'Risk',
+    desc:'Top speed +14%, but every wreck costs half again as much hull.',
+    apply(M){ M.topMul += 0.14; M.hullCost *= 1.5; } },
+  { id:'p_g3',      name:'Redline',        rarity:'rare',     tag:'Risk',
+    desc:'The chain clock is 0.6s shorter, and every wreck pays 70% more.',
+    apply(M){ M.chainTime -= 0.6; M.wreckMul += 0.7; } },
+  { id:'p_g4',      name:'Tunnel Vision',  rarity:'uncommon', tag:'Risk',
+    desc:'The camera sits tighter, and scoring is up 25%.',
+    apply(M){ M.zoomMul *= 0.88; M.scoreMul += 0.25; } },
+  { id:'p_g5',      name:'Last Stand',     rarity:'rare',     tag:'Hull',
+    desc:'Below a third hull, everything pays double.',
+    apply(M){ M.lastStand = 1; } },
+  { id:'p_g6',      name:'Salvage Rights', rarity:'common',   tag:'Pay',
+    desc:'Clearing a district repairs the hull completely.',
+    apply(M){ M.clearHeal = 1; } }
+];
+
+const perkById = id => PERKS.find(p => p.id === id);
+
+/* Three offers, no repeats of what is already fitted. Rarity odds improve
+   with level so the late choices feel like the reward for getting there. */
+function rollPerks(owned, level){
+  const pool = PERKS.filter(p => !owned.includes(p.id));
+  const W = level >= 11 ? { common: 22, uncommon: 40, rare: 38 }
+          : level >= 6  ? { common: 42, uncommon: 40, rare: 18 }
+                        : { common: 62, uncommon: 31, rare: 7 };
+  const picks = [];
+  const used = new Set();
+  for (let n = 0; n < 3 && pool.length; n++) {
+    const avail = pool.filter(p => !used.has(p.id));
+    if (!avail.length) break;
+    let total = 0;
+    for (const p of avail) total += W[p.rarity];
+    let r = Math.random() * total, chosen = avail[0];
+    for (const p of avail) { r -= W[p.rarity]; if (r <= 0) { chosen = p; break; } }
+    used.add(chosen.id);
+    picks.push(chosen);
+  }
+  return picks;
+}
 
 /* Overclocked offers pair a stronger chip with a permanent drawback.
    The drawback is always legible up front — no hidden costs. */
@@ -2546,18 +2790,19 @@ function levelDefaults(){
   return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1 };
 }
 
-function build(ownedIds, curseIds, contractId){
+function build(ownedIds, curseIds, contractId, perkIds){
   const M = defaults();
   const L = levelDefaults();
   for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
+  for (const id of (perkIds || [])) { const p = perkById(id); if (p) p.apply(M, L); }
   for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
   const k = contractById(contractId);
   if (k) k.apply(M, L);
   return { M, L };
 }
 
-return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS,
-         byId, curseById, contractById, roll, rollContracts, build };
+return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS, PERKS,
+         byId, curseById, contractById, perkById, roll, rollContracts, rollPerks, build };
 })();
 
 /* ============================================================
@@ -3019,6 +3264,7 @@ addEventListener('keydown', e => {
     else if (G.state === 'brief') beginDistrict();
   }
   if (G.state === 'draft' && /^Digit[1234]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
+  if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
   if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
 });
@@ -3353,7 +3599,7 @@ const G = {
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
-  crashT:0, slow:1, flash:0, revived:false,
+  crashT:0, slow:1, flash:0, revived:false, pendingLevels:0,
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
@@ -3510,6 +3756,7 @@ function makeRoute(act){
 function newRun(){
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
+    xp: 0, level: 1, perks: [],
     node: null, district: 0,
     chips: [], curses: [], contract: null,
     M: NHChips.defaults(), L: NHChips.levelDefaults(),
@@ -3565,6 +3812,14 @@ function newWorld(ai){
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
+  /* perks that arm you the moment a district starts */
+  const PM = G.run ? G.run.M : null;
+  if (PM && PM.startShield) G.power.shield = Math.max(G.power.shield, PM.startShield);
+  if (PM && PM.startDrones) {
+    G.power.drones = PM.startDrones;
+    G.drones = [-1, 1].map(side => ({ x:G.car.x, y:G.car.y, side, vx:0, vy:0,
+                                      target:null, dwell:0, ang:0 }));
+  }
   G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0));
   G.hp = G.hpMax;
   G.ai = !!ai;
@@ -3881,6 +4136,13 @@ function smash(v, rel){
   toast('Wreck +' + fmt(gain), 'gold');
   if (Hangar.has('shockplate') && G.chain >= G.shockAt) { G.shockAt = G.chain + 5; shockwave(); }
   arcFrom(v);
+  addXP(1);
+  if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
+  /* Momentum: every fifth link is worth two */
+  if (M.chainStep && G.chain % 5 === 0) {
+    G.chain += M.chainStep;
+    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  }
 }
 
 
@@ -3999,7 +4261,7 @@ function takePickup(k){
       break;
     case 'rockets':
       /* a burst, unlike the Harpoon rack's steady 9s cycle */
-      G.rockets += 4;
+      G.rockets += 4 + (M.rocketBonus || 0);
       G.rocketT = Math.min(G.rocketT || 0.5, 0.5);
       break;
     case 'frenzy':
@@ -4023,7 +4285,7 @@ function takePickup(k){
       break;
     case 'ball': {
       /* a real pendulum, thrown out behind you */
-      G.power.ball = Math.max(G.power.ball, 11 * M.powerTime);
+      G.power.ball = Math.max(G.power.ball, 11 * M.powerTime * M.ballTime);
       G.ball = { x:car.x, y:car.y, vx:0, vy:0, ang:car.a + Math.PI };
       break;
     }
@@ -4040,7 +4302,7 @@ function takePickup(k){
       break;
     }
     case 'drones': {
-      G.power.drones = Math.max(G.power.drones, 11 * M.powerTime);
+      G.power.drones = Math.max(G.power.drones, 11 * M.powerTime * M.droneTime);
       /* one per shoulder, each acquiring independently */
       G.drones = [-1, 1].map(side => ({
         x:car.x, y:car.y, side, vx:0, vy:0, target:null, dwell:0, ang:0
@@ -4339,7 +4601,7 @@ function stepBall(dt){
 function arcFrom(src, depth){
   if (G.power.arc <= 0) return;
   const hops = depth || 0;
-  if (hops >= 3) return;
+  if (hops >= 3 + ((G.run && G.run.M.arcHops) || 0)) return;
   const M = G.run.M;
   let best = null, bd = 1e9;
   for (const t of G.traffic) {
@@ -4386,8 +4648,9 @@ function stepWells(dt){
       if (t.wrecked) continue;
       const dx = w.x - t.x, dy = w.y - t.y;
       const d = hyp(dx, dy);
-      if (d > 620) continue;
-      const pull = (1 - d / 620) * 1900 * dt;
+      const R = 620 * (M ? M.wellPull : 1);
+      if (d > R) continue;
+      const pull = (1 - d / R) * 1900 * (M ? M.wellPull : 1) * dt;
       t.vx += dx / d * pull; t.vy += dy / d * pull;
       if (d < 46 && M) {
         t.wrecked = 1; t.hitFlash = 1; t.spin = rnd(-16, 16);
@@ -4531,6 +4794,84 @@ function fireMissile(){
 }
 
 
+
+/* ============================================================
+   LEVELS
+   The addictive part is not the perk, it is the *cadence* of being handed a
+   choice. XP comes off the things you were already doing — wrecks, banks,
+   haulers, clears — so a level-up is always the reward for the last thirty
+   seconds rather than for a menu you walked through. Fifteen levels, three
+   offers each, drawn from forty-five: no run sees the same board twice, and
+   two runs diverge inside the first district.
+   ============================================================ */
+const LEVEL_CAP = 15;
+const xpFor = l => 18 + l * 2;          // ~462 XP to cap, roughly a full run
+
+function addXP(n){
+  const run = G.run;
+  if (!run || run.level >= LEVEL_CAP) return;
+  run.xp += n;
+  while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
+    run.xp -= xpFor(run.level);
+    run.level++;
+    G.pendingLevels++;
+  }
+}
+
+/* Offered at the next safe moment rather than mid-corner. */
+function maybeLevelUp(){
+  if (G.pendingLevels <= 0 || G.state !== 'play') return;
+  G.pendingLevels--;
+  const run = G.run;
+  G.offers = NHChips.rollPerks(run.perks, run.level);
+  if (!G.offers.length) return;
+
+  G.state = 'levelup';
+  UI.hud.classList.add('off');
+  $('luLevel').textContent = run.level;
+  const wrap = $('luCards');
+  wrap.innerHTML = '';
+  G.offers.forEach((p, i) => {
+    const el = document.createElement('button');
+    el.className = 'dcard ' + p.rarity;
+    el.innerHTML =
+      '<div class="drar">' + p.rarity + ' &middot; ' + p.tag + '</div>' +
+      '<div class="dname">' + p.name + '</div>' +
+      '<div class="ddesc">' + p.desc + '</div>';
+    el.onclick = () => takePerk(i);
+    wrap.appendChild(el);
+  });
+  show(UI.levelup);
+  NHAudio.curse ? NHAudio.chip() : 0;
+}
+
+function takePerk(i){
+  const p = G.offers[i];
+  if (!p) return;
+  G.run.perks.push(p.id);
+  rebuildMods();
+  NHAudio.chip();
+  hide(UI.levelup);
+  UI.hud.classList.remove('off');
+  G.state = 'play';
+  toast(p.name + ' fitted', 'gold');
+  /* a hull bump applies immediately rather than at the next district */
+  const was = G.hpMax;
+  G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0));
+  if (G.hpMax > was) G.hp += G.hpMax - was;
+  maybeLevelUp();                      // two levels at once is possible
+}
+
+/* Perks change mid-district, so the modifier table has to be rebuilt live. */
+function rebuildMods(){
+  const run = G.run;
+  const built = NHChips.build(run.chips, run.curses, run.contract, run.perks);
+  run.M = built.M; run.L = built.L;
+  if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
+  run.M.wreckMul *= (G.spec.wreckMul || 1);
+  if (G.car) G.car.mods = run.M;
+}
+
 /* ============================================================
    THE CONVOY
    A district used to have exactly one objective and it was a number: hit the
@@ -4575,7 +4916,7 @@ function spawnConvoy(){
 function convoyHit(v, rel){
   const car = G.car;
   const M = G.run.M;
-  const heavy = car.boost || rel > 430 || G.power.surge > 0;
+  const heavy = car.boost || rel > 430 || G.power.surge > 0 || (M.convoyArmour || 0) > 0;
   G.hitCool = 0.12;
 
   if (!heavy && v.armour > 1) {
@@ -4681,10 +5022,12 @@ function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; G.chainT = 0; return; }
   const M = G.run.M;
   const heatMul = 1 + G.tier * 0.35 + (G.tier >= 2 ? M.heatBonus : 0);
-  const gained = Math.floor(G.pending * heatMul * M.bankMul);
+  const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
+              * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
 
   G.score += gained;
   G.run.banked += gained;
+  addXP(Math.min(8, Math.round(gained / 2200)));
   G.heat = Math.min(3.0, G.heat + gained / 14000);
   NHAudio.bank(G.mult);
 
@@ -4866,6 +5209,7 @@ function step(dt){
     stepHazards(dt);
     stepAir(dt);
     stepConvoy(dt);
+    maybeLevelUp();
     if (G.boss) stepBoss(dt);
 
     /* reaching the checkpoint decides the district */
@@ -5937,7 +6281,8 @@ const UI = {
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
-  daily:$('daily'), board:$('board'),
+  daily:$('daily'), board:$('board'), levelup:$('levelup'),
+  xp:$('xp'), xpLvl:$('xpLvl'), xpNext:$('xpNext'), xpFill:$('xpFill'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
@@ -6013,6 +6358,15 @@ function syncHUD(){
   UI.wreck.classList.toggle('on', G.chain > 1);
   if (G.chain > 1) UI.wreck.textContent = G.chain + ' car pile-up';
 
+  const run0 = G.run;
+  if (run0) {
+    const maxed = run0.level >= LEVEL_CAP;
+    UI.xp.classList.toggle('max', maxed);
+    UI.xpLvl.textContent = run0.level;
+    UI.xpNext.textContent = maxed ? 'MAX' : run0.xp + ' / ' + xpFor(run0.level);
+    UI.xpFill.style.width = (maxed ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
+  }
+
   const chasing = G.convoyState === 'live' && G.convoyLeft > 0;
   UI.convoy.classList.toggle('on', chasing);
   if (chasing) UI.convoyLeft.textContent = G.convoyLeft;
@@ -6086,7 +6440,7 @@ function toMenu(){
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
-  hide(UI.daily); hide(UI.board);
+  hide(UI.daily); hide(UI.board); hide(UI.levelup);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
@@ -6096,6 +6450,7 @@ function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  G.pendingLevels = 0;
   shownScore = 0;
   showMap();
 }
@@ -6343,11 +6698,7 @@ function beginNode(){
   run.district = run.node.district;
   run.cfg = districtCfg(run.district, run.node.type, run.act);
 
-  const built = NHChips.build(run.chips, run.curses, run.contract);
-  run.M = built.M; run.L = built.L;
-  /* hardware is applied after chips so it reads as the floor you start from */
-  if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
-  run.M.wreckMul *= (G.spec.wreckMul || 1);          // the Impact track
+  rebuildMods();
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
   run.crumpleLeft = run.M.crumple;
@@ -6422,6 +6773,8 @@ function beginDistrict(){
 }
 
 function clearDistrict(){
+  if (G.run && G.run.M && G.run.M.clearHeal) G.hp = G.hpMax;
+  addXP(14);
   if (G.state !== 'play') return;
   const run = G.run;
   run.cleared++;
@@ -6497,6 +6850,7 @@ function takeOffer(i){
 function endRun(won){
   G.state = 'over';
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.draft); hide(UI.brief);
+  hide(UI.levelup);
   const isBest = G.score > Save.data.best;
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
@@ -7220,7 +7574,7 @@ Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
-hide(UI.daily); hide(UI.board);
+hide(UI.daily); hide(UI.board); hide(UI.levelup);
 setCtrlLabel();
 setEngineLabel();
 setMute();
@@ -7234,7 +7588,7 @@ window.__NH = {
   get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
   beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
-  takeContract, openNodes, advance,
+  takeContract, openNodes, advance, addXP, takePerk, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   endRun, showBoard, recordRun, failDistrict, damage,
