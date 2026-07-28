@@ -255,7 +255,15 @@ body{
 .pwr.boost{color:var(--amber)}
 .pwr.shield{color:var(--cyan)}
 .pwr.surge{color:var(--magenta)}
+.pwr.magnet{color:#8CF3FF}
+.pwr.rockets{color:#FF6B4A}
+.pwr.frenzy{color:#FFD166}
 .pwr.rack{color:var(--ice);opacity:.75}
+/* the ones that run to the end of the district read as fitted, not ticking */
+.pwr.plating,.pwr.clock{background:rgba(123,245,176,.10);border-style:solid}
+.pwr.plating{color:#7BF5B0}
+.pwr.clock{color:#C6A8FF;background:rgba(198,168,255,.10)}
+.pwr.plating b,.pwr.clock b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
 @keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
 
 /* toasts */
@@ -3341,7 +3349,8 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0 }, missileT:0, shockAt:5,
+  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0 }, missileT:0, shockAt:5,
+  rockets:0, rocketT:0, lastingPlate:0, lastingClock:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0
 };
@@ -3537,6 +3546,10 @@ function newWorld(ai){
   G.ghost = 0; G.pulseWarn = 0;
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
+  G.power.magnet = 0; G.power.frenzy = 0;
+  G.rockets = 0; G.rocketT = 0;
+  /* the lasting pickups are exactly that — for *this* district only */
+  G.lastingPlate = 0; G.lastingClock = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
@@ -3812,7 +3825,7 @@ function smash(v, rel){
      then does the chain grow — so the first wreck is worth ×1 and every one
      after it is worth more than the last. */
   const gain = Math.round(260 * power * G.mult * M.bankMul * M.wreckMul
-             * (G.run.L.wreckPay || 1));
+             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
   G.pending += gain;
 
   G.chain += 1 + (car.boost ? M.boostChain : 0);
@@ -3871,7 +3884,7 @@ function burnChain(secs){
 /* seconds on the chain clock, floored so a stack of curses cannot make it
    impossible to link two cars together */
 function chainTime(){
-  return Math.max(1.4, (G.run ? G.run.M.chainTime : 3.2));
+  return Math.max(1.4, (G.run ? G.run.M.chainTime : 3.2) + (G.lastingClock || 0));
 }
 
 /* Shock Plating: every fifth link in a chain detonates everything close by.
@@ -3906,11 +3919,20 @@ function shockwave(){
    held, metered or aimed — the road hands you the effect and you decide
    whether it is worth the line you have to take to reach it.
    ============================================================ */
+/* `lasting` marks the ones that run to the end of the district rather than on
+   a timer. They are deliberately rare: a permanent upgrade you find on the
+   road is a much bigger event than a few seconds of speed, and finding two in
+   a district should feel lucky rather than routine. */
 const POWERS = [
-  { id:'boost',  name:'Boost',     col:'#FFB13D', rgb:'255,177,61',  glyph:'\u00bb', w:34 },
-  { id:'repair', name:'Repair',    col:'#2FE08A', rgb:'47,224,138',  glyph:'+',       w:22 },
-  { id:'shield', name:'Ram Plate', col:'#3DE8FF', rgb:'61,232,255',  glyph:'\u25c7', w:20 },
-  { id:'surge',  name:'Surge',     col:'#FF2E88', rgb:'255,46,136',  glyph:'\u2605', w:16 }
+  { id:'boost',   name:'Boost',      col:'#FFB13D', rgb:'255,177,61',  glyph:'\u00bb', w:26 },
+  { id:'repair',  name:'Repair',     col:'#2FE08A', rgb:'47,224,138',  glyph:'+',       w:18 },
+  { id:'shield',  name:'Ram Plate',  col:'#3DE8FF', rgb:'61,232,255',  glyph:'\u25c7', w:15 },
+  { id:'surge',   name:'Surge',      col:'#FF2E88', rgb:'255,46,136',  glyph:'\u2605', w:12 },
+  { id:'magnet',  name:'Magnet',     col:'#8CF3FF', rgb:'140,243,255', glyph:'\u25c9', w:16 },
+  { id:'rockets', name:'Bazooka',    col:'#FF6B4A', rgb:'255,107,74',  glyph:'\u25b2', w:14 },
+  { id:'frenzy',  name:'Frenzy',     col:'#FFD166', rgb:'255,209,102', glyph:'\u25c6', w:12 },
+  { id:'plating', name:'Reinforced', col:'#7BF5B0', rgb:'123,245,176', glyph:'\u25a0', w:7,  lasting:1 },
+  { id:'clock',   name:'Overclock',  col:'#C6A8FF', rgb:'198,168,255', glyph:'\u221e', w:7,  lasting:1 }
 ];
 const powerById = id => POWERS.find(p => p.id === id);
 
@@ -3950,10 +3972,35 @@ function takePickup(k){
       G.power.surge = Math.max(G.power.surge, 5 * M.powerTime);
       if (G.chainT > 0) G.chainT = G.chainMax = chainTime();
       break;
+    case 'magnet':
+      /* drags traffic onto your line — the chain becomes trivial for a
+         moment, which is exactly what you want a power-up to feel like */
+      G.power.magnet = Math.max(G.power.magnet, 8 * M.powerTime);
+      break;
+    case 'rockets':
+      /* a burst, unlike the Harpoon rack's steady 9s cycle */
+      G.rockets += 4;
+      G.rocketT = Math.min(G.rocketT || 0.5, 0.5);
+      break;
+    case 'frenzy':
+      G.power.frenzy = Math.max(G.power.frenzy, 8 * M.powerTime);
+      break;
+    case 'plating':
+      /* rest of the district: a bigger hull, filled */
+      G.hpMax += 30;
+      G.hp = G.hpMax;
+      G.lastingPlate++;
+      break;
+    case 'clock':
+      /* rest of the district: more seconds on every chain */
+      G.lastingClock += 1.2;
+      if (G.chainT > 0) G.chainT = G.chainMax = chainTime();
+      break;
   }
   G.flash = Math.max(G.flash, 0.3);
   NHAudio.pickup(k.id === 'boost' ? 1 : 0);
-  toast(k.name + '!', k.id === 'repair' ? 'gold' : k.id === 'surge' ? 'pink' : '');
+  toast(k.name + (k.lasting ? ' — rest of the district' : '!'),
+        k.lasting ? 'pink' : k.id === 'repair' ? 'gold' : k.id === 'surge' ? 'pink' : '');
   for (let i = 0; i < 22; i++) {
     const a = rnd(0, TAU), sp = rnd(120, 460);
     spawn(k.x, k.y, Math.cos(a) * sp, Math.sin(a) * sp,
@@ -3980,7 +4027,11 @@ function stepPickups(dt){
 function stepPowers(dt){
   if (G.power.shield > 0) G.power.shield = Math.max(0, G.power.shield - dt);
   if (G.power.surge  > 0) G.power.surge  = Math.max(0, G.power.surge  - dt);
+  if (G.power.magnet > 0) G.power.magnet = Math.max(0, G.power.magnet - dt);
+  if (G.power.frenzy > 0) G.power.frenzy = Math.max(0, G.power.frenzy - dt);
   stepPickups(dt);
+  stepMagnet(dt);
+  stepRockets(dt);
 
   /* Scrap Welder: the hull creeps back while you are between chains, so
      hanging back to recover is a real alternative to pushing on */
@@ -3992,6 +4043,85 @@ function stepPowers(dt){
     G.missileT -= dt;
     if (G.missileT <= 0) { fireMissile(); G.missileT = 9; }
   }
+}
+
+
+/* Magnet. Rather than warping cars, it steers them: an acceleration toward
+   the line just in front of you, strongest when they are close. Cars still
+   drive, still look like they are driving, and simply end up where you are
+   going — so a chain that would have needed a lane change makes itself. */
+function stepMagnet(dt){
+  if (G.power.magnet <= 0) return;
+  const car = G.car;
+  const aim = G.track.at(car.idx + 3, 0);
+  const k = 1 - Math.exp(-5.5 * dt);
+  for (const t of G.traffic) {
+    if (t.wrecked) continue;
+    /* Gate on where they are *along the road*, not on straight-line distance.
+       A 560-unit radius only reached the two nearest cars, because traffic
+       lives five to twenty nodes ahead — this takes everything you are about
+       to drive through. */
+    const di = t.idx - car.idx;
+    if (di < -3 || di > 24) continue;
+    const dx = aim.x - t.x, dy = aim.y - t.y;
+    const d = hyp(dx, dy) || 1;
+    /* The important half: traffic autopilot steers toward its own lane every
+       frame, so a velocity nudge alone just gets corrected away — a pure
+       force version measured only 20% more convergence than no magnet at
+       all. Move the lane they are steering *to* and they drive over
+       themselves, which both works and looks like driving. */
+    t.lane = lerp(t.lane || 0, 0, k);
+    const pull = clamp(1 - d / 1100, 0.15, 1) * 380 * dt;
+    t.vx += dx / d * pull;
+    t.vy += dy / d * pull;
+  }
+  /* a visible field, so it is obvious why the road just got helpful */
+  if (Math.random() < 0.5) {
+    const a = rnd(0, TAU), r = rnd(140, 320);
+    spawn(car.x + Math.cos(a) * r, car.y + Math.sin(a) * r,
+          -Math.cos(a) * 260, -Math.sin(a) * 260,
+          rnd(0.25, 0.5), rnd(3, 7), '140,243,255', true, 0);
+  }
+}
+
+/* Bazooka: a burst of four, fired on a fast cycle. The Harpoon rack is the
+   permanent version of this on a much slower clock, so the two stack without
+   either making the other pointless. */
+function stepRockets(dt){
+  if (G.rockets <= 0) return;
+  G.rocketT -= dt;
+  if (G.rocketT > 0) return;
+  const car = G.car;
+  let best = null, bd = 1e9;
+  for (const t of G.traffic) {
+    if (t.wrecked) continue;
+    const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
+    if (Math.cos(car.a) * dx + Math.sin(car.a) * dy < 20) continue;
+    if (d < bd) { bd = d; best = t; }
+  }
+  if (!best || bd > 900) { G.rocketT = 0.35; return; }
+
+  G.rockets--;
+  G.rocketT = 0.9;
+  const M = G.run.M;
+  for (let i = 0; i < 30; i++) {
+    const a = rnd(0, TAU), sp = rnd(200, 680);
+    spawn(best.x, best.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.28, 0.7), rnd(4, 10),
+          i % 3 ? '255,180,110' : '255,90,60', true, -6);
+  }
+  const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
+  best.vx += nx * 760; best.vy += ny * 760;
+  best.spin = rnd(-11, 11); best.wrecked = 1; best.hitFlash = 1;
+  G.totalWreck++;
+  G.pending += Math.round(240 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
+  G.chain += 1;
+  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  G.topMult = Math.max(G.topMult, G.mult);
+  G.chainT = G.chainMax = chainTime();
+  G.flash = Math.max(G.flash, 0.35);
+  hitstop(0.04, 14);
+  NHAudio.smash(1.1);
 }
 
 /* Harpoon: picks the nearest car ahead and detonates it. No button — an
@@ -5305,6 +5435,11 @@ function syncPowers(){
   if (G.car && G.car.boostT > 0) list.push(['boost', 'Boost', G.car.boostT]);
   if (G.power.shield > 0)        list.push(['shield', 'Ram Plate', G.power.shield]);
   if (G.power.surge > 0)         list.push(['surge', 'Surge', G.power.surge]);
+  if (G.power.magnet > 0)        list.push(['magnet', 'Magnet', G.power.magnet]);
+  if (G.power.frenzy > 0)        list.push(['frenzy', 'Frenzy', G.power.frenzy]);
+  if (G.rockets > 0)             list.push(['rockets', 'Bazooka', G.rockets, 1]);
+  if (G.lastingPlate > 0)        list.push(['plating', 'Reinforced', 0, 2]);
+  if (G.lastingClock > 0)        list.push(['clock', 'Overclock', 0, 2]);
   if (G.missileT > 0)            list.push(['rack', 'Harpoon', G.missileT]);
 
   const sig = list.map(l => l[0]).join(',');
@@ -5315,7 +5450,12 @@ function syncPowers(){
   }
   const nodes = UI.powers.children;
   for (let i = 0; i < list.length; i++) {
-    if (nodes[i]) nodes[i].lastChild.textContent = list[i][2].toFixed(1) + 's';
+    if (!nodes[i]) continue;
+    const kind = list[i][3] || 0;
+    /* 0 = seconds, 1 = a count of shots, 2 = runs to the end of the district */
+    nodes[i].lastChild.textContent = kind === 2 ? 'level'
+                                   : kind === 1 ? '\u00d7' + list[i][2]
+                                   : list[i][2].toFixed(1) + 's';
   }
 }
 
@@ -6573,6 +6713,7 @@ window.__NH = {
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   endRun, showBoard, recordRun, failDistrict, damage,
+  POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();

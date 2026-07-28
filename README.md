@@ -77,8 +77,10 @@ committing; their armour bounces a bump at cruising pace, so cracking one needs 
 Surge or real speed; and they leave if you dawdle. Taking all three pays a bonus worth a
 quarter of the district's quota.
 
-**Power-ups** sit in the traffic lanes and fire the moment you touch them — Boost, Repair,
-Ram Plate (free wrecks), and Surge, which stops the clock.
+**Power-ups** sit in the traffic lanes and fire the moment you touch them: Boost, Repair,
+Ram Plate (free wrecks), Surge (stops the clock), Magnet (traffic steers onto your line),
+Bazooka (four auto-fired rockets) and Frenzy (double pay). Two more — Reinforced and
+Overclock — last until the end of the district rather than a few seconds, and are rare.
 
 **The garage sits between runs**, and it is a bay rather than a form: a rendered deck with
 your car on it, wearing every part you have bolted on. Coins earned by a failed run buy

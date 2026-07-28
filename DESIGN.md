@@ -158,10 +158,33 @@ deliberately *not* the main sink: clipping a barrier while learning should not r
 same class of event as choosing to hit something.
 
 **Power-ups** lie on the road and fire the instant you touch them — nothing is held,
-metered or aimed, which is the only shape that fits a one-axis game. Boost is raw speed;
-Repair gives back a quarter of the hull; Ram Plate makes wrecks free for seven seconds;
-Surge *stops the clock*, which is a licence to be greedy. They spawn in the same lanes as
-the traffic, so going for one is a line you have to choose rather than a button you press.
+metered or aimed, which is the only shape that fits a one-axis game. They spawn in the same
+lanes as the traffic, so going for one is a line you have to choose rather than a button you
+press.
+
+| Pickup | Lasts | Does |
+|---|---|---|
+| Boost | 2.4s | Raw speed, and cracks convoy armour. |
+| Repair | instant | A quarter of the hull back. |
+| Ram Plate | 7s | Wrecks cost no hull. |
+| Surge | 5s | **Stops the chain clock.** A licence to be greedy. |
+| Magnet | 8s | Traffic on the road ahead steers onto your line. |
+| Bazooka | 4 shots | Auto-fires at the nearest car ahead every 0.9s. Free wrecks. |
+| Frenzy | 8s | Every wreck pays double. |
+| **Reinforced** | **the district** | +30 max hull, filled. |
+| **Overclock** | **the district** | +1.2s on every chain clock. |
+
+The last two run to the end of the district rather than on a timer, and they are rare on
+purpose: a permanent upgrade found on the road is a much larger event than a few seconds of
+speed, and finding two in one district should feel lucky rather than routine. The HUD reads
+"level" rather than a countdown for those, and a shot count for the Bazooka.
+
+The Magnet took two goes. A pure force on nearby traffic measured only 20% more convergence
+than no magnet at all, because the traffic autopilot steers toward its own lane every frame
+and simply corrected the shove away. Moving the lane they are steering *to* — and gating on
+position along the road rather than a straight-line radius, which had been reaching only the
+two nearest cars — gets them driving onto your line themselves, which both works and looks
+like driving.
 
 **Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
 so the correct play is always slightly more dangerous than the comfortable one.
