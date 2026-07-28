@@ -1,4 +1,4 @@
-<title>NEON HEAT — playable prototype</title>
+<title>NEON HEAT — playable</title>
 <style>
 /* ============================================================
    NEON HEAT — UI
@@ -1525,39 +1525,89 @@ body{
   .clRow div{flex-direction:row;justify-content:space-between;align-items:baseline} }
 
 
-/* --- wrapper chrome, prototype only: not part of the game build --- */
-body{overflow:auto;display:block;background:#02030A}
-.pitch{
-  max-width:calc(100vh * 16 / 9);margin:0 auto;padding:0 4vmin 8vmin;
+/* --- page chrome, shareable build only: not part of the game --- */
+html{color-scheme:dark}
+html,body{background:#02030A}
+body{overflow:auto;display:block}
+
+.file{
+  --rail:13rem;
+  /* the game's --dim is a HUD colour: correct behind a glow, too quiet for a
+     paragraph of body copy on this ground */
+  --read:#98A7C2;
+  max-width:64rem;margin:0 auto;padding:0 5vmin 12vmin;
   color:var(--ice);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
 }
-.pitch h2{
-  margin:7vmin 0 1.2rem;font-size:clamp(20px,2.6vmin,30px);font-weight:800;
-  text-transform:uppercase;letter-spacing:.14em;color:#fff;
+
+/* The one-axis control is the thesis, so it gets the first line, full width.
+   Everything under it hangs off the same two verticals as the file rows —
+   a ledger only reads as one if the columns actually line up. */
+.thesis{
+  display:grid;grid-template-columns:var(--rail) 1fr;gap:1.6rem 2.6rem;
+  padding:3rem 0 2.6rem;border-bottom:1px solid var(--edge);
 }
-.pitch p{margin:0 0 1rem;max-width:62ch;line-height:1.65;color:var(--dim);font-size:clamp(14px,1.7vmin,17px)}
-.pitch b{color:var(--ice);font-weight:700}
-.grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
-  gap:1.2rem;margin-top:2.4rem;
+.thesis h1{
+  grid-column:1 / -1;margin:0;max-width:22ch;
+  font-size:clamp(1.8rem,5vw,3rem);font-weight:800;
+  letter-spacing:-.034em;line-height:1.03;color:#fff;text-wrap:balance;
 }
-.card{
-  border:1px solid var(--edge);border-radius:10px;padding:1.3rem 1.4rem;
-  background:rgba(255,255,255,.025);
+.thesis h1 em{font-style:normal;color:var(--cyan)}
+.thesis > div{grid-column:2;max-width:62ch}
+.thesis p{margin:0;font-size:1rem;line-height:1.7;color:var(--read)}
+.keys{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;margin-top:1rem}
+.keys kbd{
+  font:inherit;font-size:.72rem;font-weight:700;letter-spacing:.08em;
+  color:var(--ice);background:rgba(110,170,255,.07);
+  border:1px solid var(--edge2);border-radius:3px;padding:.25rem .55rem;
 }
-.card h3{
-  margin:0 0 .6rem;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;
-  font-weight:800;color:var(--cyan);
+.keys span{
+  font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dim);font-weight:700;
 }
-.card p{margin:0;font-size:.9rem;line-height:1.6}
-.play-note{
-  display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;
-  margin:1.6rem 0 0;font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;
+
+/* measured numbers, not adjectives */
+.spec{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));
+  gap:1.6rem 2rem;padding:2.2rem 0;border-bottom:1px solid var(--edge);
+}
+.spec div{display:flex;flex-direction:column;gap:.4rem}
+.spec b{
+  font-size:1.9rem;font-weight:800;letter-spacing:-.02em;line-height:1;
+  color:var(--amber);font-variant-numeric:tabular-nums;
+}
+.spec span{
+  font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
-.play-note kbd{
-  font:inherit;color:var(--ice);border:1px solid var(--edge);
-  border-radius:4px;padding:.2rem .5rem;
+
+/* the file itself: vernacular key on the rail, prose to the right */
+.row{
+  display:grid;grid-template-columns:var(--rail) 1fr;gap:1rem 2.6rem;
+  padding:2.5rem 0;border-bottom:1px solid var(--edge);
+}
+.row > h2{
+  margin:0;font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);line-height:1.95;
+}
+.row > div{display:flex;flex-direction:column;gap:1rem;min-width:0}
+.row p{margin:0;max-width:62ch;font-size:1rem;line-height:1.72;color:var(--read)}
+.row p b{color:var(--ice);font-weight:700}
+.row p i{font-style:normal;color:var(--magenta);font-weight:700}
+
+.foot{
+  margin:0;padding:2.4rem 0 0;max-width:52ch;
+  font-size:.78rem;letter-spacing:.1em;color:var(--dim);line-height:1.9;
+}
+
+@media (max-width:720px){
+  .row,.thesis{grid-template-columns:1fr;gap:.75rem;padding:2.1rem 0}
+  .thesis > div,.thesis h1{grid-column:1}
+  .thesis{gap:1.2rem;padding:2.4rem 0 2.1rem}
+  .row > h2{line-height:1.4}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
 }
 </style>
 
@@ -1857,54 +1907,108 @@ body{overflow:auto;display:block;background:#02030A}
   </div>
 </div>
 
-<div class="pitch">
-  <p class="play-note">
-    <kbd>&#8592;</kbd><kbd>&#8594;</kbd> steer
-    <kbd>Space</kbd> drift
-    <kbd>Shift</kbd> nitro
-    <span>— on a phone, on-screen pads appear while driving</span>
-  </p>
-
-  <h2>A drift roguelite, not another top-down racer</h2>
-  <p>A score-attack drift game has no reason to exist next to a hundred others. This one is
-  built as a <b>climb</b>: each district sets a quota you must bank before the checkpoint,
-  clearing it lets you fit one chip from three, and every third district is a named pursuit
-  unit with its own mechanic. The quota is what makes it a game rather than a toy &mdash;
-  without it, the safe line is the boring line, and nothing forces you to slide.</p>
-
-  <div class="grid">
-    <div class="card">
-      <h3>The bet</h3>
-      <p>Drift points accrue into a pending bank that only pays out when you release. Wreck
-      while holding a fat bank and it is gone. Every extra second of slide is a wager, and the
-      quota is what makes you keep taking it.</p>
-    </div>
-    <div class="card">
-      <h3>The build</h3>
-      <p>Seventeen chips across four tags, stacking up to three deep. Some offers arrive
-      <b>Overclocked</b> &mdash; a stronger chip welded to a permanent curse: narrower streets,
-      heavier traffic, a hotter start, no nitro regen. The cost is always stated up front.</p>
-    </div>
-    <div class="card">
-      <h3>The bosses</h3>
-      <p>WARDEN rams and salts the road with spike strips. SIREN pulses, wiping any bank you
-      let grow too fat. REAPER is faster than you and brings escorts. You damage them by
-      banking &mdash; so the fight runs on the game's own verb.</p>
-    </div>
-    <div class="card">
-      <h3>The sound</h3>
-      <p>Every note is synthesised at runtime: a four-layer synthwave bed whose arrangement
-      layers in as the run gets deeper and hotter, plus engine, tyre, siren and impact voices.
-      No audio files, for the same reason there are no image files.</p>
+<div class="file">
+  <div class="thesis">
+    <h1>Steering is the <em>whole</em> control.</h1>
+    <div>
+      <p>No handbrake, no boost button, no brake pedal. You point the car and drive through
+      the traffic in front of you — the slide comes on by itself above 420, and hitting a
+      rail square reverses you out without a reverse control to press.</p>
+      <div class="keys">
+        <kbd>&#8592;</kbd><kbd>&#8594;</kbd><span>or A / D</span>
+        <span>&mdash; on glass, drag anywhere</span>
+      </div>
     </div>
   </div>
 
-  <h2>How it makes money</h2>
-  <p>A ladder generates far better ad moments than a score chase. Rewarded revive lands when a
-  player is deep into a run they have invested chips in &mdash; the highest-intent moment the
-  format has. Coins pay out on districts cleared as well as score, so the rewarded double-up
-  has a visible target. An interstitial sits every third run end. Everything routes through
-  the CrazyGames SDK, with a simulated placement so the flow is demonstrable standalone.</p>
+  <div class="spec">
+    <div><b>86</b><span>KB, zipped</span></div>
+    <div><b>0</b><span>image files</span></div>
+    <div><b>0</b><span>audio files</span></div>
+    <div><b>49</b><span>perks in the pool</span></div>
+  </div>
+
+  <div class="row">
+    <h2>The verb</h2>
+    <div>
+      <p>Traffic is ammunition, not scenery. You do not dodge cars, you wreck them, and
+      every wreck adds a link to a chain and resets a clock a little over three seconds
+      long. Let the clock run out and the whole pile banks at once. <b>Get hit before then
+      and it burns clock rather than links</b> — the pile is still yours, you just have
+      less time left to keep feeding it.</p>
+      <p>That one rule is what makes the safe line the losing line. There is always a car
+      you could reach if you committed, and the clock is always the reason not to wait.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <h2>The climb</h2>
+    <div>
+      <p>Three acts, each a branching board you climb bottom to top: Run, Elite, Depot, and
+      a named pursuit unit at the summit that you damage by banking into it, so the fight
+      runs on the game's own verb. Every district sets a quota you have to bank before the
+      checkpoint, and you choose the <b>event</b> you drive under first — a boon welded to
+      a bane, both stated on the card. Downpour cuts your grip and pays half again a bank.
+      Ghost Town leaves a third of the traffic and triples every wreck. <i>Risk is what
+      buys levels</i>: half again the XP at risk 1, double at risk 2, so the quiet option
+      costs you something real.</p>
+      <p>Quotas read your actual strength — tuning bought, hardware fitted, level reached —
+      rather than sitting on a fixed curve, so an upgrade always makes the road easier
+      without ever making it free. A brand-new save meets the gentlest version of it.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <h2>The build</h2>
+    <div>
+      <p>Wrecks, banks and clears all pay XP into one track: fifteen levels, three perks
+      offered at each, drawn from forty-nine. They lean toward the toys rather than the
+      stat line — a wrecking ball out on a chain, arc lightning that hops car to car, a
+      singularity you plant up the road, escort drones that pick targets and hold a beam
+      on them. Some offers arrive <b>Overclocked</b>: stronger, welded to a permanent curse
+      — narrower streets, heavier traffic, a hotter start. The cost is always on the card.</p>
+      <p>Hull carries between districts, so a run wears down rather than resetting at every
+      line, and the depot's rebuild is worth the district you skip to reach it.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <h2>The garage</h2>
+    <div>
+      <p>Coins from a run you lost still buy something you keep. The garage is a bay rather
+      than a form: your car on the deck, wearing every part you have bolted to it. Six
+      tuning tracks and six pieces of hardware that change a verb rather than a number — a
+      harpoon that auto-fires into the nearest car, plating that detonates everything
+      around you every fifth link, a welder that repairs the hull between chains.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <h2>The sound</h2>
+    <div>
+      <p>Every note is synthesised at run time. A synthwave bed that layers in as the run
+      gets deeper and hotter, an engine that is a low EV hum rather than a chainsaw, and
+      one-shots for banking, threading a gap, pickups, perk picks and curses. No audio
+      files, for the same reason there are no image files.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <h2>The money</h2>
+    <div>
+      <p>A climb generates better ad moments than a score chase does. The rewarded revive
+      lands on a player nine districts and eleven perks into a run they do not want to lose
+      — the highest-intent moment the format has. Coins pay out on districts cleared as
+      well as on raw score, so the rewarded double-up has a visible target, and an
+      interstitial sits at every third run end. All of it routes through the CrazyGames
+      SDK, with a simulated placement so the flow stays demonstrable off-platform.</p>
+    </div>
+  </div>
+
+  <p class="foot">
+    Everything above this line is running, not described. Zero asset files — every pixel
+    and every note is generated at run time.
+  </p>
 </div>
 
 <script>
