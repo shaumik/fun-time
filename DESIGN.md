@@ -229,41 +229,50 @@ The roguelite layer resets, the garage layer does not.
 
 ## Audio
 
-Fully synthesised, no files. A four-layer synthwave bed over an i–VI–III–VII vamp at 126 BPM,
-whose *arrangement* is the intensity dial: kick alone early, then snare and hats, then a
-square arpeggio and a wider filter as the run gets deeper and hotter.
+Fully synthesised, no files.
 
-**The car is a distant electric drivetrain.** This took two passes and the first was worse
-than what it replaced. The original was two detuned sawtooths through a resonant lowpass — a
-combustion growl with a honk in it. Replacing it with a motor *whine* at 258–958 Hz fixed
-the honk and created something more tiring: a sustained pure tone sitting in the band the ear
-is most sensitive to. Quieter and more fatiguing is a real combination, and it is worth
-remembering that "cleaner" and "easier to listen to" are not the same axis.
+**The bed is a score, not a loop.** It started as a four-layer synthwave vamp — i–VI–III–VII
+at 126 BPM with a kick, snare and hat kit on top. That is a 1984 pastiche, and played
+continuously for the length of a run it is mostly a drum machine hitting you. There is no
+kit now, and no backbeat of any kind. Measured on an analyser, the bed's crest factor is
+about 1.2: there is essentially nothing transient in it.
 
-It now sits an octave and a half lower — 54 Hz idling to about 150 Hz flat out — under a
-lowpass that never opens past ~530 Hz, with the inverter partial dropped to a hint. Measured
-on an analyser at full speed, the 2–5 kHz band is 72 dB below the low band and above 5 kHz is
-98 dB below: there is nothing up there at all. It reads as a drivetrain you are near rather
-than a note being played at you.
+What replaced it is four suspended and added-ninth voicings that do not resolve, one chord
+every two bars at 84 BPM, across four layers:
 
-**And it has its own switch.** The engine is the one voice you hear without pause for a
-whole run, so turning it off must not cost you the music. Verified: engine off measures
-exactly zero while the music bed is unchanged.
+| Layer | What it does |
+|---|---|
+| Drone | A quiet filtered sine on the root. Weight, deliberately thin. |
+| Pad | Detuned triangles and sines, ~1s attack and release, so chords cross-fade with no edge. |
+| Shimmer | Sines two and three octaves above the chord, each breathing on its own slow LFO. This is the top end. |
+| Bells | A sine with three inharmonic partials and a long tail, on a sparse off-grid pattern. |
 
-**The bed is shaped once, globally.** Synthesised material has no tape, no room and no
-microphone to round it off, so every edge that a recording chain would soften arrives
-intact — which is what makes it tiring long before it makes it loud. A −7 dB shelf above
-3.4 kHz and a lowpass at 8.2 kHz sit across the whole mix.
+Escalation adds light and motion — more bells, a higher shimmer voice, a wider pad filter,
+and a slow noise *breath* once per two bars — rather than adding drums.
 
-Three specific offenders went with it. The hats were noise **high-passed at 7.2 kHz** on
-sixteenths, which is the most fatiguing band there is, ticking non-stop; they are now a
-narrow band at 5.2 kHz at 40% of the level. The snare was high-passed at 1.6 kHz, so its
-crack carried the entire top octave on every backbeat; it is band-passed now, with more body
-under it. And the bass ran through a **Q of 9**, a resonant squelch on every note, now 2.4.
-The arpeggio moved from square to triangle, because the odd harmonics of a square are what
-made it glassy once the filter opened.
+**Brightness and harshness are different axes, and I conflated them twice.** The first fix
+for a harsh mix was to shelve the top down 7 dB, which just made it dull; the actual
+offenders were noise transients and resonance. The hats were noise high-passed at 7.2 kHz on
+sixteenths, the most fatiguing band there is, ticking without pause. The snare was
+high-passed at 1.6 kHz, so its crack carried the whole top octave on every backbeat. The
+bass ran through a Q of 9 — a resonant squelch on every note. With all three gone, the top
+end could be *lifted* instead: the master shelf is now +3 dB above 3.6 kHz, and every voice
+above 1 kHz is a slow-enveloped sine. The result is a bed whose loudest band is 1.5–5 kHz,
+with the sub sitting 9 dB under the bass and a high-pass at 78 Hz keeping mud out entirely.
 
-The other gameplay voices are tyre squeal (band-passed noise following slip), a two-tone
+**The car is a distant electric drivetrain, and it has its own switch.** This also took two
+passes, and the first was worse than what it replaced. The original engine was two detuned
+sawtooths through a resonant lowpass — a combustion growl with a honk in it. Replacing it
+with a motor *whine* at 258–958 Hz fixed the honk and produced something more tiring: a
+sustained pure tone in the band the ear is most sensitive to. Quieter and more fatiguing is
+a real combination.
+
+It now runs 54 Hz idling to about 150 Hz flat out, under a lowpass that never opens past
+~530 Hz. At full speed the 2–5 kHz band measures 72 dB below the low band. And because it is
+the one voice playing without pause for an entire run, it has a dedicated toggle: engine off
+measures exactly zero with the music bed unchanged.
+
+Gameplay voices over the top: tyre squeal (band-passed noise following slip), a two-tone
 siren driven by an LFO, and one-shots for banking, wrecks, threads, pickups, chip picks,
 curses and boss stingers.
 

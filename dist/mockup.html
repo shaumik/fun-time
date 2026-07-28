@@ -1637,19 +1637,28 @@ function applyMaster(){
 }
 
 /* ---- musical material ---------------------------------------------------
-   A natural-minor vamp: i - VI - III - VII. Bright enough to drive to,
-   dark enough to read as a police chase.                                   */
+   Not a retrowave vamp. The old bed was i-VI-III-VII at 126 BPM with a
+   kick/snare/hat kit on top, which is a 1984 pastiche and, played on loop
+   for a whole run, mostly a drum machine hitting you. This is an
+   atmospheric score instead: suspended and added-ninth voicings that do not
+   resolve, moving at one chord every two bars, with no kit at all.
+
+   Brightness comes from *tonal* voices in the 1-6 kHz range rather than from
+   noise transients. That distinction is the whole trick — the harshness in
+   the old mix was hats, snare crack and filter resonance, none of which is
+   the same thing as treble.                                                */
 const PROG = [
-  { root: 55.00, chord: [55.00, 65.41, 82.41] },   // Am
-  { root: 43.65, chord: [43.65, 65.41, 87.31] },   // F
-  { root: 65.41, chord: [65.41, 82.41, 98.00] },   // C
-  { root: 49.00, chord: [49.00, 61.74, 73.42] }    // G
+  { root: 55.00, chord: [110.00, 164.81, 246.94, 329.63] },  // Am add9
+  { root: 49.00, chord: [ 98.00, 146.83, 220.00, 293.66] },  // Gsus2
+  { root: 43.65, chord: [ 87.31, 130.81, 196.00, 293.66] },  // Fmaj9
+  { root: 65.41, chord: [ 98.00, 130.81, 196.00, 277.18] }   // Csus / C6
 ];
-const BASS_STEPS = [0, 0, 7, 0, 0, 12, 0, 7, 0, 0, 7, 0, 12, 0, 7, 3];
-const ARP_STEPS  = [0, 4, 7, 12, 7, 4, 7, 12, 0, 4, 7, 12, 14, 12, 7, 4];
+/* sparse and off-grid on purpose: a bell that lands on every beat is a drum */
+const PING_STEPS = [0, 6, 11, 3, 9, 14, 5, 12];
+const PING_NOTES = [12, 19, 24, 16, 21, 28, 19, 24];
 const semi = (f, n) => f * Math.pow(2, n / 12);
 
-const BPM = 126;
+const BPM = 84;                     // half the old pulse; nothing to march to
 const STEP = 60 / BPM / 4;          // sixteenth notes
 let step = 0, nextTime = 0, timer = null;
 let intensity = 0, targetInt = 0;
@@ -1706,12 +1715,21 @@ function init(){
      normally be softened by the recording chain arrives intact — which is
      what makes it tiring long before it makes it loud. */
   const air = ac.createBiquadFilter();
-  air.type = 'lowpass'; air.frequency.value = 8200; air.Q.value = 0.6;
+  air.type = 'lowpass'; air.frequency.value = 15000; air.Q.value = 0.6;
   const shelf = ac.createBiquadFilter();
-  shelf.type = 'highshelf'; shelf.frequency.value = 3400; shelf.gain.value = -7;
+  /* A lift, not a cut. The previous pass shelved the top down to kill
+     harshness, but harshness was the noise transients and the resonance —
+     with those gone the mix just needed air. */
+  shelf.type = 'highshelf'; shelf.frequency.value = 3600; shelf.gain.value = 3;
   air.connect(shelf); shelf.connect(comp);
 
-  musicBus = ac.createGain(); musicBus.gain.value = 0.50; musicBus.connect(air);
+  /* The bed no longer needs to carry weight, so take the mud out under it —
+     "less bass" is mostly a matter of not generating it in the first place. */
+  const lowCut = ac.createBiquadFilter();
+  lowCut.type = 'highpass'; lowCut.frequency.value = 78; lowCut.Q.value = 0.7;
+  lowCut.connect(air);
+
+  musicBus = ac.createGain(); musicBus.gain.value = 0.62; musicBus.connect(lowCut);
   sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.80; sfxBus.connect(air);
 
   buildEngine();
@@ -1791,94 +1809,160 @@ function buildSiren(){
   sirOsc.start(); sirLfo.start();
 }
 
-/* --------------------------------------------------------------- drum kit */
-function kick(at, vel){
-  const o = ac.createOscillator(); o.type = 'sine';
-  o.frequency.setValueAtTime(150, at);
-  o.frequency.exponentialRampToValueAtTime(44, at + 0.11);
-  const g = env(musicBus, 0.72 * vel, 0.006, 0.22, at);
-  o.connect(g); o.start(at); o.stop(at + 0.3);
-}
-function snare(at, vel){
-  /* Band-passed, not high-passed. A highpass at 1.6k lets everything above it
-     through, so the crack carried the full top octave on every backbeat. */
-  const n = noiseSource(false);
-  const f = ac.createBiquadFilter(); f.type = 'bandpass';
-  f.frequency.value = 1500; f.Q.value = 0.8;
-  const g = env(musicBus, 0.22 * vel, 0.004, 0.17, at);
-  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.28);
+/* ------------------------------------------------------------ score voices
+   Four layers, none of them percussive: a sub drone for weight, a pad for
+   harmony, a shimmer that supplies the top end, and sparse bells. */
 
-  /* more body under it, so it reads as a drum rather than as a hiss */
-  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 185;
-  const g2 = env(musicBus, 0.20 * vel, 0.004, 0.11, at);
-  o.connect(g2); o.start(at); o.stop(at + 0.18);
+/* A struck bell: a sine with two inharmonic partials above it and a long
+   exponential tail. This is where the treble lives — tonal, slow-decaying,
+   nothing like a noise transient. */
+function bell(at, freq, vel){
+  const out = ac.createGain();
+  out.gain.value = 1;
+  out.connect(musicBus);
+  /* the fourth partial is what puts light above 6 kHz. It is a sine with a
+     short tail, so it sparkles without ever becoming a tick. */
+  const parts = [[1, 1.0, 2.6], [2.76, 0.30, 1.7], [5.40, 0.13, 1.0], [8.24, 0.055, 0.55]];
+  for (const [ratio, amp, dur] of parts) {
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq * ratio;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.055 * amp * vel), at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g); g.connect(out);
+    o.start(at); o.stop(at + dur + 0.05);
+  }
+  setTimeout(() => { try { out.disconnect(); } catch (e) {} }, (at - ac.currentTime + 3.2) * 1000);
 }
-function hat(at, vel){
-  /* This was noise high-passed at 7.2 kHz on sixteenths — the most fatiguing
-     band there is, ticking away non-stop. Now a narrow band well below it. */
-  const n = noiseSource(false);
-  const f = ac.createBiquadFilter(); f.type = 'bandpass';
-  f.frequency.value = 5200; f.Q.value = 1.4;
-  const g = env(musicBus, 0.040 * vel, 0.002, 0.028, at);
-  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.06);
+
+/* the drone: quiet, and deliberately thin — "less bass" was the note */
+let subOsc = null, subGain = null;
+function setSub(root, at){
+  if (!subOsc) {
+    subOsc = ac.createOscillator(); subOsc.type = 'sine';
+    subGain = ac.createGain(); subGain.gain.value = 0.0001;
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 160; f.Q.value = 0.7;
+    subOsc.connect(f); f.connect(subGain); subGain.connect(musicBus);
+    subOsc.start();
+  }
+  subOsc.frequency.setTargetAtTime(root, at, 0.4);
+  subGain.gain.setTargetAtTime(0.016 + intensity * 0.004, at, 0.6);
 }
-function bassNote(at, freq){
-  const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
-  const f = ac.createBiquadFilter();
-  f.type = 'lowpass';
-  f.frequency.setValueAtTime(220 + intensity * 260, at);
-  f.frequency.exponentialRampToValueAtTime(120, at + 0.16);
-  f.Q.value = 2.4;              // was 9 — a resonant squelch on every note
-  const g = env(musicBus, 0.28, 0.008, 0.16, at);
-  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.24);
-}
-function arpNote(at, freq, vel){
-  /* triangle rather than square: the odd harmonics of a square are what made
-     the arpeggio glassy once the filter opened up */
-  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = freq;
-  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1900; f.Q.value = 0.9;
-  const g = env(musicBus, 0.075 * vel, 0.006, 0.15, at);
-  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.2);
-}
+
 let padVoices = [];
 function setPad(chord, at){
-  padVoices.forEach(v => { try { v.g.gain.cancelScheduledValues(at); v.g.gain.setTargetAtTime(0.0001, at, 0.25); v.o.stop(at + 1.6); } catch (e) {} });
+  padVoices.forEach(v => {
+    try {
+      v.g.gain.cancelScheduledValues(at);
+      v.g.gain.setTargetAtTime(0.0001, at, 0.9);
+      v.o.stop(at + 5);
+    } catch (e) {}
+  });
   padVoices = [];
-  if (intensity < 1) return;
-  for (const f0 of chord) {
-    for (const det of [-6, 6]) {
-      const o = ac.createOscillator(); o.type = 'sawtooth';
-      o.frequency.value = f0 * 4; o.detune.value = det;
+  /* Long attacks and long releases, so chords cross-fade into each other and
+     nothing in the bed has an edge on it. */
+  chord.forEach((f0, k) => {
+    for (const det of [-5, 5]) {
+      const o = ac.createOscillator();
+      o.type = k > 1 ? 'sine' : 'triangle';
+      o.frequency.value = f0 * 2;
+      o.detune.value = det;
       const flt = ac.createBiquadFilter();
-      flt.type = 'lowpass'; flt.frequency.value = 500 + intensity * 700; flt.Q.value = 1;
-      const g = ac.createGain(); g.gain.value = 0.0001;
-      g.gain.setTargetAtTime(0.020 + intensity * 0.010, at, 0.35);
+      flt.type = 'lowpass';
+      flt.frequency.value = 2400 + intensity * 900;
+      flt.Q.value = 0.6;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.setTargetAtTime(0.026 / (1 + k * 0.45), at + 0.05, 1.1);
       o.connect(flt); flt.connect(g); g.connect(musicBus);
       o.start(at);
       padVoices.push({ o, g });
     }
-  }
+  });
 }
 
-/* ------------------------------------------------------------- sequencer */
+/* The shimmer is the top end: sines two and three octaves above the chord,
+   each breathing on its own slow LFO so the band moves instead of sitting
+   there. Bright, and with no transient anywhere in it. */
+let shimVoices = [];
+function setShimmer(chord, at){
+  shimVoices.forEach(v => {
+    try {
+      v.g.gain.cancelScheduledValues(at);
+      v.g.gain.setTargetAtTime(0.0001, at, 0.8);
+      v.o.stop(at + 4.5);
+      v.l.stop(at + 4.5);
+    } catch (e) {}
+  });
+  shimVoices = [];
+  const tops = [chord[2] * 8, chord[3] * 8, chord[3] * 16];
+  tops.forEach((f0, k) => {
+    if (k === 2 && intensity < 1) return;        // the highest voice comes in later
+    const o = ac.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f0;
+    o.detune.value = (k - 1) * 6;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    const lvl = (0.032 + intensity * 0.009) / (1 + k * 0.35);
+    g.gain.setTargetAtTime(lvl, at + 0.1, 1.4);
+    /* independent slow tremolo per voice — this is what makes it glisten */
+    const l = ac.createOscillator();
+    l.type = 'sine';
+    l.frequency.value = 0.09 + k * 0.055;
+    const lg = ac.createGain(); lg.gain.value = lvl * 0.75;
+    l.connect(lg); lg.connect(g.gain);
+    o.connect(g); g.connect(musicBus);
+    o.start(at); l.start(at);
+    shimVoices.push({ o, g, l });
+  });
+}
+
+/* One breath per two bars at depth, filling the place a kick used to occupy
+   without ever becoming a hit: noise swelling in and out over a full second. */
+function breath(at){
+  const n = noiseSource(false);
+  const f = ac.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.9;
+  f.frequency.setValueAtTime(500, at);
+  f.frequency.linearRampToValueAtTime(2200, at + 0.9);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.linearRampToValueAtTime(0.030, at + 0.55);
+  g.gain.linearRampToValueAtTime(0.0001, at + 1.5);
+  n.connect(f); f.connect(g); g.connect(musicBus);
+  n.start(at); n.stop(at + 1.6);
+}
+
+/* One chord every two bars. The arrangement is still the intensity dial, but
+   it escalates by adding light and motion rather than by adding drums. */
 function playStep(s, at){
-  const bar = Math.floor(s / 16) % 4;
-  const ch = PROG[bar];
-  const i = s % 16;
+  const chIdx = Math.floor(s / 32) % PROG.length;
+  const ch = PROG[chIdx];
+  const i = s % 32;
 
-  if (i === 0) setPad(ch.chord, at);
-
-  /* layer in as the run escalates — arrangement is the intensity dial */
-  if (intensity >= 0) {
-    if (i % 4 === 0) kick(at, 1);
-    if (intensity >= 2 && i === 14) kick(at, 0.6);
+  if (i === 0) {
+    setPad(ch.chord, at);
+    setShimmer(ch.chord, at);
+    setSub(ch.root * 0.5, at);
   }
-  if (intensity >= 1 && (i === 4 || i === 12)) snare(at, 1);
-  if (intensity >= 1 && i % 2 === 0) hat(at, i % 4 === 2 ? 1 : 0.55);
-  if (intensity >= 3 && i % 2 === 1) hat(at, 0.32);
+  if (i === 16 && intensity >= 2) breath(at);
 
-  if (BASS_STEPS[i] !== undefined && i % 2 === 0) bassNote(at, semi(ch.root, BASS_STEPS[i]));
-  if (intensity >= 2) arpNote(at, semi(ch.chord[0] * 4, ARP_STEPS[i]), intensity >= 3 ? 1 : 0.6);
+  /* bells: sparse, off the beat, and denser as the run gets hotter */
+  const slot = PING_STEPS.indexOf(i % 16);
+  if (slot >= 0) {
+    const half = i < 16 ? 0 : 1;
+    const density = intensity >= 3 ? 0.95 : intensity >= 2 ? 0.72 : intensity >= 1 ? 0.52 : 0.34;
+    if ((slot + half) % 2 === 0 || Math.random() < density * 0.5) {
+      if (Math.random() < density) {
+        const n = PING_NOTES[(slot + half * 3) % PING_NOTES.length];
+        bell(at, semi(ch.root, n) * 4, 0.55 + intensity * 0.12);
+      }
+    }
+  }
 }
 
 function tick(){
@@ -1886,7 +1970,7 @@ function tick(){
   intensity += (targetInt - intensity) * 0.08;
   while (nextTime < ac.currentTime + 0.14) {
     playStep(step, nextTime);
-    step = (step + 1) % 64;
+    step = (step + 1) % 128;
     nextTime += STEP;
   }
   timer = setTimeout(tick, 25);
