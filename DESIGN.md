@@ -311,6 +311,13 @@ and CSS scales the result back up. Resolution is the first lever because it is c
 and nearly invisible; dropping effects is the last resort, once there is no resolution left
 to give.
 
+It comes down in proportion to how far off budget it is, not in a fixed step. Cost goes
+with area, so the scale that would hit the target is about sqrt(target/actual) — a machine
+at 12fps reaches a holdable scale in one correction rather than four, which matters because
+those four corrections were about five seconds of visible chop and they were the first five
+seconds the player ever saw. Overshooting downward is cheap: the climb back is gentle and
+continuous, and only runs when there is measured headroom.
+
 Two signals drive it, because neither alone works. Frame delta says whether we are missing
 the target, but it is clamped by vsync — on a 60Hz display a perfect frame still reads
 16.7ms, so it can never indicate headroom, and a renderer that had dropped resolution could

@@ -5883,9 +5883,18 @@ function autoTune(now){
   const roomy   = ftAvg < 18 && workAvg < 6.5;     // hitting vsync, cheaply
 
   if (missing && renderScale > 0.5) {
-    renderScale = Math.max(0.5, renderScale - 0.09);
+    /* Come down in proportion to how far off budget we are, not in a fixed
+       step. A machine at 12fps needs four fixed steps and nearly five seconds
+       of visible chop to reach a scale it can hold — and those five seconds
+       are the first thing the player sees. Since cost goes with area, the
+       scale that would hit the target is roughly sqrt(target/actual), and
+       overshooting down is cheap because the climb back is gentle and
+       continuous. Badly-over cases also re-check sooner.  */
+    const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
+    const stepped = renderScale - 0.09;
+    renderScale = clamp(Math.min(stepped, want), 0.5, 1);
     applyBackingStore();
-    tuneAt = now + 700;
+    tuneAt = now + (ftAvg > 28 ? 320 : 700);
   } else if (missing && !demoted) {
     setQuality('low'); demoted = true;
     tuneAt = now + 1200;
