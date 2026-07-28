@@ -96,6 +96,7 @@
       </div>
       <div class="best">Deepest run <b id="menuBest">District 1</b></div>
       <div class="opts">
+        <button class="mute" id="btnRecords" aria-label="Your records">Records</button>
         <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
         <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
         <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
@@ -193,6 +194,7 @@
         <span class="ovBadge" id="ovBadge">New best</span>
       </div>
       <div class="ovRank" id="ovRank">Reached district 1</div>
+      <div class="ovPlace" id="ovPlace">Personal best #1</div>
       <div class="ovScore" id="ovScore">0</div>
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
@@ -206,8 +208,24 @@
       </div>
       <div class="ovFoot">
         <button class="btn primary" id="btnAgain">Spend it in the garage</button>
+        <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ records ============ -->
+  <div id="board" class="layer screen">
+    <div class="panel wide">
+      <div class="bdHead">
+        <div>
+          <div class="bdKick">Records</div>
+          <h2 class="bdWho" id="bdWho">Your runs</h2>
+        </div>
+        <div class="bdNote">Best ten runs &middot; saved on this account</div>
+      </div>
+      <div class="bdRows" id="bdRows"></div>
+      <button class="btn primary" id="btnBdBack">Back<span class="key">Enter</span></button>
     </div>
   </div>
 

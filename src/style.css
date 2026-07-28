@@ -1335,3 +1335,82 @@ body{
   margin-bottom:calc(var(--u)*2.2);
 }
 #daily .btn{width:100%;justify-content:center}
+
+
+/* ============================================================
+   RECORDS
+   A ladder of your own runs. There is no global board — CrazyGames'
+   leaderboard is server-to-server and this build has no server — so this
+   has to carry the "beat that" job on its own, which means the row you are
+   chasing has to be legible at a glance.
+   ============================================================ */
+#board .panel{max-width:calc(var(--u)*76)}
+.bdHead{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:calc(var(--u)*2);margin-bottom:calc(var(--u)*2);
+  padding-bottom:calc(var(--u)*1.2);border-bottom:1px solid var(--edge);
+}
+.bdKick{
+  font-size:calc(var(--u)*1.15);letter-spacing:.4em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.bdWho{
+  margin:calc(var(--u)*.6) 0 0;
+  font-size:calc(var(--u)*3);font-weight:800;color:#fff;
+  letter-spacing:.04em;text-transform:uppercase;line-height:1;
+}
+.bdNote{
+  font-size:calc(var(--u)*1.1);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);text-align:right;
+}
+.bdRows{display:flex;flex-direction:column;gap:calc(var(--u)*.4);margin-bottom:calc(var(--u)*2.2)}
+.bdRow{
+  display:grid;
+  grid-template-columns:calc(var(--u)*4) 1fr auto auto auto;
+  align-items:baseline;gap:calc(var(--u)*1.2);
+  padding:calc(var(--u)*.85) calc(var(--u)*1.2);
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.10);
+  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.26);
+}
+.bdRow:nth-child(1){border-left-color:var(--amber)}
+.bdRow:nth-child(2){border-left-color:rgba(198,210,232,.7)}
+.bdRow:nth-child(3){border-left-color:#9C5A1E}
+/* the run you just finished, so you can find yourself without counting */
+.bdRow.me{background:rgba(61,232,255,.09);border-color:rgba(61,232,255,.35)}
+.bdN{
+  font-size:calc(var(--u)*1.5);font-weight:800;color:var(--dim);
+  font-variant-numeric:tabular-nums;
+}
+.bdRow:nth-child(1) .bdN{color:var(--amber)}
+.bdS{
+  font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+}
+.bdD,.bdW,.bdT{
+  font-size:calc(var(--u)*1.15);font-weight:700;color:var(--dim);
+  letter-spacing:.12em;text-transform:uppercase;
+  font-variant-numeric:tabular-nums;
+}
+.bdD{color:var(--cyan)}
+.bdEmpty{
+  padding:calc(var(--u)*3) 0;text-align:center;
+  font-size:calc(var(--u)*1.4);color:var(--dim);font-weight:600;
+}
+#board .btn{width:100%;justify-content:center}
+
+/* the rank on the game-over panel */
+.ovPlace{
+  margin-top:calc(var(--u)*.5);
+  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.ovPlace.in{color:var(--amber)}
+
+@media (max-aspect-ratio:1/1){
+  .bdHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.6)}
+  .bdNote{text-align:left}
+  .bdRow{grid-template-columns:calc(var(--u)*3.4) 1fr auto;row-gap:calc(var(--u)*.3)}
+  .bdW,.bdT{display:none}
+  .ovFoot{flex-direction:column}
+}

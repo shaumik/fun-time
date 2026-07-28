@@ -30,7 +30,7 @@ const Save = {
   key:'neonheat.v1',
   data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper',
          up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0,
-         engineSfx:1, lastDaily:'', dailyStreak:0 },
+         engineSfx:1, lastDaily:'', dailyStreak:0, board:[] },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -41,6 +41,7 @@ const Save = {
         if (typeof this.data.up[k] !== 'number') this.data.up[k] = 0;
       if (typeof this.data.lastDaily !== 'string') this.data.lastDaily = '';
       if (typeof this.data.dailyStreak !== 'number') this.data.dailyStreak = 0;
+      if (!Array.isArray(this.data.board)) this.data.board = [];
     } catch (e) { /* storage blocked — run in-memory */ }
   },
   flush(){
@@ -102,6 +103,16 @@ const Hangar = {
 const Ads = {
   sdk: null,
   ready: false,
+  /* The user module *is* client-side, unlike the leaderboard API. If the
+     player is signed in on the portal we can put their name on their own
+     board; everywhere else it stays anonymous and nothing breaks. */
+  playerName: '',
+  async readUser(){
+    try {
+      const u = this.sdk && this.sdk.user && await this.sdk.user.getUser();
+      if (u && u.username) this.playerName = u.username;
+    } catch (e) { /* not signed in, or no user module — anonymous is fine */ }
+  },
   playing: false,      // mirrors gameplayStart/Stop so we never double-fire
 
   async boot(){
@@ -116,6 +127,7 @@ const Ads = {
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
       this.bindSettings(SDK);
+      this.readUser();
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -437,7 +449,8 @@ addEventListener('keydown', e => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
   NHAudio.resume();
   if (e.code === 'Enter') {
-    if (G.state === 'daily') closeDaily();
+    if (G.state === 'board') closeBoard();
+    else if (G.state === 'daily') closeDaily();
     else if (G.state === 'menu') $('btnPlay').onclick();
     else if (G.state === 'over') { commitCoins(1); toGarage(); }
     else if (G.state === 'garage') { hide(UI.garage); startRun(); }
@@ -2722,7 +2735,7 @@ const UI = {
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
-  daily:$('daily'),
+  daily:$('daily'), board:$('board'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
@@ -2855,7 +2868,7 @@ function toMenu(){
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
-  hide(UI.daily);
+  hide(UI.daily); hide(UI.board);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
@@ -3274,6 +3287,7 @@ function endRun(won){
   G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
+  const rank = recordRun();
 
   /* the run ends when the hull does, so the kicker names the last straw */
   const kick = G.crashReason === 'traffic' ? 'Hull gone'
@@ -3290,6 +3304,9 @@ function endRun(won){
   $('ovWrecks').textContent = fmt(G.totalWreck);
   $('ovCoins').textContent = fmt(G.coinsRun);
   $('ovBadge').classList.toggle('hide', !isBest);
+  /* a rank is a more useful thing to see than a badge you may never earn */
+  $('ovPlace').textContent = rank ? 'Personal best #' + rank : 'Outside your top ' + BOARD_MAX;
+  $('ovPlace').classList.toggle('in', !!rank);
   /* one revive per run, and only when the run was worth saving */
   $('btnRevive').disabled = G.revived || G.score < 400;
   $('btnDouble').disabled = false;
@@ -3342,6 +3359,9 @@ $('btnPlay').onclick   = () => {
 $('btnAgain').onclick  = () => { commitCoins(1); toGarage(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => toGarage();
+$('btnRecords').onclick = () => { NHAudio.ui(true); showBoard('menu'); };
+$('btnOvBoard').onclick = () => { NHAudio.ui(true); showBoard('over'); };
+$('btnBdBack').onclick  = () => { NHAudio.ui(true); closeBoard(); };
 $('btnBack').onclick   = () => { hide(UI.garage); toMenu(); };
 $('btnRace').onclick   = () => { hide(UI.garage); startRun(); };
 
@@ -3472,6 +3492,87 @@ function claimDaily(){
 function closeDaily(){
   hide(UI.daily);
   toGarage();
+}
+
+
+/* ============================================================
+   RECORDS
+   CrazyGames' leaderboard is a *server-to-server* API: scores are posted
+   from your own backend with a secret key. This game is one HTML file with
+   no backend, and shipping that key in the bundle would hand it to anyone
+   who opens devtools — so there is no global board here, and pretending
+   otherwise would be worse than not having one.
+
+   What there is instead is a real board of your own runs, which is the part
+   that actually drives "one more go": a visible ladder, a rank on the
+   game-over screen, and a row you are trying to beat. `submitScore` is the
+   single seam a backend would plug into later.
+   ============================================================ */
+const BOARD_MAX = 10;
+
+function boardRows(){
+  if (!Array.isArray(Save.data.board)) Save.data.board = [];
+  return Save.data.board;
+}
+
+/* Returns the 1-based rank if the run made the board, otherwise 0. */
+function recordRun(){
+  const rows = boardRows();
+  const entry = {
+    s: Math.round(G.score),
+    d: G.run ? G.run.district : 1,
+    a: G.run ? G.run.act : 1,
+    w: G.totalWreck,
+    m: +G.topMult.toFixed(1),
+    t: Date.now(),
+    who: Ads.playerName || ''
+  };
+  rows.push(entry);
+  rows.sort((x, y) => y.s - x.s);
+  if (rows.length > BOARD_MAX) rows.length = BOARD_MAX;
+  Save.data.board = rows;
+  Save.flush();
+  submitScore(entry);
+  /* remember the exact entry so the board can point at it — comparing on
+     score alone ties whenever two runs land on the same number */
+  G.lastEntryT = entry.t;
+  const rank = rows.indexOf(entry);
+  return rank < 0 ? 0 : rank + 1;
+}
+
+/* The seam. A backend would POST to leaderboard.crazygames.com from the
+   server side; from here there is nowhere safe to send it. */
+function submitScore(entry){ /* no backend — see the note above */ }
+
+function relDay(t){
+  const d = Math.floor((Date.now() - t) / 864e5);
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + 'd ago';
+}
+
+function showBoard(from){
+  const rows = boardRows();
+  const wrap = $('bdRows');
+  wrap.innerHTML = rows.length
+    ? rows.map((r, i) =>
+        '<div class="bdRow' + (r.t === G.lastEntryT ? ' me' : '') + '">' +
+          '<span class="bdN">' + (i + 1) + '</span>' +
+          '<span class="bdS">' + fmt(r.s) + '</span>' +
+          '<span class="bdD">District ' + r.d + '</span>' +
+          '<span class="bdW">' + fmt(r.w) + ' wrecked</span>' +
+          '<span class="bdT">' + relDay(r.t) + '</span>' +
+        '</div>').join('')
+    : '<div class="bdEmpty">No runs on the board yet. Go and put one there.</div>';
+  $('bdWho').textContent = Ads.playerName ? Ads.playerName : 'Your runs';
+  G.boardFrom = from;
+  hide(UI.menu); hide(UI.over);
+  show(UI.board);
+  G.state = 'board';
+}
+
+function closeBoard(){
+  hide(UI.board);
+  if (G.boardFrom === 'over') { G.state = 'over'; show(UI.over); }
+  else toMenu();
 }
 
 /* ============================================================
@@ -3788,7 +3889,7 @@ function renderGarage(){
    better next attempt. Everything routes through here. */
 function toGarage(){
   hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.draft); hide(UI.brief);
-  hide(UI.daily);
+  hide(UI.daily); hide(UI.board);
   G.state = 'garage';
   show(UI.garage);
   renderGarage();
@@ -3883,7 +3984,7 @@ Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
-hide(UI.daily);
+hide(UI.daily); hide(UI.board);
 setCtrlLabel();
 setEngineLabel();
 setMute();
@@ -3900,6 +4001,7 @@ window.__NH = {
   takeContract, openNodes, advance,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
+  endRun, showBoard, recordRun,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();

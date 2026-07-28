@@ -190,6 +190,25 @@ the game unplayable in testing regardless of how good it looked.
 Road width, top speed and camera zoom are tuned together so crossing the full street takes
 about 0.9 seconds. An earlier build was at 0.4s, and no amount of skill made that readable.
 
+## Records, and why there is no global board
+
+CrazyGames does have a leaderboard, but it is a **server-to-server** API: scores are POSTed
+to `leaderboard.crazygames.com` from your own backend, authenticated with a secret key. This
+game is a single HTML file with no backend, and shipping that key inside the bundle would
+hand it to anyone who opens devtools — so there is no global board here, and faking one would
+be worse than not having it.
+
+What there is instead is a board of your own ten best runs: score, district reached, cars
+wrecked, and how long ago. It carries the "beat that" job on its own — the game-over screen
+states your rank rather than only showing a best-ever badge you may never earn, and the run
+you just finished is highlighted in the table so you can find yourself without counting.
+Because CrazyGames syncs `localStorage` to a signed-in account, the board follows the player
+across devices without any code.
+
+`submitScore()` in `src/game.js` is the single seam a backend would plug into. If the SDK's
+user module is present the player's portal username titles the board; everywhere else it
+stays anonymous and nothing breaks.
+
 ## Monetization
 
 | Placement | Trigger | Notes |
