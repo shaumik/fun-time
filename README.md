@@ -2,8 +2,9 @@
 
 A demolition-drift **roguelite** for web distribution. Drift to charge a multiplier, ram
 traffic to cash it in, and pay for it out of a hull bar that only ever gets thinner. Pick a
-route through a branching board of city districts, sign a contract that pairs a boon with a
-bane before each one, bank a quota under those terms, and draft a chip on the way out.
+route through a branching board of city districts, pick an event that pairs a boon with a
+bane before each one, and bank a quota under those terms. Wrecks and clears pay XP; every
+level hands you a perk from three, fifteen levels deep out of a pool of forty-nine.
 Three acts — The Grid, the Sunken Docks and the Undercity, each with its own palette,
 skyline and air — every one ending in a named pursuit unit.
 
@@ -25,7 +26,7 @@ back to in-memory for the session).
 |---|---|
 | <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Steer — the whole control surface |
 | <kbd>Enter</kbd> | Garage / start run / leave a district brief |
-| <kbd>1</kbd>–<kbd>4</kbd> | Pick a chip at the draft |
+| <kbd>1</kbd>–<kbd>3</kbd> | Pick a perk on level-up |
 | <kbd>M</kbd> / <kbd>Esc</kbd> | Mute / back to menu |
 
 The menu also carries an **Engine** toggle: the car is the one voice you hear without pause
@@ -54,7 +55,7 @@ there behind a **Controls** toggle on the menu.
 **The car reverses itself.** Hit a rail square and it backs out after a moment and turns to
 face down the road — there is no reverse control to add in a game with one axis.
 
-- The HUD rails stack in portrait, the draft becomes a single column, and keyboard hints are
+- The HUD rails stack in portrait, the perk cards become a single column, and keyboard hints are
   hidden on touch devices.
 - `--u`, the unit every UI size derives from, is taken from the narrow axis in portrait;
   camera zoom is bounded by width as well as height so the full street always fits.
@@ -88,18 +89,20 @@ tuning across six tracks and permanent hardware — a harpoon that auto-fires, p
 detonates every fifth link, a welder that repairs you between chains. See
 [DESIGN.md](DESIGN.md).
 
-**Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; a contract
-chosen before every district (boon + bane, stated up front); a chip drafted after. Risk on
-the contract sets the quality of the draft. See [DESIGN.md](DESIGN.md).
+**Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; an event
+chosen before every district (boon + bane, stated up front). Risk on the event buys XP —
+half again at risk 1, double at risk 2 — and XP is the only progression track inside a run.
+Quotas scale with how strong you actually are (garage tuning, hardware, run level), so an
+upgrade always makes the road easier without ever making it free. See [DESIGN.md](DESIGN.md).
 
 ## Layout
 
 ```
 index.html        development shell (source of truth for markup)
 SUBMISSION.md     build, upload, store copy, requirements checklist
-src/style.css     all UI — HUD, briefs, draft, garage, ad overlay
+src/style.css     all UI — HUD, briefs, perks, garage, ad overlay
 src/audio.js      synthesised music bed and SFX, no audio files
-src/chips.js      chips, curses and the weighted draft; pure data + a modifier table
+src/chips.js      perks, curses and events; pure data + one flat modifier table
 src/game.js       engine: physics, districts, bosses, AI, renderer, post FX, meta
 build.mjs         inlines the above into dist/
 dist/index.html   self-contained single file — this is what you zip for CrazyGames

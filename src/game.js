@@ -53,7 +53,7 @@ Save.load();
 
 /* ============================================================
    HANGAR — permanent hardware
-   The chips you draft inside a run are wiped when the run ends. This is the
+   The perks you take inside a run are wiped when the run ends. This is the
    other half of the roguelite contract: a run that went badly still pays for
    something you keep, so the next attempt starts from further along. Bought
    once, always fitted, and each one changes a verb rather than a number.
@@ -455,8 +455,8 @@ addEventListener('keydown', e => {
     else if (G.state === 'over') { commitCoins(1); toGarage(); }
     else if (G.state === 'garage') { hide(UI.garage); startRun(); }
     else if (G.state === 'brief') beginDistrict();
+    else if (G.state === 'cleared') leaveCleared();
   }
-  if (G.state === 'draft' && /^Digit[1234]$/.test(e.code)) takeOffer(+e.code.slice(5) - 1);
   if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
   if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
@@ -686,7 +686,7 @@ class Vehicle {
 
   drive(dt, steerIn, throttle){
     const s = this.spec;
-    /* only the player carries chip modifiers; traffic and pursuit run stock */
+    /* only the player carries perk modifiers; traffic and pursuit run stock */
     const M = this.mods;
     this.steer = damp(this.steer, steerIn, 13, dt);
 
@@ -785,14 +785,14 @@ class Vehicle {
    GAME
    ============================================================ */
 const G = {
-  state:'menu',      // menu | brief | play | draft | crash | over | garage
+  state:'menu',      // menu | brief | play | levelup | cleared | crash | over | garage
   ai:true,
   track:null, car:null, spec:null,
   traffic:[], police:[], boss:null, hazards:[],
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
-  crashT:0, slow:1, flash:0, revived:false, pendingLevels:0,
+  crashT:0, slow:1, flash:0, revived:false, pendingLevels:0, awaitingAdvance:false,
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
@@ -823,6 +823,34 @@ const BOSSES = [
     blurb:'Faster than you, and it brought friends.' }
 ];
 
+/* How strong the player actually is, on a scale where a brand-new save is
+   1.0 and a maxed garage at level 15 is about 5.7.
+
+   Quotas used to be a fixed curve, which meant they were tuned for exactly
+   one loadout. Measured against a maxed save the quota was being met in the
+   first 15-30% of the road, so the checkpoint — the only fail state that
+   is not a wreck — could never fire and the back three-quarters of every
+   district was scenery. Scaling by power fixes that, sub-linearly: power
+   outgrows the index, so every upgrade still makes the road easier without
+   ever making it free. All of the growth lives here rather than in the base
+   curve, so a brand-new save meets exactly the numbers that shipped.
+
+   The weighting matters as much as the ceiling. Run level carries more of
+   it than the garage does, which means a veteran opens a run holding every
+   upgrade and no perks yet — and feels it. The road tightens as the perks
+   stack rather than being tight from the first corner. */
+function powerIndex(){
+  const up = Save.data.up || {};
+  let lv = 0; for (const k in up) lv += up[k] || 0;          // 0..30
+  const gear = (Save.data.gear || []).length;                // 0..6
+  const lvl = G.run ? Math.max(0, G.run.level - 1) : 0;      // 0..14
+  /* The first run is the one that decides whether there is a second, and a
+     player on it is learning that traffic is ammunition rather than
+     optimising a build. Three runs of grace, then the full number. */
+  const green = Math.min(1, 0.62 + (Save.data.runs || 0) * 0.13);
+  return green * (1 + lv * 0.055 + gear * 0.14 + lvl * 0.155);
+}
+
 function districtCfg(n, type, act){
   const boss = type === 'boss';
   const bi = act - 1;
@@ -833,8 +861,8 @@ function districtCfg(n, type, act){
           (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
     len: Math.round(400 + n * 26),
-    /* Elites cost more and pay a rare chip; the route choice has to bite */
-    quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1)),
+    /* Elites cost more and pay double XP; the route choice has to bite */
+    quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
        that used to be a two-chain fight now needs the headroom to last. */
     bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
@@ -845,7 +873,7 @@ function districtCfg(n, type, act){
 /* ============================================================
    THE ROUTE
    A branching board per act, climbed bottom to top. Which node you take
-   is the strategic layer: an Elite is harder but pays a rare chip, a
+   is the strategic layer: an Elite is harder but pays double XP, a
    Depot costs you a district of scoring but repairs your build. Without
    a visible route none of those are decisions.
    ============================================================ */
@@ -857,10 +885,10 @@ const ROWS = 5;
    read the same is not a choice, so every node carries its reward and its
    cost, and siblings in a row are forced to differ. */
 const NODE_INFO = {
-  run:   { reward:'1 chip',        rare:false, quotaMul:1.00, heat:0 },
-  elite: { reward:'Rare chip · 4', rare:true,  quotaMul:1.45, heat:1 },
-  depot: { reward:'Free chip or repair', rare:false, quotaMul:0, heat:0 },
-  boss:  { reward:'Rare chip · act', rare:true, quotaMul:1.15, heat:1 }
+  run:   { reward:'Standard XP',   rare:false, quotaMul:1.00, heat:0 },
+  elite: { reward:'Double XP',     rare:true,  quotaMul:1.45, heat:1 },
+  depot: { reward:'Free level or rebuild', rare:false, quotaMul:0, heat:0 },
+  boss:  { reward:'Act clear · full rebuild', rare:true, quotaMul:1.15, heat:1 }
 };
 
 function makeRoute(act){
@@ -871,7 +899,7 @@ function makeRoute(act){
        branches read the same is not a choice, and the row before the boss
        only has two kinds to offer, so it can never hold three. */
     /* A Depot is worthless before you own anything: nothing to strip, and a
-       free chip is not worth skipping your first scoring district for. So
+       free level is not worth skipping your first scoring district for. So
        the opening fork is safe-vs-greedy, and Depots only appear once a
        build exists to repair. The row before the boss is the classic
        rest-or-push decision, so it drops Run. */
@@ -949,20 +977,21 @@ function makeRoute(act){
 function newRun(){
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
-    xp: 0, level: 1, perks: [],
+    xp: 0, level: 1, perks: [], hullBonus: 0,
     node: null, district: 0,
-    chips: [], curses: [], contract: null,
+    curses: [], contract: null,
     M: NHChips.defaults(), L: NHChips.levelDefaults(),
-    cfg: null, quota: 0, banked: 0, startIdx: 0,
+    cfg: null, quota: 0, banked: 0, startIdx: 0, elapsed: 0,
     cleared: 0, crumpleLeft: 0
   };
 }
 
-/* A Depot offers a repair only when there is something to repair, so the
-   label has to be read at draw time rather than baked in at generation. */
+/* A Depot only offers a strip when there is a curse to strip, so the label
+   has to be read at draw time rather than baked in at generation. */
 function nodeReward(node){
   if (node.type !== 'depot') return node.reward;
-  return (G.run && G.run.curses.length) ? 'Free chip or strip a curse' : 'Free chip';
+  return (G.run && G.run.curses.length)
+    ? 'Level, rebuild or strip a curse' : 'Free level or rebuild';
 }
 
 /* which nodes the player may take from where they are standing */
@@ -1013,8 +1042,16 @@ function newWorld(ai){
     G.drones = [-1, 1].map(side => ({ x:G.car.x, y:G.car.y, side, vx:0, vy:0,
                                       target:null, dwell:0, ang:0 }));
   }
-  G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0));
-  G.hp = G.hpMax;
+  const wasMax = G.hpMax;
+  G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0)
+                       + (G.run ? G.run.hullBonus : 0));
+  /* Hull used to refill at every district line, which meant a run could only
+     ever end inside one district — no attrition, and the depot's repair and
+     the welder bought you nothing. It carries over now; clearing welds 70%
+     back on, and the depot is a full rebuild. */
+  G.hp = (G.run && G.run.cleared > 0 && !ai)
+    ? clamp(G.hp + (G.hpMax - wasMax), 1, G.hpMax)
+    : G.hpMax;
   G.ai = !!ai;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   for (let i = 0; i < 18; i++) addTraffic(14 + i * 11);
@@ -1998,12 +2035,15 @@ function fireMissile(){
    two runs diverge inside the first district.
    ============================================================ */
 const LEVEL_CAP = 15;
-const xpFor = l => 18 + l * 2;          // ~462 XP to cap, roughly a full run
+/* Clearing a district pays a large XP lump on top of the wrecks, so there
+   is exactly one level track rather than two counters that drift apart —
+   the old clear-grants-a-free-perk path handed out 21 perks by level 12. */
+const xpFor = l => 26 + l * 9;          // ~1300 XP to cap, about eleven districts
 
 function addXP(n){
   const run = G.run;
   if (!run || run.level >= LEVEL_CAP) return;
-  run.xp += n;
+  run.xp += n * (run.L ? run.L.xpMul : 1);
   while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
     run.xp -= xpFor(run.level);
     run.level++;
@@ -2017,7 +2057,7 @@ function maybeLevelUp(){
   G.pendingLevels--;
   const run = G.run;
   G.offers = NHChips.rollPerks(run.perks, run.level);
-  if (!G.offers.length) return;
+  if (!G.offers.length) { G.pendingLevels = 0; return; }
 
   G.state = 'levelup';
   UI.hud.classList.add('off');
@@ -2048,17 +2088,24 @@ function takePerk(i){
   UI.hud.classList.remove('off');
   G.state = 'play';
   toast(p.name + ' fitted', 'gold');
+  if (p.curse) {
+    G.run.curses.push(p.curse.id);
+    rebuildMods();
+    toast(p.curse.name + ' — ' + p.curse.desc, 'red');
+    NHAudio.curse();
+  }
   /* a hull bump applies immediately rather than at the next district */
   const was = G.hpMax;
-  G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0));
+  G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0) + G.run.hullBonus);
   if (G.hpMax > was) G.hp += G.hpMax - was;
-  maybeLevelUp();                      // two levels at once is possible
+  if (G.pendingLevels > 0) { maybeLevelUp(); return; }   // two at once is possible
+  if (G.awaitingAdvance) { G.awaitingAdvance = false; advance(); }
 }
 
 /* Perks change mid-district, so the modifier table has to be rebuilt live. */
 function rebuildMods(){
   const run = G.run;
-  const built = NHChips.build(run.chips, run.curses, run.contract, run.perks);
+  const built = NHChips.build(run.curses, run.contract, run.perks);
   run.M = built.M; run.L = built.L;
   if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
   run.M.wreckMul *= (G.spec.wreckMul || 1);
@@ -2220,11 +2267,11 @@ function bank(){
 
   G.score += gained;
   G.run.banked += gained;
-  addXP(Math.min(8, Math.round(gained / 2200)));
+  addXP(Math.min(6, Math.round(gained / 2600)));
   G.heat = Math.min(3.0, G.heat + gained / 14000);
   NHAudio.bank(G.mult);
 
-  /* chips that trigger on the cash-in, not on the drift */
+  /* perks that trigger on the cash-in, not on the wreck */
   if (M.ghostOnBank) G.ghost = Math.max(G.ghost, M.ghostOnBank);
   if (M.shockOnBank) {
     for (const p of G.police) {
@@ -2314,6 +2361,7 @@ function step(dt){
   const playing = G.state === 'play';
 
   if (playing) {
+    if (G.run) G.run.elapsed += dt;
     readInput();
     const loc = T.locate(car.x, car.y, car.idx);
     car.idx = loc.i;
@@ -3472,7 +3520,7 @@ const UI = {
   combo:$('combo'), cmult:$('cmult'), cpts:$('cpts'), cfill:$('cfill'),
   heat:$('heat'), spd:$('spd'), powers:$('powers'), toasts:$('toasts'),
   menu:$('menu'), over:$('over'), garage:$('garage'),
-  brief:$('brief'), draft:$('draft'),
+  brief:$('brief'), cleared:$('cleared'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
   daily:$('daily'), board:$('board'), levelup:$('levelup'),
   xp:$('xp'), xpLvl:$('xpLvl'), xpNext:$('xpNext'), xpFill:$('xpFill'),
@@ -3599,18 +3647,19 @@ function renderBuild(target){
   const run = G.run;
   if (!run) { el.innerHTML = ''; return; }
   const counts = {};
-  for (const id of run.chips) counts[id] = (counts[id] || 0) + 1;
+  for (const id of run.perks) counts[id] = (counts[id] || 0) + 1;
   let html = '';
   for (const id in counts) {
-    const c = NHChips.byId(id);
-    html += '<i class="' + c.rarity + '">' + c.name +
+    const p = NHChips.perkById(id);
+    if (!p) continue;
+    html += '<i class="' + p.rarity + '">' + p.name +
             (counts[id] > 1 ? '<b>&times;' + counts[id] + '</b>' : '') + '</i>';
   }
   for (const id of run.curses) {
     const c = NHChips.curseById(id);
     html += '<i class="curse">' + c.name + '</i>';
   }
-  el.innerHTML = html || '<i style="opacity:.5">No chips yet</i>';
+  el.innerHTML = html || '<i style="opacity:.5">No perks yet</i>';
 }
 
 /* The pads overlay the whole stage, so they must only exist while driving —
@@ -3632,7 +3681,7 @@ function toMenu(){
   G.run = null;
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
-  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
+  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.cleared);
   hide(UI.daily); hide(UI.board); hide(UI.levelup);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
@@ -3640,10 +3689,10 @@ function toMenu(){
 }
 
 function startRun(){
-  hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.draft);
+  hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = 0;
+  G.pendingLevels = 0; G.awaitingAdvance = false;
   shownScore = 0;
   showMap();
 }
@@ -3655,11 +3704,17 @@ function showMap(){
   const run = G.run;
   G.state = 'map';
   UI.hud.classList.add('off');
-  hide(UI.draft); hide(UI.contract); hide(UI.depot); hide(UI.brief);
+  hide(UI.cleared); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
   $('mTitle').textContent = THEMES[(run.act - 1) % THEMES.length].name;
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
+  /* Quotas move with your level now, so the board has to re-read them
+     rather than trust what makeRoute baked in at act start. */
+  run.route.forEach(row => row.forEach(n => {
+    if (n.type !== 'boss' && n.type !== 'depot')
+      n.quota = districtCfg(n.district, n.type, run.act).quota;
+  }));
   renderBuild(UI.mapBuild);
   show(UI.map);
   requestAnimationFrame(drawRoute);   // needs layout before it can measure
@@ -3794,7 +3849,7 @@ function showContract(){
   $('cKicker').textContent = boss ? 'Pursuit inbound' : elite ? 'High risk dispatch' : 'Dispatch';
   $('cSub').textContent = boss
     ? 'Terms still apply while it hunts you'
-    : 'Choose the terms you drive under';
+    : 'Risk buys levels \u2014 the safe run pays none';
 
   const wrap = $('cCards');
   wrap.innerHTML = '';
@@ -3808,7 +3863,7 @@ function showContract(){
       '<div class="cname">' + k.name + '</div>' +
       '<div class="cline bane"><b>Bane</b><span>' + k.bane + '</span></div>' +
       '<div class="cline boon"><b>Boon</b><span>' + k.boon + '</span></div>' +
-      '<div class="cpay">Clears into ' + (k.risk >= 2 ? 'a rare chip' : k.risk === 1 ? 'an upgraded draft' : 'a standard draft') + '</div>';
+      '<div class="cpay">' + (k.risk >= 2 ? 'Hazard pay &middot; double XP' : k.risk === 1 ? 'Hazard pay &middot; +50% XP' : 'Standard rate') + '</div>';
     el.onclick = () => takeContract(i);
     wrap.appendChild(el);
   });
@@ -3833,14 +3888,31 @@ function showDepot(){
 
   const opts = [];
   opts.push({
-    name: 'Salvage rack', risk: 0,
+    name: 'Field promotion', risk: 0,
     bane: 'You bank nothing here.',
-    boon: 'Fit a chip from four, no driving.',
-    pay: 'Free chip',
+    boon: 'A level on the spot — take a perk from three.',
+    pay: 'Free level',
     go(){
       hide(UI.depot);
       run.node.done = true;
-      showDraft(4, false, () => { advance(); });
+      G.pendingLevels++;
+      G.awaitingAdvance = true;
+      G.state = 'play';                 // maybeLevelUp only fires while driving
+      maybeLevelUp();
+      if (G.state !== 'levelup') { G.awaitingAdvance = false; advance(); }
+    }
+  });
+  opts.push({
+    name: 'Panel beating', risk: 0,
+    bane: 'You bank nothing here.',
+    boon: 'Hull fully repaired and the frame reinforced.',
+    pay: '+12 max hull',
+    go(){
+      run.hullBonus += 12;
+      G.hpMax += 12; G.hp = G.hpMax;
+      toast('Hull rebuilt', 'gold');
+      NHAudio.clear();
+      hide(UI.depot); run.node.done = true; advance();
     }
   });
   if (run.curses.length) {
@@ -3851,8 +3923,7 @@ function showDepot(){
       pay: run.curses.length + ' fitted',
       go(){
         const gone = run.curses.pop();
-        run.M = NHChips.build(run.chips, run.curses).M;
-        G.car.mods = run.M;
+        rebuildMods();
         toast('Stripped ' + NHChips.curseById(gone).name, 'gold');
         NHAudio.clear();
         hide(UI.depot);
@@ -3860,14 +3931,20 @@ function showDepot(){
         advance();
       }
     });
+  } else {
+    opts.push({
+      name: 'Sell the salvage', risk: 1,
+      bane: 'Nothing repaired, no perk.',
+      boon: 'Coins you keep after the run ends.',
+      pay: '+' + fmt(500 + run.district * 90) + ' coins',
+      go(){
+        G.coinsRun += 500 + run.district * 90;
+        toast('Salvage sold', 'gold');
+        NHAudio.clear();
+        hide(UI.depot); run.node.done = true; advance();
+      }
+    });
   }
-  opts.push({
-    name: 'Push on', risk: 1,
-    bane: 'Nothing repaired.',
-    boon: 'Skip ahead and keep the heat off.',
-    pay: 'No cost',
-    go(){ hide(UI.depot); run.node.done = true; advance(); }
-  });
 
   opts.forEach(o => {
     const el = document.createElement('button');
@@ -3898,6 +3975,7 @@ function beginNode(){
 
   newWorld(false);
   run.startIdx = G.car.idx;
+  run.elapsed = 0;
   G.car.topBonus = 0;
   G.heat = run.cfg.heatFloor + run.M.policeStart;
   G.tier = Math.min(3, Math.floor(G.heat));
@@ -3966,22 +4044,54 @@ function beginDistrict(){
 }
 
 function clearDistrict(){
-  if (G.run && G.run.M && G.run.M.clearHeal) G.hp = G.hpMax;
-  addXP(14);
-  if (G.state !== 'play') return;
+  /* Beating a pursuit unit is the milestone of an act, so it is also the
+     one guaranteed full rebuild — otherwise a run that limps through a boss
+     fight arrives in the next act already dead. */
+  G.hp = (G.run && G.run.M && G.run.M.clearHeal) || (G.run && G.run.cfg && G.run.cfg.boss)
+    ? G.hpMax
+    : Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.70));
+  /* Clearing used to open a second card screen. Chips and perks were the
+     same object — run-long modifiers picked from three cards — delivered by
+     two systems writing into one table, so seventeen of the twenty-two chips
+     were literally a perk on the same axis. Clearing now pays a lump of XP
+     into the one track that exists. */
   const run = G.run;
   run.cleared++;
-  if (run.node) run.node.done = true;
-  G.pending = 0; G.chain = 0; G.mult = 1;
+  G.coinsRun += 140 + run.district * 30;
+  const wasLvl = run.level;
+  const xpPaid = Math.round((20 + run.district * 4) * (run.L ? run.L.xpMul : 1));
+  addXP(20 + run.district * 4);
+  G.state = 'cleared';
   UI.hud.classList.add('off');
-  NHAudio.clear();
-  G.flash = 0.5;
+  NHAudio.bank(2);
+  $('clDistrict').textContent = run.cfg.name;
+  $('clBanked').textContent = fmt(run.banked);
+  $('clCoins').textContent = fmt(140 + run.district * 30);
+  $('clXp').textContent = '+' + fmt(xpPaid);
+  $('clLevel').textContent = run.level;
+  const atCap = run.level >= LEVEL_CAP;
+  $('clNext').textContent = atCap ? 'MAX' : fmt(Math.floor(run.xp)) + ' / ' + fmt(xpFor(run.level));
+  $('clXpFill').style.width = (atCap ? 1 : clamp(run.xp / xpFor(run.level), 0, 1)) * 100 + '%';
+  $('clLvl').classList.toggle('off', G.pendingLevels <= 0);
+  $('clLvl').textContent = run.level > wasLvl
+    ? 'Level ' + run.level + ' \u2014 take a perk' : '';
+  show(UI.cleared);
+}
 
-  /* the wager pays out here: risk and node type set the draft quality */
-  const k = NHChips.contractById(run.contract);
-  const risk = k ? k.risk : 0;
-  const rare = risk >= 2 || run.node.type === 'elite' || run.node.type === 'boss';
-  showDraft(risk >= 1 ? 4 : 3, rare, () => advance());
+function leaveCleared(){
+  hide(UI.cleared);
+  G.state = 'play';
+  UI.hud.classList.remove('off');
+  /* The level owed for the clear is handed over before the map. Arming
+     awaitingAdvance first matters: takePerk is what resumes the route, and
+     without the flag the run would sit in 'play' on a finished district. */
+  if (G.pendingLevels > 0) {
+    G.awaitingAdvance = true;
+    maybeLevelUp();
+    if (G.state === 'levelup') return;
+    G.awaitingAdvance = false;                 // nothing left to offer, at cap
+  }
+  advance();
 }
 
 function failDistrict(why){
@@ -3995,55 +4105,10 @@ function failDistrict(why){
   NHAudio.curse();
 }
 
-/* ---- the draft ---- */
-let draftDone = null;
-function showDraft(count, rareBias, done){
-  const run = G.run;
-  G.state = 'draft';
-  draftDone = done || (() => advance());
-  G.offers = NHChips.roll(run.chips, run.district, run.curses, count || 3, !!rareBias);
-  const wrap = $('dcards');
-  wrap.innerHTML = '';
-  $('dsub').textContent = rareBias
-    ? 'Hazard pay — the good stuff'
-    : 'District ' + run.district + ' cleared — ' + fmt(run.banked) + ' banked';
-  wrap.style.gridTemplateColumns = 'repeat(' + Math.min(G.offers.length, 4) + ',1fr)';
-
-  G.offers.forEach((offer, i) => {
-    const c = offer.chip;
-    const el = document.createElement('button');
-    el.className = 'dcard ' + c.rarity + (offer.curse ? ' oc' : '');
-    el.innerHTML =
-      (offer.curse ? '<div class="octag">Overclocked</div>' : '') +
-      '<div class="drar">' + c.rarity + ' &middot; ' + c.tag + '</div>' +
-      '<div class="dname">' + c.name + '</div>' +
-      '<div class="ddesc">' + c.desc + '</div>' +
-      (offer.curse
-        ? '<div class="dcurse"><span>' + offer.curse.name + '</span>' + offer.curse.desc + '</div>'
-        : '');
-    el.onclick = () => takeOffer(i);
-    wrap.appendChild(el);
-  });
-  show(UI.draft);
-}
-
-function takeOffer(i){
-  const offer = G.offers[i];
-  if (!offer || G.state !== 'draft') return;
-  const run = G.run;
-  run.chips.push(offer.chip.id);
-  if (offer.curse) { run.curses.push(offer.curse.id); NHAudio.curse(); }
-  else NHAudio.chip();
-  run.M = NHChips.build(run.chips, run.curses).M;
-  hide(UI.draft);
-  const cb = draftDone; draftDone = null;
-  if (cb) cb();
-}
-
 function endRun(won){
   G.state = 'over';
-  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.draft); hide(UI.brief);
-  hide(UI.levelup);
+  hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.cleared); hide(UI.brief);
+  hide(UI.levelup); hide(UI.cleared);
   const isBest = G.score > Save.data.best;
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
@@ -4114,6 +4179,7 @@ $('btnCtrl').onclick = e => {
   Save.flush(); setCtrlLabel(); NHAudio.ui(true);
 };
 $('btnGo').onclick     = () => beginDistrict();
+$('btnCleared').onclick = () => { NHAudio.ui(true); leaveCleared(); };
 $('btnDaily').onclick  = () => { NHAudio.ui(true); closeDaily(); };
 $('btnPlay').onclick   = () => {
   NHAudio.resume();
@@ -4671,7 +4737,7 @@ function renderGarage(){
    ended badly still earned coins, and this is where they turn into a
    better next attempt. Everything routes through here. */
 function toGarage(){
-  hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.draft); hide(UI.brief);
+  hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.cleared); hide(UI.brief);
   hide(UI.daily); hide(UI.board);
   G.state = 'garage';
   show(UI.garage);
@@ -4766,7 +4832,7 @@ try {
 Ads.boot();
 resize();
 newWorld(true);
-hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
+hide(UI.brief); hide(UI.cleared); hide(UI.map); hide(UI.contract); hide(UI.depot);
 hide(UI.daily); hide(UI.board); hide(UI.levelup);
 setCtrlLabel();
 setEngineLabel();
@@ -4780,8 +4846,8 @@ window.__NH = {
   G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
   get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
-  beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
-  takeContract, openNodes, advance, addXP, takePerk, xpFor,
+  beginDistrict, takePerk, districtCfg, bank, showMap, enterNode,
+  takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   endRun, showBoard, recordRun, failDistrict, damage,

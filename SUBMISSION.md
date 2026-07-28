@@ -50,8 +50,9 @@ Paste-ready. Edit to taste.
 > link, a welder that repairs the hull between chains.
 >
 > Every district demands a points quota before the checkpoint, and you choose the route and
-> the terms you drive under before each one. Clear it and you fit one chip from three. Some
-> come Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
+> the event you drive under before each one — risk pays XP, and XP is the only thing that
+> levels you. Fifteen levels, three perks offered at each, drawn from forty-nine. Some come
+> Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
 > traffic, a hotter start. Every third district sends a named pursuit unit after you, and
 > the only way to hurt it is to keep banking while it rams you.
 >
@@ -66,7 +67,7 @@ Paste-ready. Edit to taste.
 **Suggested tags:** driving, racing, drift, crash, destruction, roguelite, arcade, 1 player, singleplayer
 
 **Screenshots:** `press/` — 1920×1080 captures of the title, a pile-up mid-chain, a boss chase,
-the chip draft, and the garage. Generated from the running game, so they are honest.
+a level-up, and the garage. Generated from the running game, so they are honest.
 
 > These PNGs are marketing assets. The game build itself still ships zero image and zero
 > audio files — everything in it is generated at runtime.
@@ -104,7 +105,7 @@ audio back. Test it locally with `?muteAudio=true`.
 | No external requests except the SDK | Yes — build warns on any other host |
 | SDK loaded and `await SDK.init()` before use | Yes |
 | `loadingStart()` / `loadingStop()` | Yes (immediate — the whole game is inline) |
-| `gameplayStart()` / `gameplayStop()` bracketing play | Yes, incl. menus, briefs, drafts, ads, and a backgrounded tab |
+| `gameplayStart()` / `gameplayStop()` bracketing play | Yes, incl. menus, briefs, level-ups, ads, and a backgrounded tab |
 | Ads via `SDK.ad.requestAd()` | Yes — rewarded and midgame |
 | Game paused and muted for the duration of an ad | Yes, before the request rather than on `adStarted` |
 | Works in an iframe | Yes — no navigation, no popups, no top-level access |

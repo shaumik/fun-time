@@ -138,12 +138,12 @@
     </div>
   </div>
 
-  <!-- ============ contract choice ============ -->
+  <!-- ============ event choice ============ -->
   <div id="contract" class="layer screen">
     <div class="draftIn">
       <div class="ckicker" id="cKicker">Dispatch</div>
-      <h2 class="dtitle">Take a contract</h2>
-      <div class="dsub" id="cSub">Choose the terms you drive under</div>
+      <h2 class="dtitle">Pick tonight's event</h2>
+      <div class="dsub" id="cSub">Risk buys levels &mdash; the safe run pays none</div>
       <div class="ccards" id="cCards"></div>
     </div>
   </div>
@@ -191,14 +191,22 @@
     </div>
   </div>
 
-  <!-- ============ chip draft ============ -->
-  <div id="draft" class="layer screen">
-    <div class="draftIn">
-      <div class="dkicker">Salvage</div>
-      <h2 class="dtitle">Fit one chip</h2>
-      <div class="dsub" id="dsub">District cleared</div>
-      <div class="dcards" id="dcards"></div>
-      <div class="dhint">Press <b>1</b> <b>2</b> <b>3</b> to choose</div>
+  <!-- ============ district cleared ============ -->
+  <div id="cleared" class="layer screen">
+    <div class="panel">
+      <div class="clKick">Checkpoint clear</div>
+      <h2 class="clName" id="clDistrict">Dockside</h2>
+      <div class="clRow">
+        <div><span>Banked</span><b id="clBanked">0</b></div>
+        <div><span>Earned</span><b class="amber" id="clCoins">0</b></div>
+        <div><span>Experience</span><b class="mint" id="clXp">+0</b></div>
+      </div>
+      <div class="clXpWrap">
+        <div class="clXpHead"><span>Level <b id="clLevel">1</b></span><i id="clNext">0 / 35</i></div>
+        <div class="clXpBar"><i id="clXpFill"></i></div>
+      </div>
+      <div class="clLvl" id="clLvl">Level up &mdash; take a perk</div>
+      <button class="btn primary" id="btnCleared">Keep going<span class="key">Enter</span></button>
     </div>
   </div>
 

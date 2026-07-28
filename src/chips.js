@@ -1,13 +1,17 @@
 /* ============================================================
-   NEON HEAT — chips, curses and the draft
-   Every chip writes into a flat modifier table the physics and
+   NEON HEAT — perks, curses and events
+   Every perk writes into a flat modifier table the physics and
    scoring read each frame. Keeping effects declarative means builds
    stack and interact without special-casing anywhere in the engine.
+
+   Perks and chips used to be two pools delivered by two card screens,
+   writing into this same table. They are one pool now — 49 perks, three
+   offered per level, fifteen levels deep.
    ============================================================ */
 window.NHChips = (() => {
 'use strict';
 
-/* the full modifier surface — anything a chip can touch lives here */
+/* the full modifier surface — anything a perk can touch lives here */
 function defaults(){
   return {
     bankMul: 1,        // payout multiplier when you cash in
@@ -53,107 +57,15 @@ function defaults(){
   };
 }
 
-/* rarity drives both the draft weights and the card colour */
-const CHIPS = [
-  /* ---------------- common ---------------- */
-  { id:'slipstream', name:'Slipstream', rarity:'common', tag:'Risk',
-    desc:'Threading pays +50% and puts another 0.35s back on the clock.',
-    apply(M){ M.nearMul += 0.5; M.nearChain += 0.35; } },
-
-  { id:'slowburn', name:'Slow Burn', rarity:'common', tag:'Chain',
-    desc:'The chain clock runs 0.9s longer.',
-    apply(M){ M.chainTime += 0.9; } },
-
-  { id:'coldrubber', name:'Cold Rubber', rarity:'common', tag:'Handling',
-    desc:'Grip +20%. Snaps straight out of a slide.',
-    apply(M){ M.gripMul += 0.20; } },
-
-  { id:'bigbore', name:'Big Bore', rarity:'common', tag:'Engine',
-    desc:'Top speed +9%.',
-    apply(M){ M.topMul += 0.09; } },
-
-  { id:'pressure', name:'Pressure Cell', rarity:'common', tag:'Engine',
-    desc:'Boost pickups burn 60% longer.',
-    apply(M){ M.boostTime += 0.60; } },
-
-  { id:'magnet', name:'Scrap Magnet', rarity:'common', tag:'Power',
-    desc:'Half again as many power-ups on the road.',
-    apply(M){ M.pickupRate += 0.5; } },
-
-  /* ---------------- uncommon ---------------- */
-  { id:'afterburn', name:'Afterburn', rarity:'uncommon', tag:'Combo',
-    desc:'A wreck made under boost counts as two links in the chain.',
-    apply(M){ M.boostChain += 1; } },
-
-  { id:'halflife', name:'Half Life', rarity:'uncommon', tag:'Power',
-    desc:'Ram Plate and Surge last 70% longer.',
-    apply(M){ M.powerTime += 0.70; } },
-
-  { id:'interest', name:'Compound Interest', rarity:'uncommon', tag:'Combo',
-    desc:'Multiplier climbs 35% faster.',
-    apply(M){ M.multRate += 0.15; } },
-
-  { id:'ghost', name:'Ghost Plates', rarity:'uncommon', tag:'Heat',
-    desc:'Banking makes pursuit lose you for 3s.',
-    apply(M){ M.ghostOnBank += 3; } },
-
-  { id:'static', name:'Static Discharge', rarity:'uncommon', tag:'Heat',
-    desc:'Banking spins out any pursuit close behind.',
-    apply(M){ M.shockOnBank = 1; } },
-
-  { id:'crumple', name:'Crumple Zone', rarity:'uncommon', tag:'Hull',
-    desc:'Survive one totalled hull per district, patched to 45%.',
-    apply(M){ M.crumple += 1; } },
-
-  { id:'rollcage', name:'Roll Cage', rarity:'common', tag:'Hull',
-    desc:'Hull +35%.',
-    apply(M){ M.hullMax += 0.35; } },
-
-  { id:'ram', name:'Ram Bar', rarity:'common', tag:'Hull',
-    desc:'Wrecks cost 35% less hull.',
-    apply(M){ M.hullCost *= 0.65; } },
-
-  { id:'weld', name:'Field Weld', rarity:'uncommon', tag:'Hull',
-    desc:'Every bank welds back an extra 9 hull.',
-    apply(M){ M.bankHeal += 9; } },
-
-  { id:'juggernaut', name:'Juggernaut', rarity:'rare', tag:'Hull',
-    desc:'Hull +60%, and wrecks cost half.',
-    apply(M){ M.hullMax += 0.60; M.hullCost *= 0.5; } },
-
-  { id:'adrenal', name:'Adrenal Feed', rarity:'uncommon', tag:'Heat',
-    desc:'+60% scoring while Heat is 2 or higher.',
-    apply(M){ M.heatBonus += 0.6; } },
-
-  { id:'kinetic', name:'Kinetic Battery', rarity:'uncommon', tag:'Risk',
-    desc:'Each near miss adds +1.5% top speed for the district.',
-    apply(M){ M.nearTop += 0.015; } },
-
-  /* ---------------- rare ---------------- */
-  { id:'redline', name:'Redline', rarity:'rare', tag:'Combo',
-    desc:'Multiplier ceiling raised to ×20.',
-    apply(M){ M.multCap = Math.max(M.multCap, 20); } },
-
-  { id:'bloodmoney', name:'Blood Money', rarity:'rare', tag:'Combo',
-    desc:'Every bank pays +75%.',
-    apply(M){ M.bankMul += 0.75; } },
-
-  { id:'overdrive', name:'Overdrive Coil', rarity:'rare', tag:'Engine',
-    desc:'Top speed +20%, but the chain clock runs 0.4s shorter.',
-    apply(M){ M.topMul += 0.20; M.chainTime -= 0.40; } },
-
-  { id:'piledriver', name:'Pile Driver', rarity:'rare', tag:'Chain',
-    desc:'Every wreck banks 45% more.',
-    apply(M){ M.wreckMul += 0.45; } }
-];
-
-
+/* Overclocked offers pair a stronger perk with a permanent drawback. The
+   drawback is always legible up front — a hidden cost is not a choice. */
 /* ============================================================
    PERKS
-   The in-run levelling pool. A chip is drafted between districts and is a
-   build decision; a perk arrives mid-drive at a level-up and is a reward for
-   the last thirty seconds. Forty-five of them so that fifteen levels never
-   show you the same three twice, and so that two runs diverge early.
+   The in-run build, and the only one. A perk arrives at a level-up — earned
+   by wrecking, banking and clearing — so it always reads as a reward for the
+   last thirty seconds rather than for a menu you walked through. Forty-nine
+   of them so that fifteen levels never show you the same three twice, and so
+   that two runs diverge inside the first district.
 
    They are deliberately weighted toward the *toys* rather than toward the
    base numbers: a perk that says "+9% top speed" is a stat line, and a perk
@@ -197,6 +109,21 @@ const PERKS = [
   { id:'p_well1',   name:'Event Horizon',  rarity:'uncommon', tag:'Well',
     desc:'Singularities pull half again as hard, and wider.',
     apply(M){ M.wellPull += 0.5; } },
+  /* the four that came across from the old chip table — the only ones of
+     the twenty-two that were not already a perk on the same axis */
+  { id:'p_slip',    name:'Slipstream',     rarity:'common',   tag:'Risk',
+    desc:'Threading pays +50% and puts 0.35s back on the clock.',
+    apply(M){ M.nearMul += 0.5; M.nearChain += 0.35; } },
+  { id:'p_after',   name:'Afterburn',      rarity:'uncommon', tag:'Power',
+    desc:'A wreck made under boost counts as two links.',
+    apply(M){ M.boostChain += 1; } },
+  { id:'p_kin',     name:'Kinetic Battery',rarity:'uncommon', tag:'Risk',
+    desc:'Each thread adds 1.5% top speed for the district.',
+    apply(M){ M.nearTop += 0.015; } },
+  { id:'p_coil',    name:'Coil Pack',      rarity:'rare',     tag:'Engine',
+    desc:'Top speed +20%, but the chain clock is 0.4s shorter.',
+    apply(M){ M.topMul += 0.20; M.chainTime -= 0.40; } },
+
   { id:'p_well2',   name:'Collapse',       rarity:'rare',     tag:'Well',
     desc:'Singularities pull twice as hard and last 60% longer.',
     apply(M){ M.wellPull += 1; M.powerTime += 0.6; } },
@@ -298,7 +225,7 @@ const perkById = id => PERKS.find(p => p.id === id);
 
 /* Three offers, no repeats of what is already fitted. Rarity odds improve
    with level so the late choices feel like the reward for getting there. */
-function rollPerks(owned, level){
+function rollPerks(owned, level, takenCurses){
   const pool = PERKS.filter(p => !owned.includes(p.id));
   const W = level >= 11 ? { common: 22, uncommon: 40, rare: 38 }
           : level >= 6  ? { common: 42, uncommon: 40, rare: 18 }
@@ -313,13 +240,21 @@ function rollPerks(owned, level){
     let r = Math.random() * total, chosen = avail[0];
     for (const p of avail) { r -= W[p.rarity]; if (r <= 0) { chosen = p; break; } }
     used.add(chosen.id);
-    picks.push(chosen);
+    /* At most one offer per level carries a curse, never before level 4, and
+       the odds climb as the run deepens. This is where the old Overclocked
+       chips went: the risk survived, the second draft screen did not. */
+    let curse = null;
+    const curseOK = level >= 4 && !picks.some(p => p.curse);
+    if (curseOK && chosen.rarity !== 'common' &&
+        Math.random() < Math.min(0.42, 0.06 + level * 0.03)) {
+      const left = CURSES.filter(c => !(takenCurses || []).includes(c.id));
+      if (left.length) curse = left[Math.floor(Math.random() * left.length)];
+    }
+    picks.push(curse ? Object.assign({ curse }, chosen) : chosen);
   }
   return picks;
 }
 
-/* Overclocked offers pair a stronger chip with a permanent drawback.
-   The drawback is always legible up front — no hidden costs. */
 const CURSES = [
   { id:'narrow', name:'Narrow Streets', desc:'Every street is 20% tighter.',
     apply(M){ M.roadMul *= 0.80; } },
@@ -336,11 +271,11 @@ const CURSES = [
 ];
 
 /* ============================================================
-   CONTRACTS
-   Chosen *before* a district, not after. Each is a boon welded to a bane,
-   both stated up front, and each changes how the district actually drives
-   rather than only what the numbers say. This is the wager the player
-   makes going in; chips are the build they keep coming out.
+   EVENTS
+   Chosen *before* a district. Each is a boon welded to a bane, both stated
+   up front, and each changes how the district actually drives rather than
+   only what the numbers say. This is the wager the player makes going in,
+   and risk is what buys levels: +50% XP at risk 1, double at risk 2.
    ============================================================ */
 const CONTRACTS = [
   { id:'clear', name:'Clear Night', risk:0,
@@ -435,64 +370,26 @@ function rollContracts(district, elite){
 }
 const contractById = id => CONTRACTS.find(c => c.id === id);
 
-const byId = id => CHIPS.find(c => c.id === id);
 const curseById = id => CURSES.find(c => c.id === id);
-
-const RARITY_W = { common: 60, uncommon: 30, rare: 10 };
-
-/* Draft three offers, no duplicates, skipping anything already maxed.
-   Odds of an Overclocked (chip + curse) offer climb as the run deepens. */
-function roll(owned, district, takenCurses, count, rareBias){
-  const pool = CHIPS.filter(c => {
-    const held = owned.filter(o => o === c.id).length;
-    if (c.id === 'redline' || c.id === 'static') return held < 1;  // binary effects
-    return held < 3;
-  });
-
-  const picks = [];
-  const used = new Set();
-  const want = count || 3;
-  /* hazard pay: a risky contract or an elite skews the table toward rares */
-  const W = rareBias ? { common: 18, uncommon: 38, rare: 44 } : RARITY_W;
-  for (let n = 0; n < want && pool.length; n++) {
-    let total = 0;
-    const avail = pool.filter(c => !used.has(c.id));
-    if (!avail.length) break;
-    for (const c of avail) total += W[c.rarity];
-    let r = Math.random() * total, chosen = avail[0];
-    for (const c of avail) { r -= W[c.rarity]; if (r <= 0) { chosen = c; break; } }
-    used.add(chosen.id);
-
-    /* one offer at most per draft carries a curse, and never on district 1 */
-    const curseOK = district > 1 && !picks.some(p => p.curse);
-    const chance = Math.min(0.45, 0.10 + district * 0.045);
-    let curse = null;
-    if (curseOK && Math.random() < chance) {
-      const left = CURSES.filter(c => !takenCurses.includes(c.id));
-      if (left.length) curse = left[Math.floor(Math.random() * left.length)];
-    }
-    picks.push({ chip: chosen, curse });
-  }
-  return picks;
-}
 
 /* Level params a contract can bend, separate from the persistent modifier
    table so they reset when the district ends. */
 function levelDefaults(){
-  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1 };
+  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1, xpMul: 1 };
 }
 
-function build(ownedIds, curseIds, contractId, perkIds){
+function build(curseIds, contractId, perkIds){
   const M = defaults();
   const L = levelDefaults();
-  for (const id of ownedIds) { const c = byId(id); if (c) c.apply(M); }
   for (const id of (perkIds || [])) { const p = perkById(id); if (p) p.apply(M, L); }
   for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
   const k = contractById(contractId);
-  if (k) k.apply(M, L);
+  /* Risk is the whole point of an event, so it has to buy something the
+     safe option cannot: levels. Risk 1 is half again the XP, risk 2 double. */
+  if (k) { k.apply(M, L); L.xpMul *= 1 + k.risk * 0.5; }
   return { M, L };
 }
 
-return { defaults, levelDefaults, CHIPS, CURSES, CONTRACTS, PERKS,
-         byId, curseById, contractById, perkById, roll, rollContracts, rollPerks, build };
+return { defaults, levelDefaults, CURSES, CONTRACTS, PERKS,
+         curseById, contractById, perkById, rollContracts, rollPerks, build };
 })();

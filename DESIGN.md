@@ -36,26 +36,26 @@ unlike .io it needs no servers and no concurrency floor to feel alive.
 ## The run
 
 ```
-menu → ROUTE MAP ─┬─ Run   ─→ contract (boon + bane) → drive → clear → draft → back to map
-                  ├─ Elite ─→ harder contract, rare chip guaranteed
-                  ├─ Depot ─→ fit a free chip, or strip a curse. No driving.
+menu → ROUTE MAP ─┬─ Run   ─→ event (boon + bane) → drive → clear → level → back to map
+                  ├─ Elite ─→ harder event, double XP, a bigger quota
+                  ├─ Depot ─→ a free level, a full rebuild, or strip a curse. No driving.
                   └─ Boss  ─→ pursuit unit at the top of the act
         3 acts, each a fresh board. Wreck or miss a quota and the run ends.
 ```
 
 **The route is the strategic layer.** A branching board per act, climbed bottom to top, with
-two or three onward nodes at every step. An Elite costs more and pays a rare chip; a Depot
-costs you a district of scoring but repairs your build.
+two or three onward nodes at every step. An Elite costs more and pays more XP; a Depot
+costs you a district of scoring but hands you a level or rebuilds the hull.
 
 Node kinds are gated by depth, because a choice can be dead as easily as it can be
-duplicated. A Depot on the opening row offers nothing — there are no curses to strip and a
-free chip is not worth skipping your first scoring district for — so the first two rows are
+duplicated. A Depot on the opening row offers little — there are no curses to strip and a
+free level is not worth skipping your first scoring district for — so the first two rows are
 always Run against Elite, a straight safe-or-greedy opening, and Depots only appear once
 there is a build to repair. The row before the boss drops Run entirely, making it the
 familiar rest-or-push decision. A Depot also reads its own label at draw time: with nothing
-fitted it promises a chip and not a repair. If the board is not visible, none of
+fitted it promises a level and not a repair. If the board is not visible, none of
 those are decisions — which is exactly what the first version got wrong: it was a straight
-line with a draft bolted on the end, and calling that a roguelite was generous.
+line with a card screen bolted on the end, and calling that a roguelite was generous.
 
 **Every node states its terms on its face** — the place, what clearing it pays, the quota it
 demands and the Heat it adds. The first pass drew the board as bare dots labelled RUN and
@@ -72,12 +72,13 @@ small symbols with no distinction in size or colour, so players have to comb eac
 the community's own fix was to colour-code it. Routes are anchored to the top and bottom of
 each node block rather than to the pin, so a line never crosses the label it belongs to.
 
-**Contracts are chosen before you drive, not after.** Each pairs a boon with a bane, both
+**Events are chosen before you drive, not after.** Each pairs a boon with a bane, both
 stated on the card, and each changes how the district *plays* rather than only what the
 numbers say — Downpour cuts grip but pays +50% a bank, Blackout kills the city lights but
 accelerates the multiplier, Ghost Town empties the streets and raises the quota 45%.
-Risk is the currency: a risk-2 contract clears into a rare chip and a four-card draft, a
-safe one into a standard three.
+Risk is the currency, and what it buys is levels: a risk-1 event pays half again the XP, a
+risk-2 event double. The safe opening pays none of that bonus, so playing it safe is a real
+cost rather than a free option.
 
 **Each act is a different city.** Every act used to drive through the same cyan-and-magenta
 downtown, so a run that was escalating numerically looked identical the whole way up — which
@@ -116,9 +117,17 @@ a loss condition once traffic became the thing you score on: zero cars is zero p
 the contract was not hard, it was unwinnable. It now leaves a third of the traffic and pays
 triple per wreck — the same flavour, inverted into a real wager.
 
-**Districts** get longer, hungrier and hotter. Quota grows 1.30× per district (×1.45 on an
-Elite) while the player's build grows through chips — the two curves are meant to stay
-close, so a run ends when the build stops keeping up rather than at a fixed wall.
+**Districts** get longer, hungrier and hotter. Quota grows 1.32× per district (×1.45 on an
+Elite) *and* scales with a power index read from the save — total tuning levels, hardware
+owned, run level. That second term matters: a fixed curve is tuned for exactly one loadout,
+and measured against a maxed garage the quota was being met in the first fifteen to thirty
+per cent of the road, so the checkpoint — the only fail state that is not a wreck — could
+never fire and the back three-quarters of every district was scenery. The scaling is
+deliberately sub-linear: power grows faster across a full save than the index does, so every
+upgrade still makes the road easier without ever making it free. All of the growth lives in
+the index rather than in the base curve, which means a brand-new save meets exactly the
+numbers that shipped — only a player who has actually banked upgrades meets a harder road,
+and the first run, the one that decides whether there is a second, is untouched.
 
 **One axis.** There is no handbrake and no nitro button. Steering is the whole control
 surface, on keyboard and on glass alike. Three things follow. The slide is *automatic* —
@@ -243,16 +252,23 @@ like driving.
 **Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
 so the correct play is always slightly more dangerous than the comfortable one.
 
-**Chips** are the permanent build, drafted *after* a district — the counterpart to
-contracts, which are temporary and chosen before. Seventeen across four tags (Engine, Chain, Combo, Heat, Risk, Defence), stacking
-up to three deep. Effects are declarative — every chip writes into one flat modifier table
-the physics and scoring read each frame — so builds stack and interact without special
-cases anywhere in the engine.
+**Perks** are the build, and there is exactly one track. Wrecks, banks and district clears
+all pay XP; fifteen levels deep, three cards offered at each, drawn from a pool of
+forty-nine across six tags. Effects are declarative — every perk writes into one flat
+modifier table the physics and scoring read each frame — so builds stack and interact
+without special cases anywhere in the engine.
 
-**Overclocked offers** pair a stronger chip with a permanent curse: narrower streets,
+This used to be two systems. Chips were drafted after a district, perks on level-up, and
+both were the same object: run-long modifiers picked from three cards, writing into the same
+table. Seventeen of the twenty-two chips were literally a perk on the same axis, and the two
+counters drifted — a run could finish holding twenty-one modifiers at level twelve, which
+made the level cap meaningless and the XP bar a lie. They are one pool now, and the reward
+for a clear is a lump of XP rather than a second card screen.
+
+**Overclocked offers** pair a stronger perk with a permanent curse: narrower streets,
 heavier traffic, a hotter start, brittle chains, a dry nitro tank, a tighter camera. At most
-one per draft, never on district 1, and the cost is always stated on the card. A hidden cost
-is not a choice.
+one per offer, never below level 4 and never on a common, and the cost is always stated on
+the card. A hidden cost is not a choice.
 
 **Bosses** every third district, damaged only by *banking* into them — the fight runs on the
 game's own verb rather than bolting on a new one. Their integrity was raised with the
@@ -298,7 +314,7 @@ stays anonymous and nothing breaks.
 
 | Placement | Trigger | Notes |
 |---|---|---|
-| Rewarded — Revive | On any run-ending failure, once per run | A player deep in a run they have invested chips in is the highest-intent moment the format has — far better than reviving a score chase. |
+| Rewarded — Revive | On any run-ending failure, once per run | A player deep in a run they have invested perks in is the highest-intent moment the format has — far better than reviving a score chase. |
 | Rewarded — 2× Coins | Game over | Coins pay on districts cleared as well as score, so the double-up has a visible target. |
 | Interstitial (midgame) | Every 3rd run end | Within CrazyGames' frequency guidance without feeling hostile. |
 
@@ -433,7 +449,7 @@ player who was never going to quit. It pays on the calendar day rather than a ro
 timer, so the claim never drifts later and later, and the streak survives a missed day —
 punishing a single miss is how you lose the player who was going to come back on Wednesday.
 
-Coins, tuning and hardware persist across runs; the chip build inside a run does not.
+Coins, tuning and hardware persist across runs; the perk build inside a run does not.
 The roguelite layer resets, the garage layer does not.
 
 ## Audio
@@ -463,7 +479,7 @@ triangles low in the midrange for sheet metal. Measured: 40 dB of rolloff from t
 the hit to the 4–14 kHz band.
 
 The remaining voices are tyre squeal (band-passed noise following slip), a two-tone siren
-driven by an LFO, and one-shots for banking, threads, pickups, chip picks, curses and boss
+driven by an LFO, and one-shots for banking, threads, pickups, perk picks, curses and boss
 stingers.
 
 ## Art direction
@@ -482,7 +498,7 @@ viewer's light/dark preference.
 | Ice | `#C6D2E8` | Text. Blue-biased grey, never pure. |
 
 Rarity has its own fixed encoding — cyan common, magenta uncommon, amber rare, red
-overclocked — used identically on draft cards and the in-run build rail.
+overclocked — used identically on perk cards and the in-run build rail.
 
 No webfonts: the CSP on the hosted build blocks font CDNs and a silent fallback would wreck
 the HUD grid, so the stack is system-native with weight and tracking doing the work.
@@ -554,14 +570,14 @@ the target, but it is clamped by vsync — on a 60Hz display a perfect frame sti
 never earn it back. Work time — what is actually spent in step plus render — is
 vsync-independent and is what says it is safe to give resolution back.
 
-All UI is DOM rather than canvas, so menus, the HUD and the draft cards stay pixel-sharp
+All UI is DOM rather than canvas, so menus, the HUD and the perk cards stay pixel-sharp
 regardless of render scale. Only the game world softens.
 
 ## Scope of this prototype
 
 Built: full drift model with self-aligning torque, procedural districts, quota and boss
-objectives, three boss archetypes with distinct mechanics, 17 chips and 6 curses with a
-weighted draft, traffic and pursuit AI, spike-strip hazards, off-screen threat indicators,
+objectives, three boss archetypes with distinct mechanics, 49 perks and 6 curses with a
+level-weighted offer, traffic and pursuit AI, spike-strip hazards, off-screen threat indicators,
 particles and decals, bloom pipeline with adaptive quality, synthesised music and SFX,
 garage with four cars and four upgrade tracks, localStorage persistence, and a
 responsive layout with keyboard and touch input.

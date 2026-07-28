@@ -447,12 +447,8 @@ body{
   max-width:none;margin:0 0 calc(var(--u)*2.6);
 }
 
-/* ---------- chip draft ---------- */
+/* ---------- card screens: events, level-up ---------- */
 .draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
-.dkicker{
-  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
-  font-weight:800;color:var(--amber);
-}
 .dtitle{
   margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
   font-size:calc(var(--u)*4.4);font-weight:800;
@@ -891,7 +887,7 @@ body{
    PORTRAIT / SMALL VIEWPORTS
    The HUD is a three-column rail designed for a wide screen. On a
    phone held upright there is no room for it, so the rails stack and
-   the draft becomes a single column. Sizing is driven by --u, which
+   card screens become a single column. Sizing is driven by --u, which
    JS derives from the narrow axis in portrait.
    ============================================================ */
 @media (max-aspect-ratio:1/1){
@@ -1435,8 +1431,8 @@ body{
 /* ============================================================
    LEVELS
    The bar lives directly under the quota because it is the other thing
-   filling up, and the level-up screen borrows the draft's card language so
-   a perk reads as the same class of object as a chip.
+   filling up, and the level-up screen shares the card language used by the
+   event screen so both read as the same class of object.
    ============================================================ */
 .xp{width:calc(var(--u)*30)}
 .xpHead{
@@ -1473,3 +1469,55 @@ body{
 #levelup .dcard:hover{background:rgba(123,245,176,.09)}
 #levelup .dcard.uncommon{border-top-color:var(--magenta)}
 #levelup .dcard.rare{border-top-color:var(--amber)}
+
+/* ---- district cleared ---- */
+.clKick{
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;
+}
+.clName{
+  margin:calc(var(--u)*.8) 0 0;font-size:calc(var(--u)*4.2);font-weight:800;
+  letter-spacing:-.01em;color:#fff;line-height:1;
+}
+.clRow{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.4);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*1.6);
+  padding:calc(var(--u)*1.4) 0;
+  border-top:1px solid rgba(255,255,255,.10);
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.clRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+.clRow span{
+  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
+  color:rgba(255,255,255,.42);font-weight:700;
+}
+.clRow b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.clRow b.mint{color:#7BF5B0}
+.clXpWrap{margin:0 0 calc(var(--u)*1.8)}
+.clXpHead{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:calc(var(--u)*.7);
+  font-size:calc(var(--u)*1.05);letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(255,255,255,.42);font-weight:700;
+}
+.clXpHead b{color:#fff;font-variant-numeric:tabular-nums}
+.clXpHead i{font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.clXpBar{
+  height:calc(var(--u)*.85);border-radius:99px;overflow:hidden;
+  background:rgba(255,255,255,.09);
+}
+.clXpBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7BF5B0,#3DE8FF);
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(123,245,176,.7);
+  transition:width .5s cubic-bezier(.2,.8,.2,1);
+}
+.clLvl{
+  font-size:calc(var(--u)*1.25);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;margin-bottom:calc(var(--u)*1.8);
+  animation:clPulse 1.6s ease-in-out infinite;
+}
+@keyframes clPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.clLvl.off{display:none}
+@media (max-width:760px){ .clRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .clRow div{flex-direction:row;justify-content:space-between;align-items:baseline} }
