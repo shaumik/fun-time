@@ -795,9 +795,9 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0 }, missileT:0, shockAt:5,
+  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
-  ball:null, wells:[], arcs:[], ballHits:0,
+  ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0
 };
@@ -995,9 +995,10 @@ function newWorld(ai){
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
   G.power.magnet = 0; G.power.frenzy = 0; G.power.slowmo = 0; G.worldSlow = 1;
   G.power.ball = 0; G.power.arc = 0; G.ball = null; G.wells = []; G.arcs = []; G.ballHits = 0;
+  G.power.drones = 0; G.drones = []; G.scav = null; G.lastingScav = 0;
   G.rockets = 0; G.rocketT = 0;
   /* the lasting pickups are exactly that — for *this* district only */
-  G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0;
+  G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
@@ -1385,9 +1386,11 @@ const POWERS = [
   { id:'ball',    name:'Wrecking Ball', col:'#FF8A3D', rgb:'255,138,61', glyph:'\u25cf', w:12 },
   { id:'arc',     name:'Arc Welder',    col:'#7FE9FF', rgb:'127,233,255', glyph:'\u21af', w:11 },
   { id:'well',    name:'Singularity',   col:'#B07CFF', rgb:'176,124,255', glyph:'\u25cc', w:9 },
+  { id:'drones',  name:'Escort Drones', col:'#5BFFC9', rgb:'91,255,201',  glyph:'\u2b1f', w:12 },
   { id:'plating', name:'Reinforced', col:'#7BF5B0', rgb:'123,245,176', glyph:'\u25a0', w:7,  lasting:1 },
   { id:'clock',   name:'Overclock',  col:'#C6A8FF', rgb:'198,168,255', glyph:'\u221e', w:7,  lasting:1 },
-  { id:'payday',  name:'Payday',     col:'#FFC53D', rgb:'255,197,61',  glyph:'\u00a4', w:6,  lasting:1 }
+  { id:'payday',  name:'Payday',     col:'#FFC53D', rgb:'255,197,61',  glyph:'\u00a4', w:6,  lasting:1 },
+  { id:'scav',    name:'Scavenger',  col:'#FF9ED2', rgb:'255,158,210', glyph:'\u27f2', w:6,  lasting:1 }
 ];
 const powerById = id => POWERS.find(p => p.id === id);
 
@@ -1474,6 +1477,19 @@ function takePickup(k){
       G.wells.push({ x:at.x, y:at.y, t:5.0, r:0 });
       break;
     }
+    case 'drones': {
+      G.power.drones = Math.max(G.power.drones, 11 * M.powerTime);
+      /* one per shoulder, each acquiring independently */
+      G.drones = [-1, 1].map(side => ({
+        x:car.x, y:car.y, side, vx:0, vy:0, target:null, dwell:0, ang:0
+      }));
+      break;
+    }
+    case 'scav':
+      /* rest of the district: a second drone runs the errands */
+      G.lastingScav++;
+      if (!G.scav) G.scav = { x:car.x, y:car.y, hold:null };
+      break;
     case 'payday':
       /* rest of the district: wrecks pay the garage as well as the score,
          which is the only pickup that reaches past the end of the run */
@@ -1516,7 +1532,9 @@ function stepPowers(dt){
   if (G.power.arc    > 0) G.power.arc    = Math.max(0, G.power.arc    - dt);
   if (G.power.ball   > 0) { G.power.ball = Math.max(0, G.power.ball - dt);
                             if (G.power.ball === 0) G.ball = null; }
-  stepBall(dt); stepWells(dt);
+  if (G.power.drones > 0) { G.power.drones = Math.max(0, G.power.drones - dt);
+                            if (G.power.drones === 0) G.drones = []; }
+  stepBall(dt); stepWells(dt); stepDrones(dt); stepScav(dt);
   for (let i = G.arcs.length - 1; i >= 0; i--)
     if ((G.arcs[i].t -= dt) <= 0) G.arcs.splice(i, 1);
   /* eased rather than switched, so it lands as a swell instead of a jolt */
@@ -1538,6 +1556,141 @@ function stepPowers(dt){
 }
 
 
+
+
+/* ============================================================
+   ESCORT DRONES
+   Two of them, holding station off each shoulder, each acquiring its own
+   target and burning it down with a continuous beam. The distinction from
+   the Harpoon rack and the Bazooka is that those are one-shot detonations on
+   a cooldown — this is a beam that has to *dwell*, so it tracks its target
+   across the road while you drive, and you can watch it working. Two drones
+   means two beams sweeping independently, which is the whole spectacle.
+   ============================================================ */
+const BEAM_DWELL = 0.42;                 // seconds of contact to cut a car
+
+function stepDrones(dt){
+  if (G.power.drones <= 0 || !G.drones.length) return;
+  const car = G.car, M = G.run.M;
+  const cs = Math.cos(car.a), sn = Math.sin(car.a);
+
+  for (const dr of G.drones) {
+    /* station-keeping off a shoulder, slightly behind the nose */
+    dr.ang += dt * 2.2;
+    const bob = Math.sin(dr.ang) * 14;
+    const tx = car.x - cs * 26 - sn * (112 + bob) * dr.side;
+    const ty = car.y - sn * 26 + cs * (112 + bob) * dr.side;
+    const k = 1 - Math.exp(-7 * dt);
+    const px = dr.x, py = dr.y;
+    dr.x = lerp(dr.x, tx, k);
+    dr.y = lerp(dr.y, ty, k);
+    dr.vx = (dr.x - px) / Math.max(dt, 1e-4);
+    dr.vy = (dr.y - py) / Math.max(dt, 1e-4);
+
+    /* drop a dead or distant target and acquire the nearest live one */
+    if (dr.target && (dr.target.wrecked ||
+        hyp(dr.target.x - dr.x, dr.target.y - dr.y) > 620)) {
+      dr.target = null; dr.dwell = 0;
+    }
+    if (!dr.target) {
+      /* Two beams on one car is two beams doing one beam's work. A side
+         bias alone was not enough — measured, they shared a target every
+         frame both were firing — so a car already being cut is only chosen
+         when there is genuinely nothing else in range. */
+      let best = null, bd = 1e9, spare = null, sd = 1e9;
+      for (const t of G.traffic) {
+        if (t.wrecked) continue;
+        const d = hyp(t.x - dr.x, t.y - dr.y);
+        if (d > 560) continue;
+        const lat = -sn * (t.x - car.x) + cs * (t.y - car.y);
+        const score = d + (Math.sign(lat) === dr.side ? 0 : 190);
+        const taken = G.drones.some(o => o !== dr && o.target === t);
+        if (taken) { if (score < sd) { sd = score; spare = t; } continue; }
+        if (score < bd) { bd = score; best = t; }
+      }
+      dr.target = best || spare; dr.dwell = 0;
+    }
+
+    if (!dr.target) continue;
+    dr.dwell += dt;
+    /* the beam is hot enough to throw sparks off the panel it is cutting */
+    if (Math.random() < 0.6) {
+      const a = rnd(0, TAU), sp = rnd(60, 240);
+      spawn(dr.target.x, dr.target.y, Math.cos(a) * sp, Math.sin(a) * sp,
+            rnd(0.1, 0.28), rnd(2, 5), '150,255,220', true, -3);
+    }
+    if (dr.dwell < BEAM_DWELL) continue;
+
+    const t = dr.target;
+    const nx = (t.x - dr.x), ny = (t.y - dr.y), nd = hyp(nx, ny) || 1;
+    t.vx += nx / nd * 560; t.vy += ny / nd * 560;
+    t.spin = rnd(-12, 12); t.wrecked = 1; t.hitFlash = 1;
+    G.totalWreck++;
+    G.pending += Math.round(230 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
+    G.chain += 1;
+    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+    G.topMult = Math.max(G.topMult, G.mult);
+    G.chainT = G.chainMax = chainTime();
+    if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+    G.flash = Math.max(G.flash, 0.24);
+    NHAudio.smash(0.85);
+    for (let i = 0; i < 22; i++) {
+      const a = rnd(0, TAU), sp = rnd(140, 580);
+      spawn(t.x, t.y, Math.cos(a) * sp, Math.sin(a) * sp,
+            rnd(0.2, 0.55), rnd(3, 8), '91,255,201', true, -5);
+    }
+    arcFrom(t);
+    dr.target = null; dr.dwell = 0;
+  }
+}
+
+/* ============================================================
+   SCAVENGER
+   Runs the errands. It is the only pickup that changes your *route* rather
+   than your firepower: with it aboard you stop swerving three lanes for a
+   Boost, because the drone fetches it and brings it back.
+   ============================================================ */
+function stepScav(dt){
+  if (G.lastingScav <= 0 || !G.scav) return;
+  const car = G.car, s = G.scav;
+
+  if (!s.hold) {
+    let best = null, bd = 1e9;
+    for (const k of G.pickups) {
+      const d = hyp(k.x - s.x, k.y - s.y);
+      if (d < bd && d < 1100) { bd = d; best = k; }
+    }
+    if (best) {
+      const k = 1 - Math.exp(-2.6 * dt);
+      s.x = lerp(s.x, best.x, k);
+      s.y = lerp(s.y, best.y, k);
+      if (hyp(best.x - s.x, best.y - s.y) < 46) {
+        const i = G.pickups.indexOf(best);
+        if (i >= 0) G.pickups.splice(i, 1);
+        s.hold = best.kind;
+        NHAudio.pickup(0);
+      }
+    } else {
+      /* nothing to fetch: fly escort off the nose */
+      const cs = Math.cos(car.a), sn = Math.sin(car.a);
+      const k = 1 - Math.exp(-3 * dt);
+      s.x = lerp(s.x, car.x + cs * 120 + sn * 90, k);
+      s.y = lerp(s.y, car.y + sn * 120 - cs * 90, k);
+    }
+  } else {
+    const k = 1 - Math.exp(-4.5 * dt);
+    s.x = lerp(s.x, car.x, k);
+    s.y = lerp(s.y, car.y, k);
+    if (hyp(car.x - s.x, car.y - s.y) < 60) {
+      takePickup(Object.assign({}, s.hold, { x:car.x, y:car.y }));
+      s.hold = null;
+    }
+  }
+  if (Math.random() < 0.5) {
+    spawn(s.x, s.y, rnd(-40, 40), rnd(-40, 40),
+          rnd(0.15, 0.35), rnd(2, 4), '255,158,210', true, 0);
+  }
+}
 
 /* ============================================================
    WRECKING BALL
@@ -2862,6 +3015,69 @@ function drawToys(){
     ctx.restore();
   }
 
+  /* --- escort drones: the beam, then the airframe --- */
+  if (G.power.drones > 0 && G.drones.length) {
+    for (const dr of G.drones) {
+      ctx.save();
+      if (dr.target && !dr.target.wrecked) {
+        const heat = clamp(dr.dwell / BEAM_DWELL, 0, 1);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = hexA('#5BFFC9', 0.16 + heat * 0.22);
+        ctx.lineWidth = 8 + heat * 7;
+        ctx.beginPath(); ctx.moveTo(dr.x, dr.y);
+        ctx.lineTo(dr.target.x, dr.target.y); ctx.stroke();
+        ctx.strokeStyle = hexA('#EAFFF7', 0.85 + heat * 0.15);
+        ctx.lineWidth = 1.6 + heat * 2.2;
+        ctx.beginPath(); ctx.moveTo(dr.x, dr.y);
+        ctx.lineTo(dr.target.x, dr.target.y); ctx.stroke();
+        /* the burn mark grows as the beam dwells, so you can see it working */
+        blitGlow('#5BFFC9', dr.target.x, dr.target.y, 40 + heat * 70, 40 + heat * 70, 0.5 + heat * 0.4);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      blitGlow('#5BFFC9', dr.x, dr.y, 76, 76, 0.42);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.translate(dr.x, dr.y);
+      ctx.rotate(G.car.a);
+      ctx.fillStyle = '#0E2A22';
+      ctx.strokeStyle = '#5BFFC9';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(13, 0); ctx.lineTo(-8, 9); ctx.lineTo(-3, 0); ctx.lineTo(-8, -9);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = hexA('#5BFFC9', 0.4);
+      ctx.lineWidth = 1.2;
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(-1, sgn * 10, 10, 3, 0, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  /* --- scavenger: a small courier with whatever it is carrying --- */
+  if (G.lastingScav > 0 && G.scav) {
+    const s = G.scav;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    blitGlow(s.hold ? s.hold.col : '#FF9ED2', s.x, s.y, 74, 74, 0.5);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#2A0E20';
+    ctx.strokeStyle = s.hold ? s.hold.col : '#FF9ED2';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(s.x, s.y, 11, 0, TAU); ctx.fill(); ctx.stroke();
+    if (s.hold) {
+      ctx.fillStyle = s.hold.col;
+      ctx.font = '800 13px ui-sans-serif,system-ui,-apple-system,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.hold.glyph, s.x, s.y + 1);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    }
+    ctx.restore();
+  }
+
   /* --- wrecking ball: chain links, then the iron --- */
   if (G.power.ball > 0 && G.ball) {
     const car = G.car, b = G.ball;
@@ -3181,10 +3397,12 @@ function syncPowers(){
   if (G.power.slowmo > 0)        list.push(['slowmo', 'Adrenaline', G.power.slowmo]);
   if (G.power.ball > 0)          list.push(['ball', 'Wrecking Ball', G.power.ball]);
   if (G.power.arc > 0)           list.push(['arc', 'Arc Welder', G.power.arc]);
+  if (G.power.drones > 0)        list.push(['drones', 'Escort Drones', G.power.drones]);
   if (G.rockets > 0)             list.push(['rockets', 'Bazooka', G.rockets, 1]);
   if (G.lastingPlate > 0)        list.push(['plating', 'Reinforced', 0, 2]);
   if (G.lastingClock > 0)        list.push(['clock', 'Overclock', 0, 2]);
   if (G.lastingPayday > 0)       list.push(['payday', 'Payday', 0, 2]);
+  if (G.lastingScav > 0)         list.push(['scav', 'Scavenger', 0, 2]);
   if (G.missileT > 0)            list.push(['rack', 'Harpoon', G.missileT]);
 
   const sig = list.map(l => l[0]).join(',');

@@ -173,11 +173,15 @@ press.
 | Wrecking Ball | 11s | A flail on a chain orbits your car, clearing both adjacent lanes. Costs no hull. |
 | Arc Welder | 9s | Every wreck throws current to the nearest car, up to three hops. |
 | Singularity | 5s | Plant a gravity well up the road and drive on while it harvests. |
+| Escort Drones | 11s | Two drones hold station off your shoulders and burn cars down with tracking beams. |
+| Escort Drones | 11s | Two drones hold station off your shoulders and burn cars down with tracking beams. |
 | Bazooka | 4 shots | Auto-fires at the nearest car ahead every 0.9s. Free wrecks. |
 | Frenzy | 8s | Every wreck pays double. |
 | **Reinforced** | **the district** | +30 max hull, filled. |
 | **Overclock** | **the district** | +1.2s on every chain clock. |
 | **Payday** | **the district** | Wrecks pay the garage as well as the score. |
+| **Scavenger** | **the district** | A courier drone fetches pickups and brings them to you. |
+| **Scavenger** | **the district** | A courier drone fetches pickups and brings them to you. |
 
 The last two run to the end of the district rather than on a timer, and they are rare on
 purpose: a permanent upgrade found on the road is a much larger event than a few seconds of
@@ -200,6 +204,30 @@ The **Singularity** was originally dropped where you stand, which harvested almo
 you are doing 700 a second and everything behind you is already scrap, so the well spent its
 life on empty asphalt. Planted fourteen nodes up the road it catches oncoming traffic, and
 went from one kill to five.
+
+The **Escort Drones** are a beam, not a turret, and the distinction is the whole design. The
+Harpoon rack and the Bazooka are one-shot detonations on a cooldown; a beam has to *dwell*,
+so it tracks its target across the road while you drive and you can watch it working, with
+the burn mark growing as it bites. Two drones acquire independently — and a side bias alone
+was not enough to keep them apart: measured, they shared a target on every frame both were
+firing, so a car already being cut is now only chosen when there is genuinely nothing else in
+range, which took overlap from 40% of frames to 11%.
+
+The **Scavenger** is the only pickup that changes your *route* rather than your firepower.
+With it aboard you stop swerving three lanes for a Boost, because the drone fetches it and
+carries it back.
+
+The **Escort Drones** are a beam, not a turret, and the distinction is the whole design. The
+Harpoon rack and the Bazooka are one-shot detonations on a cooldown; a beam has to *dwell*,
+so it tracks its target across the road while you drive and you can watch it working, with
+the burn mark growing as it bites. Two drones acquire independently — and a side bias alone
+was not enough to keep them apart: measured, they shared a target on every frame both were
+firing, so a car already being cut is now only chosen when there is genuinely nothing else in
+range, which took overlap from 40% of frames to 11%.
+
+The **Scavenger** is the only pickup that changes your *route* rather than your firepower.
+With it aboard you stop swerving three lanes for a Boost, because the drone fetches it and
+carries it back.
 
 **Adrenaline** slows the world and not the player — traffic, pursuit and convoy all step on
 a separate clock — because slowing the car too would take the thrill out of the thing the

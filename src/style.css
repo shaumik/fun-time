@@ -250,13 +250,17 @@ body{
 .pwr.slowmo{color:#DCF6FF}
 .pwr.emp{color:#9CE3FF}
 .pwr.ghost{color:#9AA6BF}
+.pwr.ball{color:#FF8A3D}
+.pwr.arc{color:#7FE9FF}
+.pwr.drones{color:#5BFFC9}
 .pwr.rack{color:var(--ice);opacity:.75}
 /* the ones that run to the end of the district read as fitted, not ticking */
-.pwr.plating,.pwr.clock,.pwr.payday{background:rgba(123,245,176,.10);border-style:solid}
+.pwr.plating,.pwr.clock,.pwr.payday,.pwr.scav{background:rgba(123,245,176,.10);border-style:solid}
 .pwr.plating{color:#7BF5B0}
 .pwr.clock{color:#C6A8FF;background:rgba(198,168,255,.10)}
 .pwr.payday{color:#FFC53D;background:rgba(255,197,61,.10)}
-.pwr.plating b,.pwr.clock b,.pwr.payday b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
+.pwr.scav{color:#FF9ED2;background:rgba(255,158,210,.10)}
+.pwr.plating b,.pwr.clock b,.pwr.payday b,.pwr.scav b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
 @keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
 
 /* toasts */
