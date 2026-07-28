@@ -169,15 +169,41 @@ press.
 | Ram Plate | 7s | Wrecks cost no hull. |
 | Surge | 5s | **Stops the chain clock.** A licence to be greedy. |
 | Magnet | 8s | Traffic on the road ahead steers onto your line. |
+| Adrenaline | 5s | The world drops to 42% speed. You do not. |
+| Wrecking Ball | 11s | A flail on a chain orbits your car, clearing both adjacent lanes. Costs no hull. |
+| Arc Welder | 9s | Every wreck throws current to the nearest car, up to three hops. |
+| Singularity | 5s | Plant a gravity well up the road and drive on while it harvests. |
 | Bazooka | 4 shots | Auto-fires at the nearest car ahead every 0.9s. Free wrecks. |
 | Frenzy | 8s | Every wreck pays double. |
 | **Reinforced** | **the district** | +30 max hull, filled. |
 | **Overclock** | **the district** | +1.2s on every chain clock. |
+| **Payday** | **the district** | Wrecks pay the garage as well as the score. |
 
 The last two run to the end of the district rather than on a timer, and they are rare on
 purpose: a permanent upgrade found on the road is a much larger event than a few seconds of
 speed, and finding two in one district should feel lucky rather than routine. The HUD reads
 "level" rather than a countdown for those, and a shot count for the Bazooka.
+
+Three of these are new mechanics rather than new numbers, and all three needed measurement
+to get right.
+
+The **Wrecking Ball** began as an honest pendulum: gravity toward the car, damping, a length
+constraint. That is a spring, not a chain — it collapsed onto the roof and the measured
+length fell from 190 to about ten. Fixed to pull-only it trailed correctly and hit *nothing*,
+because behind you is exactly where every car is already wrecked. It orbits now, sweeping
+both adjacent lanes, and the last problem was that it covers better than twenty units a
+frame: a point test recorded a closest approach of 58 against a radius of 52 and landed no
+hits at all in nine seconds. Sweeping the segment it travelled fixed it — seven of ten
+wrecks now come from the ball while driving straight and aiming at nothing.
+
+The **Singularity** was originally dropped where you stand, which harvested almost nothing:
+you are doing 700 a second and everything behind you is already scrap, so the well spent its
+life on empty asphalt. Planted fourteen nodes up the road it catches oncoming traffic, and
+went from one kill to five.
+
+**Adrenaline** slows the world and not the player — traffic, pursuit and convoy all step on
+a separate clock — because slowing the car too would take the thrill out of the thing the
+power-up exists to celebrate.
 
 The Magnet took two goes. A pure force on nearby traffic measured only 20% more convergence
 than no magnet at all, because the traffic autopilot steers toward its own lane every frame

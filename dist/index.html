@@ -258,12 +258,16 @@ body{
 .pwr.magnet{color:#8CF3FF}
 .pwr.rockets{color:#FF6B4A}
 .pwr.frenzy{color:#FFD166}
+.pwr.slowmo{color:#DCF6FF}
+.pwr.emp{color:#9CE3FF}
+.pwr.ghost{color:#9AA6BF}
 .pwr.rack{color:var(--ice);opacity:.75}
 /* the ones that run to the end of the district read as fitted, not ticking */
-.pwr.plating,.pwr.clock{background:rgba(123,245,176,.10);border-style:solid}
+.pwr.plating,.pwr.clock,.pwr.payday{background:rgba(123,245,176,.10);border-style:solid}
 .pwr.plating{color:#7BF5B0}
 .pwr.clock{color:#C6A8FF;background:rgba(198,168,255,.10)}
-.pwr.plating b,.pwr.clock b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
+.pwr.payday{color:#FFC53D;background:rgba(255,197,61,.10)}
+.pwr.plating b,.pwr.clock b,.pwr.payday b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
 @keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
 
 /* toasts */
@@ -3349,8 +3353,9 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0 }, missileT:0, shockAt:5,
-  rockets:0, rocketT:0, lastingPlate:0, lastingClock:0,
+  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0 }, missileT:0, shockAt:5,
+  rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
+  ball:null, wells:[], arcs:[], ballHits:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0
 };
@@ -3546,10 +3551,11 @@ function newWorld(ai){
   G.ghost = 0; G.pulseWarn = 0;
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
-  G.power.magnet = 0; G.power.frenzy = 0;
+  G.power.magnet = 0; G.power.frenzy = 0; G.power.slowmo = 0; G.worldSlow = 1;
+  G.power.ball = 0; G.power.arc = 0; G.ball = null; G.wells = []; G.arcs = []; G.ballHits = 0;
   G.rockets = 0; G.rocketT = 0;
   /* the lasting pickups are exactly that — for *this* district only */
-  G.lastingPlate = 0; G.lastingClock = 0;
+  G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
@@ -3866,8 +3872,10 @@ function smash(v, rel){
   }
   /* the pile-up counter already carries the streak; repeating it in the
      toast just doubles the noise now that wrecks come several a second */
+  if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
   toast('Wreck +' + fmt(gain), 'gold');
   if (Hangar.has('shockplate') && G.chain >= G.shockAt) { G.shockAt = G.chain + 5; shockwave(); }
+  arcFrom(v);
 }
 
 
@@ -3931,8 +3939,13 @@ const POWERS = [
   { id:'magnet',  name:'Magnet',     col:'#8CF3FF', rgb:'140,243,255', glyph:'\u25c9', w:16 },
   { id:'rockets', name:'Bazooka',    col:'#FF6B4A', rgb:'255,107,74',  glyph:'\u25b2', w:14 },
   { id:'frenzy',  name:'Frenzy',     col:'#FFD166', rgb:'255,209,102', glyph:'\u25c6', w:12 },
+  { id:'slowmo',  name:'Adrenaline', col:'#DCF6FF', rgb:'220,246,255', glyph:'\u25d4', w:13 },
+  { id:'ball',    name:'Wrecking Ball', col:'#FF8A3D', rgb:'255,138,61', glyph:'\u25cf', w:12 },
+  { id:'arc',     name:'Arc Welder',    col:'#7FE9FF', rgb:'127,233,255', glyph:'\u21af', w:11 },
+  { id:'well',    name:'Singularity',   col:'#B07CFF', rgb:'176,124,255', glyph:'\u25cc', w:9 },
   { id:'plating', name:'Reinforced', col:'#7BF5B0', rgb:'123,245,176', glyph:'\u25a0', w:7,  lasting:1 },
-  { id:'clock',   name:'Overclock',  col:'#C6A8FF', rgb:'198,168,255', glyph:'\u221e', w:7,  lasting:1 }
+  { id:'clock',   name:'Overclock',  col:'#C6A8FF', rgb:'198,168,255', glyph:'\u221e', w:7,  lasting:1 },
+  { id:'payday',  name:'Payday',     col:'#FFC53D', rgb:'255,197,61',  glyph:'\u00a4', w:6,  lasting:1 }
 ];
 const powerById = id => POWERS.find(p => p.id === id);
 
@@ -3996,6 +4009,34 @@ function takePickup(k){
       G.lastingClock += 1.2;
       if (G.chainT > 0) G.chainT = G.chainMax = chainTime();
       break;
+    case 'slowmo':
+      /* the world slows; you do not. Slowing the player too would take the
+         thrill out of the thing the power-up is supposed to celebrate. */
+      G.power.slowmo = Math.max(G.power.slowmo, 5 * M.powerTime);
+      break;
+    case 'ball': {
+      /* a real pendulum, thrown out behind you */
+      G.power.ball = Math.max(G.power.ball, 11 * M.powerTime);
+      G.ball = { x:car.x, y:car.y, vx:0, vy:0, ang:car.a + Math.PI };
+      break;
+    }
+    case 'arc':
+      G.power.arc = Math.max(G.power.arc, 9 * M.powerTime);
+      break;
+    case 'well': {
+      /* Planted up the road rather than under you. Dropped at the car it
+         harvested almost nothing — you are doing 700 a second and everything
+         behind you is already wrecked, so the well spent its life on empty
+         asphalt. Ahead, oncoming traffic drives into it. */
+      const at = G.track.at(car.idx + 14, 0);
+      G.wells.push({ x:at.x, y:at.y, t:5.0, r:0 });
+      break;
+    }
+    case 'payday':
+      /* rest of the district: wrecks pay the garage as well as the score,
+         which is the only pickup that reaches past the end of the run */
+      G.lastingPayday++;
+      break;
   }
   G.flash = Math.max(G.flash, 0.3);
   NHAudio.pickup(k.id === 'boost' ? 1 : 0);
@@ -4029,6 +4070,15 @@ function stepPowers(dt){
   if (G.power.surge  > 0) G.power.surge  = Math.max(0, G.power.surge  - dt);
   if (G.power.magnet > 0) G.power.magnet = Math.max(0, G.power.magnet - dt);
   if (G.power.frenzy > 0) G.power.frenzy = Math.max(0, G.power.frenzy - dt);
+  if (G.power.slowmo > 0) G.power.slowmo = Math.max(0, G.power.slowmo - dt);
+  if (G.power.arc    > 0) G.power.arc    = Math.max(0, G.power.arc    - dt);
+  if (G.power.ball   > 0) { G.power.ball = Math.max(0, G.power.ball - dt);
+                            if (G.power.ball === 0) G.ball = null; }
+  stepBall(dt); stepWells(dt);
+  for (let i = G.arcs.length - 1; i >= 0; i--)
+    if ((G.arcs[i].t -= dt) <= 0) G.arcs.splice(i, 1);
+  /* eased rather than switched, so it lands as a swell instead of a jolt */
+  G.worldSlow = damp(G.worldSlow, G.power.slowmo > 0 ? 0.42 : 1, 7, dt);
   stepPickups(dt);
   stepMagnet(dt);
   stepRockets(dt);
@@ -4045,6 +4095,168 @@ function stepPowers(dt){
   }
 }
 
+
+
+/* ============================================================
+   WRECKING BALL
+   A genuine pendulum on a chain, not a bigger hitbox. It is integrated
+   independently and constrained to a fixed radius from the car, so it lags
+   on the straights, swings wide through a corner, and comes round hard when
+   you flick the wheel. The interesting part is that you aim it by driving —
+   weaving deliberately whips it across two lanes, which is a way to play the
+   road that nothing else in the game asks for.
+   ============================================================ */
+const BALL_LEN = 190;
+
+function stepBall(dt){
+  if (G.power.ball <= 0 || !G.ball) return;
+  const car = G.car, b = G.ball;
+
+  /* It orbits rather than trails. A free pendulum on a chain settles
+     directly behind the car, and behind the car is where everything is
+     already wrecked — measured zero hits over three seconds of weaving. Spun
+     around you it sweeps both adjacent lanes continuously, which is the
+     whole point: you stop steering *into* cars and start steering *past*
+     them. The easing keeps it heavy, so it still lags and whips through a
+     corner instead of tracking like a rigid arm. */
+  b.ang = (b.ang || 0) + 3.6 * dt;
+  const tx = car.x + Math.cos(b.ang) * BALL_LEN;
+  const ty = car.y + Math.sin(b.ang) * BALL_LEN;
+  const k = 1 - Math.exp(-11 * dt);
+  const px = b.x, py = b.y;
+  b.x = lerp(b.x, tx, k);
+  b.y = lerp(b.y, ty, k);
+  b.vx = (b.x - px) / Math.max(dt, 1e-4);
+  b.vy = (b.y - py) / Math.max(dt, 1e-4);
+
+  const swing = hyp(b.vx - car.vx, b.vy - car.vy);
+  const M = G.run.M;
+  /* Swept, not sampled. Between the ball's orbital speed and the car's, the
+     iron covers better than twenty units a frame — a point test measured a
+     closest approach of 58 against a radius of 52 and never landed a single
+     hit in nine seconds. Testing the segment it travelled removes the
+     tunnelling entirely. */
+  const sx = b.x - px, sy = b.y - py;
+  const segLen2 = sx * sx + sy * sy;
+  const BALL_R = 58;
+  for (const t of G.traffic) {
+    if (t.wrecked) continue;
+    let u = segLen2 > 1e-6 ? ((t.x - px) * sx + (t.y - py) * sy) / segLen2 : 0;
+    u = clamp(u, 0, 1);
+    if (hyp(t.x - (px + sx * u), t.y - (py + sy * u)) > BALL_R) continue;
+    /* the ball takes the hit, so this costs no hull at all */
+    const nx = (t.x - b.x), ny = (t.y - b.y), nd = hyp(nx, ny) || 1;
+    t.vx += nx / nd * 900; t.vy += ny / nd * 900;
+    t.spin = rnd(-13, 13); t.wrecked = 1; t.hitFlash = 1;
+    G.totalWreck++; G.ballHits = (G.ballHits || 0) + 1;
+    G.pending += Math.round(300 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
+    G.chain += 1;
+    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+    G.topMult = Math.max(G.topMult, G.mult);
+    G.chainT = G.chainMax = chainTime();
+    if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+    hitstop(0.045, 20);
+    G.flash = Math.max(G.flash, 0.3);
+    NHAudio.smash(clamp(swing / 900, 0.6, 1.6));
+    for (let i = 0; i < 26; i++) {
+      const a = rnd(0, TAU), sp = rnd(160, 700);
+      spawn(t.x, t.y, Math.cos(a) * sp, Math.sin(a) * sp,
+            rnd(0.25, 0.7), rnd(4, 9), i % 3 ? '255,180,110' : '255,120,80', true, -6);
+    }
+    arcFrom(t);
+  }
+  /* sparks off the chain, so it reads as iron rather than a floating dot */
+  if (Math.random() < 0.35) {
+    const f = Math.random();
+    spawn(car.x + (b.x - car.x) * f, car.y + (b.y - car.y) * f,
+          rnd(-90, 90), rnd(-90, 90), rnd(0.15, 0.35), rnd(2, 4), '255,190,120', true, 30);
+  }
+}
+
+/* ============================================================
+   ARC WELDER
+   Every wreck throws current at whatever is nearest, and those wrecks throw
+   it on again. One well-placed hit in dense traffic takes a whole cluster,
+   which turns a crowded lane from a problem into the reason you went there.
+   ============================================================ */
+function arcFrom(src, depth){
+  if (G.power.arc <= 0) return;
+  const hops = depth || 0;
+  if (hops >= 3) return;
+  const M = G.run.M;
+  let best = null, bd = 1e9;
+  for (const t of G.traffic) {
+    if (t.wrecked || t === src) continue;
+    const d = hyp(t.x - src.x, t.y - src.y);
+    if (d < bd && d < 340) { bd = d; best = t; }
+  }
+  if (!best) return;
+
+  G.arcs.push({ ax:src.x, ay:src.y, bx:best.x, by:best.y, t:0.22 });
+  const nx = (best.x - src.x) / (bd || 1), ny = (best.y - src.y) / (bd || 1);
+  best.vx += nx * 380; best.vy += ny * 380;
+  best.spin = rnd(-9, 9); best.wrecked = 1; best.hitFlash = 1;
+  G.totalWreck++;
+  G.pending += Math.round(190 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
+  G.chain += 1;
+  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  G.topMult = Math.max(G.topMult, G.mult);
+  G.chainT = G.chainMax = chainTime();
+  if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+  for (let i = 0; i < 12; i++) {
+    const a = rnd(0, TAU), sp = rnd(120, 420);
+    spawn(best.x, best.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.15, 0.4), rnd(2, 6), '150,240,255', true, -4);
+  }
+  arcFrom(best, hops + 1);
+}
+
+/* ============================================================
+   SINGULARITY
+   Dropped where you stand and left behind. Every other pickup here changes
+   what *you* do for a few seconds; this one keeps working on a piece of road
+   you have already left, so the decision is where to put it rather than what
+   to do with it.
+   ============================================================ */
+function stepWells(dt){
+  const M = G.run ? G.run.M : null;
+  for (let i = G.wells.length - 1; i >= 0; i--) {
+    const w = G.wells[i];
+    w.t -= dt;
+    w.r += dt * 3.2;
+    if (w.t <= 0) { G.wells.splice(i, 1); continue; }
+    for (const t of G.traffic) {
+      if (t.wrecked) continue;
+      const dx = w.x - t.x, dy = w.y - t.y;
+      const d = hyp(dx, dy);
+      if (d > 620) continue;
+      const pull = (1 - d / 620) * 1900 * dt;
+      t.vx += dx / d * pull; t.vy += dy / d * pull;
+      if (d < 46 && M) {
+        t.wrecked = 1; t.hitFlash = 1; t.spin = rnd(-16, 16);
+        G.totalWreck++;
+        G.pending += Math.round(230 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
+        G.chain += 1;
+        G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+        G.topMult = Math.max(G.topMult, G.mult);
+        G.chainT = G.chainMax = chainTime();
+        if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+        NHAudio.smash(0.9);
+        for (let k = 0; k < 18; k++) {
+          const a = rnd(0, TAU), sp = rnd(60, 260);
+          spawn(w.x, w.y, Math.cos(a) * sp, Math.sin(a) * sp,
+                rnd(0.2, 0.5), rnd(3, 7), '176,124,255', true, 0);
+        }
+      }
+    }
+    if (Math.random() < 0.7) {
+      const a = rnd(0, TAU), r = rnd(180, 420);
+      spawn(w.x + Math.cos(a) * r, w.y + Math.sin(a) * r,
+            -Math.cos(a) * 420, -Math.sin(a) * 420,
+            rnd(0.3, 0.6), rnd(2, 6), '176,124,255', true, 0);
+    }
+  }
+}
 
 /* Magnet. Rather than warping cars, it steers them: an acceleration toward
    the line just in front of you, strongest when they are close. Cars still
@@ -4289,7 +4501,7 @@ function stepConvoy(dt){
       if (v.idx < car.idx - 26) G.convoy.splice(i, 1);
       continue;
     }
-    autoDrive(v, dt, false);
+    autoDrive(v, dt * G.worldSlow, false);
     /* they outrun ordinary traffic, so letting them go is a real outcome */
     if (v.idx > car.idx + 140) {
       G.convoy.splice(i, 1);
@@ -4532,7 +4744,7 @@ function step(dt){
       if (t.idx < car.idx - 24) { G.traffic.splice(i, 1); }
       continue;
     }
-    autoDrive(t, dt, false);
+    autoDrive(t, dt * G.worldSlow, false);
     if (t.idx < car.idx - 24 || t.idx > car.idx + 120) { G.traffic.splice(i, 1); continue; }
 
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
@@ -4589,7 +4801,7 @@ function step(dt){
       ? steerToward(p, G.track.at(p.idx + 8, 0).x, G.track.at(p.idx + 8, 0).y)
       : steerToward(p, car.x + car.vx * 0.35, car.y + car.vy * 0.35);
     p.boostT = Math.max(p.boostT, 0.2);
-    p.drive(dt, st, 1);
+    p.drive(dt * G.worldSlow, st, 1);
     barrier(p, loc);
 
     if (playing && !G.ai) {
@@ -5154,6 +5366,92 @@ function bloom(){
 }
 
 
+
+/* The three new toys, drawn in world space under the vehicles. */
+function drawToys(){
+  /* --- singularities: a dark eye with a collapsing ring --- */
+  for (const w of G.wells) {
+    const fade = clamp(w.t / 1.2, 0, 1);
+    ctx.save();
+    ctx.translate(w.x, w.y);
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 230);
+    g.addColorStop(0, 'rgba(10,4,24,' + (0.9 * fade).toFixed(3) + ')');
+    g.addColorStop(0.45, 'rgba(176,124,255,' + (0.26 * fade).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(176,124,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, 230, 0, TAU); ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = hexA('#B07CFF', 0.75 * fade);
+    for (let k = 0; k < 3; k++) {
+      const rr = 200 - ((w.r * 90 + k * 66) % 200);
+      ctx.lineWidth = 2 + k;
+      ctx.beginPath(); ctx.arc(0, 0, rr, 0, TAU); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(6,2,14,0.95)';
+    ctx.beginPath(); ctx.arc(0, 0, 26, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  /* --- arc welder: a jagged bolt between two wrecks --- */
+  if (G.arcs.length) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const a of G.arcs) {
+      const f = clamp(a.t / 0.22, 0, 1);
+      const dx = a.bx - a.ax, dy = a.by - a.ay;
+      const n = 7;
+      for (const [wd, col] of [[7, hexA('#7FE9FF', 0.22 * f)], [2.4, hexA('#EAFBFF', 0.95 * f)]]) {
+        ctx.lineWidth = wd;
+        ctx.strokeStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(a.ax, a.ay);
+        for (let i = 1; i < n; i++) {
+          const t = i / n;
+          /* deterministic jitter per bolt, so it does not crawl each frame */
+          const j = Math.sin((a.ax + i * 37.7) * 0.11) * 26 * Math.sin(t * Math.PI);
+          ctx.lineTo(a.ax + dx * t - dy / (hyp(dx, dy) || 1) * j,
+                     a.ay + dy * t + dx / (hyp(dx, dy) || 1) * j);
+        }
+        ctx.lineTo(a.bx, a.by);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /* --- wrecking ball: chain links, then the iron --- */
+  if (G.power.ball > 0 && G.ball) {
+    const car = G.car, b = G.ball;
+    const dx = b.x - car.x, dy = b.y - car.y;
+    const links = 9;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(190,200,220,.85)';
+    ctx.lineWidth = 3.4;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < links; i++) {
+      const t0 = i / links, t1 = (i + 0.62) / links;
+      ctx.beginPath();
+      ctx.moveTo(car.x + dx * t0, car.y + dy * t0);
+      ctx.lineTo(car.x + dx * t1, car.y + dy * t1);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    blitGlow('#FF8A3D', b.x, b.y, 130, 130, 0.55);
+    ctx.globalCompositeOperation = 'source-over';
+    const g = ctx.createRadialGradient(b.x - 9, b.y - 9, 3, b.x, b.y, 34);
+    g.addColorStop(0, '#6B4A2E');
+    g.addColorStop(0.6, '#2A1C12');
+    g.addColorStop(1, '#120B07');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(b.x, b.y, 30, 0, TAU); ctx.fill();
+    ctx.strokeStyle = hexA('#FF8A3D', 0.9);
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /* Power-ups read as hovering plates: a spinning diamond, a hard glyph and a
    pool of their own colour on the asphalt so they are visible from far
    enough back to change lanes for. */
@@ -5352,6 +5650,7 @@ function render(){
   drawSkids();
   drawLamps();
   drawHazards();
+  drawToys();
   drawPickups();
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const v of G.convoy) drawVehicle(v, { lights:true });
@@ -5437,9 +5736,13 @@ function syncPowers(){
   if (G.power.surge > 0)         list.push(['surge', 'Surge', G.power.surge]);
   if (G.power.magnet > 0)        list.push(['magnet', 'Magnet', G.power.magnet]);
   if (G.power.frenzy > 0)        list.push(['frenzy', 'Frenzy', G.power.frenzy]);
+  if (G.power.slowmo > 0)        list.push(['slowmo', 'Adrenaline', G.power.slowmo]);
+  if (G.power.ball > 0)          list.push(['ball', 'Wrecking Ball', G.power.ball]);
+  if (G.power.arc > 0)           list.push(['arc', 'Arc Welder', G.power.arc]);
   if (G.rockets > 0)             list.push(['rockets', 'Bazooka', G.rockets, 1]);
   if (G.lastingPlate > 0)        list.push(['plating', 'Reinforced', 0, 2]);
   if (G.lastingClock > 0)        list.push(['clock', 'Overclock', 0, 2]);
+  if (G.lastingPayday > 0)       list.push(['payday', 'Payday', 0, 2]);
   if (G.missileT > 0)            list.push(['rack', 'Harpoon', G.missileT]);
 
   const sig = list.map(l => l[0]).join(',');
