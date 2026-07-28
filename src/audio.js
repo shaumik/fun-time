@@ -43,7 +43,7 @@ let step = 0, nextTime = 0, timer = null;
 let intensity = 0, targetInt = 0;
 
 /* persistent voices */
-let engOsc1, engOsc2, engFilt, engGain, engSub;
+let engOsc1, engOsc2, engFilt, engGain, engSub, engHi, engHiGain, engVib;
 let sqNoise, sqFilt, sqGain;
 let sirOsc, sirGain, sirLfo;
 
@@ -106,23 +106,42 @@ function resume(){
   if (ac.state === 'suspended') ac.resume();
 }
 
-/* ---------------------------------------------------------- engine voice */
+/* ---------------------------------------------------------- engine voice
+   An electric drivetrain, not a combustion one. The first version was two
+   detuned sawtooths through a Q=6 resonant lowpass, which is a growl with a
+   honk sitting in it — fine for one lap and grating for twenty. This is a
+   motor whine instead: smooth triangles rising with speed, a quiet inverter
+   overtone above them, a sine hum underneath, and no resonance anywhere.
+   It is also mixed far lower, so the music carries the scene and the car
+   sits under it rather than in front of it. */
 function buildEngine(){
   engFilt = ac.createBiquadFilter();
   engFilt.type = 'lowpass';
-  engFilt.frequency.value = 400;
-  engFilt.Q.value = 6;
+  engFilt.frequency.value = 1200;
+  engFilt.Q.value = 0.7;                       // no resonant peak to honk
 
   engGain = ac.createGain();
   engGain.gain.value = 0;
 
-  engOsc1 = ac.createOscillator(); engOsc1.type = 'sawtooth'; engOsc1.frequency.value = 60;
-  engOsc2 = ac.createOscillator(); engOsc2.type = 'sawtooth'; engOsc2.frequency.value = 60; engOsc2.detune.value = 11;
-  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 30;
+  engOsc1 = ac.createOscillator(); engOsc1.type = 'triangle'; engOsc1.frequency.value = 190;
+  engOsc2 = ac.createOscillator(); engOsc2.type = 'triangle'; engOsc2.frequency.value = 190;
+  engOsc2.detune.value = 8;                    // slow beating, so it breathes
+  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 48;
+
+  /* the inverter: a quiet octave-and-a-bit above, which is what makes an EV
+     read as electric rather than as a flute */
+  engHi = ac.createOscillator(); engHi.type = 'sine'; engHi.frequency.value = 384;
+  engHiGain = ac.createGain(); engHiGain.gain.value = 0.30;
+  engHi.connect(engHiGain); engHiGain.connect(engFilt);
+
+  /* a touch of vibrato keeps it from reading as a test tone */
+  engVib = ac.createOscillator(); engVib.type = 'sine'; engVib.frequency.value = 0.32;
+  const vibAmt = ac.createGain(); vibAmt.gain.value = 4;      // cents
+  engVib.connect(vibAmt); vibAmt.connect(engOsc1.detune); vibAmt.connect(engOsc2.detune);
 
   engOsc1.connect(engFilt); engOsc2.connect(engFilt); engSub.connect(engFilt);
   engFilt.connect(engGain); engGain.connect(sfxBus);
-  engOsc1.start(); engOsc2.start(); engSub.start();
+  engOsc1.start(); engOsc2.start(); engSub.start(); engHi.start(); engVib.start();
 }
 
 function buildSqueal(){
@@ -262,6 +281,8 @@ const A = {
   },
   /* what the sound button should actually read */
   isSilenced(){ return muted || siteMuted; },
+  /* the graph, for automated mix checks — see the engine-voice notes */
+  _probe(){ return ready ? { ac, sfxBus, musicBus, engGain } : null; },
   isForced(){ return siteMuted; },
 
   /* silence for an ad or a backgrounded tab, then restore the user's setting */
@@ -284,13 +305,20 @@ const A = {
     const t = ac.currentTime;
     const spd = st.speed || 0;
 
-    const drive = st.playing ? 1 : 0.25;
-    engGain.gain.setTargetAtTime(0.055 * drive, t, 0.08);
-    const f = 42 + spd * 0.085 + (st.boost ? 26 : 0);
-    engOsc1.frequency.setTargetAtTime(f, t, 0.05);
-    engOsc2.frequency.setTargetAtTime(f * 1.005, t, 0.05);
-    engSub.frequency.setTargetAtTime(f * 0.5, t, 0.05);
-    engFilt.frequency.setTargetAtTime(320 + spd * 1.5 + (st.boost ? 900 : 0), t, 0.06);
+    /* Faint at a crawl, present at speed, never loud. The old voice sat at a
+       flat 0.055 whatever you were doing, which is why it nagged. */
+    const drive = st.playing ? 1 : 0.22;
+    const load = Math.min(1, spd / 620);
+    engGain.gain.setTargetAtTime((0.012 + load * 0.020) * drive, t, 0.10);
+
+    const f = 185 + spd * 1.02 + (st.boost ? 150 : 0);
+    engOsc1.frequency.setTargetAtTime(f, t, 0.07);
+    engOsc2.frequency.setTargetAtTime(f, t, 0.07);
+    engSub.frequency.setTargetAtTime(f * 0.25, t, 0.07);
+    engHi.frequency.setTargetAtTime(f * 2.01, t, 0.07);
+    /* the inverter shimmer only shows up once there is load on the motor */
+    engHiGain.gain.setTargetAtTime(0.10 + load * 0.34, t, 0.12);
+    engFilt.frequency.setTargetAtTime(900 + spd * 2.4 + (st.boost ? 2200 : 0), t, 0.08);
 
     const sq = st.playing ? Math.min(1, (st.drift || 0) * (spd > 240 ? 1 : 0)) : 0;
     sqGain.gain.setTargetAtTime(0.055 * sq, t, 0.05);

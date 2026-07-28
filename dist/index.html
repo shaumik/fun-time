@@ -150,12 +150,21 @@ body{
   height:calc(var(--u)*.8);background:rgba(255,255,255,.10);
   border:1px solid var(--edge);border-radius:99px;overflow:hidden;
 }
+.objBar{position:relative}
 .objBar i{
+  position:absolute;left:0;top:0;
   display:block;height:100%;width:0%;border-radius:99px;
   background:linear-gradient(90deg,rgba(61,232,255,.6),var(--cyan));
   box-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.75);
   transition:width .18s linear;
 }
+/* what the live chain would add if you banked it now — behind the real fill,
+   so you can see the quota moving while the clock is still running */
+.objBar i.objPend{
+  background:rgba(255,177,61,.42);box-shadow:none;
+  transition:width .1s linear;
+}
+.obj.pending .objBar{border-color:rgba(255,177,61,.45)}
 .obj.boss .objBar i{
   background:linear-gradient(90deg,#8A1226,var(--red));
   box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.8);
@@ -1299,7 +1308,7 @@ body{
       <div class="hudMid">
         <div class="obj" id="obj">
           <div class="objHead"><span id="objLbl">Quota</span><b id="objVal">0 / 0</b></div>
-          <div class="objBar"><i id="objFill"></i></div>
+          <div class="objBar"><i class="objPend" id="objPend"></i><i id="objFill"></i></div>
           <div class="objDist"><i id="objDist"></i></div>
         </div>
 
@@ -1569,7 +1578,7 @@ let step = 0, nextTime = 0, timer = null;
 let intensity = 0, targetInt = 0;
 
 /* persistent voices */
-let engOsc1, engOsc2, engFilt, engGain, engSub;
+let engOsc1, engOsc2, engFilt, engGain, engSub, engHi, engHiGain, engVib;
 let sqNoise, sqFilt, sqGain;
 let sirOsc, sirGain, sirLfo;
 
@@ -1632,23 +1641,42 @@ function resume(){
   if (ac.state === 'suspended') ac.resume();
 }
 
-/* ---------------------------------------------------------- engine voice */
+/* ---------------------------------------------------------- engine voice
+   An electric drivetrain, not a combustion one. The first version was two
+   detuned sawtooths through a Q=6 resonant lowpass, which is a growl with a
+   honk sitting in it — fine for one lap and grating for twenty. This is a
+   motor whine instead: smooth triangles rising with speed, a quiet inverter
+   overtone above them, a sine hum underneath, and no resonance anywhere.
+   It is also mixed far lower, so the music carries the scene and the car
+   sits under it rather than in front of it. */
 function buildEngine(){
   engFilt = ac.createBiquadFilter();
   engFilt.type = 'lowpass';
-  engFilt.frequency.value = 400;
-  engFilt.Q.value = 6;
+  engFilt.frequency.value = 1200;
+  engFilt.Q.value = 0.7;                       // no resonant peak to honk
 
   engGain = ac.createGain();
   engGain.gain.value = 0;
 
-  engOsc1 = ac.createOscillator(); engOsc1.type = 'sawtooth'; engOsc1.frequency.value = 60;
-  engOsc2 = ac.createOscillator(); engOsc2.type = 'sawtooth'; engOsc2.frequency.value = 60; engOsc2.detune.value = 11;
-  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 30;
+  engOsc1 = ac.createOscillator(); engOsc1.type = 'triangle'; engOsc1.frequency.value = 190;
+  engOsc2 = ac.createOscillator(); engOsc2.type = 'triangle'; engOsc2.frequency.value = 190;
+  engOsc2.detune.value = 8;                    // slow beating, so it breathes
+  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 48;
+
+  /* the inverter: a quiet octave-and-a-bit above, which is what makes an EV
+     read as electric rather than as a flute */
+  engHi = ac.createOscillator(); engHi.type = 'sine'; engHi.frequency.value = 384;
+  engHiGain = ac.createGain(); engHiGain.gain.value = 0.30;
+  engHi.connect(engHiGain); engHiGain.connect(engFilt);
+
+  /* a touch of vibrato keeps it from reading as a test tone */
+  engVib = ac.createOscillator(); engVib.type = 'sine'; engVib.frequency.value = 0.32;
+  const vibAmt = ac.createGain(); vibAmt.gain.value = 4;      // cents
+  engVib.connect(vibAmt); vibAmt.connect(engOsc1.detune); vibAmt.connect(engOsc2.detune);
 
   engOsc1.connect(engFilt); engOsc2.connect(engFilt); engSub.connect(engFilt);
   engFilt.connect(engGain); engGain.connect(sfxBus);
-  engOsc1.start(); engOsc2.start(); engSub.start();
+  engOsc1.start(); engOsc2.start(); engSub.start(); engHi.start(); engVib.start();
 }
 
 function buildSqueal(){
@@ -1788,6 +1816,8 @@ const A = {
   },
   /* what the sound button should actually read */
   isSilenced(){ return muted || siteMuted; },
+  /* the graph, for automated mix checks — see the engine-voice notes */
+  _probe(){ return ready ? { ac, sfxBus, musicBus, engGain } : null; },
   isForced(){ return siteMuted; },
 
   /* silence for an ad or a backgrounded tab, then restore the user's setting */
@@ -1810,13 +1840,20 @@ const A = {
     const t = ac.currentTime;
     const spd = st.speed || 0;
 
-    const drive = st.playing ? 1 : 0.25;
-    engGain.gain.setTargetAtTime(0.055 * drive, t, 0.08);
-    const f = 42 + spd * 0.085 + (st.boost ? 26 : 0);
-    engOsc1.frequency.setTargetAtTime(f, t, 0.05);
-    engOsc2.frequency.setTargetAtTime(f * 1.005, t, 0.05);
-    engSub.frequency.setTargetAtTime(f * 0.5, t, 0.05);
-    engFilt.frequency.setTargetAtTime(320 + spd * 1.5 + (st.boost ? 900 : 0), t, 0.06);
+    /* Faint at a crawl, present at speed, never loud. The old voice sat at a
+       flat 0.055 whatever you were doing, which is why it nagged. */
+    const drive = st.playing ? 1 : 0.22;
+    const load = Math.min(1, spd / 620);
+    engGain.gain.setTargetAtTime((0.012 + load * 0.020) * drive, t, 0.10);
+
+    const f = 185 + spd * 1.02 + (st.boost ? 150 : 0);
+    engOsc1.frequency.setTargetAtTime(f, t, 0.07);
+    engOsc2.frequency.setTargetAtTime(f, t, 0.07);
+    engSub.frequency.setTargetAtTime(f * 0.25, t, 0.07);
+    engHi.frequency.setTargetAtTime(f * 2.01, t, 0.07);
+    /* the inverter shimmer only shows up once there is load on the motor */
+    engHiGain.gain.setTargetAtTime(0.10 + load * 0.34, t, 0.12);
+    engFilt.frequency.setTargetAtTime(900 + spd * 2.4 + (st.boost ? 2200 : 0), t, 0.08);
 
     const sq = st.playing ? Math.min(1, (st.drift || 0) * (spd > 240 ? 1 : 0)) : 0;
     sqGain.gain.setTargetAtTime(0.055 * sq, t, 0.05);
@@ -3171,9 +3208,14 @@ function makeRoute(act){
     n.reward = info.reward;
     n.rare = info.rare;
     n.heat = info.heat;
-    n.quota = info.quotaMul
-      ? Math.round(7000 * Math.pow(1.32, idx - 1) * info.quotaMul / 100) * 100
-      : 0;
+    /* Advertise exactly what districtCfg will set. These used to be two
+       different formulas indexed two different ways — the board by row, the
+       district by districts actually played — so taking a Depot desynced them
+       and every node after it lied about its quota. */
+    n.district = idx;
+    n.quota = n.type === 'boss' || n.type === 'depot'
+      ? 0
+      : districtCfg(idx, n.type, act).quota;
   }));
   return rows;
 }
@@ -3891,6 +3933,12 @@ function step(dt){
     if (G.run.cfg) {
       const travelled = car.idx - G.run.startIdx;
       if (travelled >= G.run.cfg.len) {
+        /* Cash the chain before judging. Arriving at the checkpoint holding
+           8,000 pending and being failed at 2,000/10,000 reads as the quota
+           not counting your wrecks — you earned it, the clock just had not
+           run out yet. */
+        if (G.pending > 0) bank();
+        if (G.state !== 'play') return;          // banking may have cleared it
         if (G.run.cfg.boss) failDistrict('The unit got away');
         else if (G.run.banked >= G.run.quota) clearDistrict();
         else failDistrict('Quota missed');
@@ -4793,7 +4841,7 @@ const UI = {
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
-  objDist:$('objDist'), dchip:$('dchip'), build:$('build')
+  objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -4867,6 +4915,11 @@ function syncHUD(){
       UI.objLbl.textContent = 'Quota';
       UI.objVal.textContent = fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
       UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
+      /* A ghost segment for the pending bank. Without it the bar sits dead
+         still through a ten-second chain and the quota looks broken. */
+      const ghost = clamp((run.banked + G.pending) / run.quota, 0, 1) * 100;
+      UI.objPend.style.width = ghost + '%';
+      UI.obj.classList.toggle('pending', G.pending > 0);
     }
     const travelled = clamp((G.car.idx - run.startIdx) / cfg.len, 0, 1);
     UI.objDist.style.width = travelled * 100 + '%';
@@ -5165,7 +5218,8 @@ function showDepot(){
 /* ---- start the district described by the current node + contract ---- */
 function beginNode(){
   const run = G.run;
-  run.district++;
+  /* the node's own number, not a counter — see makeRoute */
+  run.district = run.node.district;
   run.cfg = districtCfg(run.district, run.node.type, run.act);
 
   const built = NHChips.build(run.chips, run.curses, run.contract);

@@ -872,9 +872,14 @@ function makeRoute(act){
     n.reward = info.reward;
     n.rare = info.rare;
     n.heat = info.heat;
-    n.quota = info.quotaMul
-      ? Math.round(7000 * Math.pow(1.32, idx - 1) * info.quotaMul / 100) * 100
-      : 0;
+    /* Advertise exactly what districtCfg will set. These used to be two
+       different formulas indexed two different ways — the board by row, the
+       district by districts actually played — so taking a Depot desynced them
+       and every node after it lied about its quota. */
+    n.district = idx;
+    n.quota = n.type === 'boss' || n.type === 'depot'
+      ? 0
+      : districtCfg(idx, n.type, act).quota;
   }));
   return rows;
 }
@@ -1592,6 +1597,12 @@ function step(dt){
     if (G.run.cfg) {
       const travelled = car.idx - G.run.startIdx;
       if (travelled >= G.run.cfg.len) {
+        /* Cash the chain before judging. Arriving at the checkpoint holding
+           8,000 pending and being failed at 2,000/10,000 reads as the quota
+           not counting your wrecks — you earned it, the clock just had not
+           run out yet. */
+        if (G.pending > 0) bank();
+        if (G.state !== 'play') return;          // banking may have cleared it
         if (G.run.cfg.boss) failDistrict('The unit got away');
         else if (G.run.banked >= G.run.quota) clearDistrict();
         else failDistrict('Quota missed');
@@ -2494,7 +2505,7 @@ const UI = {
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
-  objDist:$('objDist'), dchip:$('dchip'), build:$('build')
+  objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -2568,6 +2579,11 @@ function syncHUD(){
       UI.objLbl.textContent = 'Quota';
       UI.objVal.textContent = fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
       UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
+      /* A ghost segment for the pending bank. Without it the bar sits dead
+         still through a ten-second chain and the quota looks broken. */
+      const ghost = clamp((run.banked + G.pending) / run.quota, 0, 1) * 100;
+      UI.objPend.style.width = ghost + '%';
+      UI.obj.classList.toggle('pending', G.pending > 0);
     }
     const travelled = clamp((G.car.idx - run.startIdx) / cfg.len, 0, 1);
     UI.objDist.style.width = travelled * 100 + '%';
@@ -2866,7 +2882,8 @@ function showDepot(){
 /* ---- start the district described by the current node + contract ---- */
 function beginNode(){
   const run = G.run;
-  run.district++;
+  /* the node's own number, not a counter — see makeRoute */
+  run.district = run.node.district;
   run.cfg = districtCfg(run.district, run.node.type, run.act);
 
   const built = NHChips.build(run.chips, run.curses, run.contract);

@@ -139,12 +139,21 @@ body{
   height:calc(var(--u)*.8);background:rgba(255,255,255,.10);
   border:1px solid var(--edge);border-radius:99px;overflow:hidden;
 }
+.objBar{position:relative}
 .objBar i{
+  position:absolute;left:0;top:0;
   display:block;height:100%;width:0%;border-radius:99px;
   background:linear-gradient(90deg,rgba(61,232,255,.6),var(--cyan));
   box-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.75);
   transition:width .18s linear;
 }
+/* what the live chain would add if you banked it now — behind the real fill,
+   so you can see the quota moving while the clock is still running */
+.objBar i.objPend{
+  background:rgba(255,177,61,.42);box-shadow:none;
+  transition:width .1s linear;
+}
+.obj.pending .objBar{border-color:rgba(255,177,61,.45)}
 .obj.boss .objBar i{
   background:linear-gradient(90deg,#8A1226,var(--red));
   box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.8);

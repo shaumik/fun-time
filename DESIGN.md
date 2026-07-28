@@ -231,10 +231,21 @@ The roguelite layer resets, the garage layer does not.
 
 Fully synthesised, no files. A four-layer synthwave bed over an i–VI–III–VII vamp at 126 BPM,
 whose *arrangement* is the intensity dial: kick alone early, then snare and hats, then a
-square arpeggio and a wider filter as the run gets deeper and hotter. Gameplay voices are
-an engine (two detuned saws plus sub, pitch and filter tracking speed), tyre squeal
-(band-passed noise following slip), a two-tone siren driven by an LFO, and one-shots for
-banking, near misses, impacts, chip picks, curses and boss stingers.
+square arpeggio and a wider filter as the run gets deeper and hotter.
+
+**The car is electric.** The engine started as two detuned sawtooths through a resonant
+lowpass — a combustion growl with a honk sitting in it, which is fine for one lap and
+grating for twenty. It is now a motor whine: two triangles beating about 10 Hz apart, a
+quiet inverter partial an octave above, a sine hum underneath, gentle vibrato so it does not
+read as a test tone, and no resonance anywhere. The fundamental rises from 258 Hz at a crawl
+to 958 Hz flat out, and measured against an analyser there is essentially **no energy above
+3 kHz** — that band is what makes a continuous voice nag. It is also mixed to scale with
+speed rather than sitting at a fixed level, from roughly −35 dBFS idling to −28 flat out, so
+the music carries the scene and the car sits under it.
+
+The other gameplay voices are tyre squeal (band-passed noise following slip), a two-tone
+siren driven by an LFO, and one-shots for banking, wrecks, threads, pickups, chip picks,
+curses and boss stingers.
 
 ## Art direction
 
