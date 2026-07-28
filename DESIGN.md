@@ -108,6 +108,14 @@ formality; as a fraction of what you actually need it stays a strong prize at an
 without ever replacing playing the district. In testing a bot cracked two haulers, took the
 third, and died with 8,788 unbanked — which is the shape the event should have.
 
+**The road never empties.** Two things used to thin it out. Wrecked cars stayed in the
+traffic budget as debris until you had driven past them, so a good pile-up starved the next
+one — the supply dropped exactly when you were doing well. Only live cars count now. And
+Ghost Town removed traffic *entirely*, which was a boon when the game was about dodging and
+a loss condition once traffic became the thing you score on: zero cars is zero points, so
+the contract was not hard, it was unwinnable. It now leaves a third of the traffic and pays
+triple per wreck — the same flavour, inverted into a real wager.
+
 **Districts** get longer, hungrier and hotter. Quota grows 1.30× per district (×1.45 on an
 Elite) while the player's build grows through chips — the two curves are meant to stay
 close, so a run ends when the build stops keeping up rather than at a fixed wall.

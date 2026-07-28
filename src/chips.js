@@ -203,10 +203,15 @@ const CONTRACTS = [
     boon:'Quota cut by 35%.',
     apply(M, L){ L.hazards = 1; L.quotaMul *= 0.65; } },
 
-  { id:'ghost', name:'Ghost Town', risk:1,
-    bane:'Quota up 45%.',
-    boon:'Empty streets. Nothing in your way.',
-    apply(M, L){ L.quotaMul *= 1.45; M.trafficMul = 0; } },
+  /* This used to empty the streets entirely, which was a boon back when the
+     game was about dodging. Once traffic became the *scoring* verb, zero
+     cars meant zero points and the contract was not hard, it was
+     unwinnable. Same flavour, inverted into a real wager: far fewer cars,
+     each one worth a great deal more. */
+  { id:'ghost', name:'Ghost Town', risk:2,
+    bane:'The streets are nearly empty — a third of the traffic.',
+    boon:'Every wreck pays three times over.',
+    apply(M, L){ M.trafficMul *= 0.34; L.wreckPay *= 3; } },
 
   { id:'overpressure', name:'Overpressure', risk:2,
     bane:'Grip down 20% and the chain clock is half a second shorter.',

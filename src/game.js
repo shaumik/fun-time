@@ -1887,7 +1887,14 @@ function step(dt){
       if (d > 140) t.nearFlag = false;
     }
   }
-  while (G.traffic.length < Math.round(26 * (G.run ? G.run.M.trafficMul : 1))) addTraffic(rint(20, 96));
+  /* Count only cars you can still hit. Wrecked ones linger in the array as
+     debris until you have driven past them, and counting those against the
+     budget thinned the road exactly when a chain was going well — the
+     opposite of what a pile-up should do to the supply. */
+  let liveCount = 0;
+  for (const t of G.traffic) if (!t.wrecked) liveCount++;
+  const want = Math.max(4, Math.round(26 * (G.run ? G.run.M.trafficMul : 1)));
+  while (liveCount < want) { addTraffic(rint(20, 96)); liveCount++; }
 
   /* ---- police ---- */
   if (playing && !G.ai && !G.boss) {
