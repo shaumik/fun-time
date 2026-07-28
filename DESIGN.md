@@ -221,7 +221,7 @@ stays anonymous and nothing breaks.
 
 | Placement | Trigger | Notes |
 |---|---|---|
-| Rewarded — Revive | On wreck, once per run | A player deep in a run they have invested chips in is the highest-intent moment the format has — far better than reviving a score chase. |
+| Rewarded — Revive | On any run-ending failure, once per run | A player deep in a run they have invested chips in is the highest-intent moment the format has — far better than reviving a score chase. |
 | Rewarded — 2× Coins | Game over | Coins pay on districts cleared as well as score, so the double-up has a visible target. |
 | Interstitial (midgame) | Every 3rd run end | Within CrazyGames' frequency guidance without feeling hostile. |
 
@@ -235,6 +235,15 @@ simulated placement, so the flow stays demonstrable.
 The portal's `settings.muteAudio` is honoured at init and through a change listener, and it
 outranks the in-game sound button — while the site has muted the game the button is disabled
 and cannot bring audio back, which is what their docs require.
+
+**A revive has to undo the thing that killed you.** For a long time it did neither: the hull
+was left on zero, so the next scrape ended the run again, and a missed quota put the player
+back down *past* the checkpoint, which re-fired the same failure on the following frame — an
+ad watched for nothing, which is the worst possible thing to sell. There are two kinds of
+death and they need two different repairs. Hull is restored to 60%, and a district that ran
+out of *road* rather than hull has its checkpoint pushed back by half its length, because
+road is what you were short of. The extension can only ever lengthen the district, never
+shorten it.
 
 Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 

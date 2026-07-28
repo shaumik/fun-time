@@ -3380,6 +3380,24 @@ $('btnRevive').onclick = () => {
     G.state = 'play';
     G.run.crumpleLeft = Math.max(G.run.crumpleLeft, G.run.M.crumple);
     UI.hud.classList.remove('off');
+
+    /* A revive has to undo the thing that actually killed you. It used to do
+       neither: the hull was left on zero, so the next scrape ended the run
+       again, and a quota miss put you back down *past* the checkpoint, which
+       re-fired the same failure on the following frame. Two kinds of death,
+       two different repairs. */
+    G.hp = Math.max(G.hp, Math.round(G.hpMax * 0.6));
+    G.hurt = 0;
+    const ranOutOfRoad = G.crashReason === 'Quota missed' || G.crashReason === 'The unit got away';
+    if (ranOutOfRoad && G.run.cfg) {
+      /* buy road, because road is what you were short of. max() so this can
+         only ever extend the district, never shorten it. */
+      const travelled = G.car.idx - G.run.startIdx;
+      G.run.cfg.len = Math.max(G.run.cfg.len,
+                               Math.round(travelled + G.run.cfg.len * 0.5));
+      toast('Checkpoint pushed back', 'gold');
+    }
+    G.crashReason = '';
     /* drop back on the centreline a little ahead, briefly untouchable */
     const pos = G.track.at(G.car.idx + 4, 0);
     G.car.x = pos.x; G.car.y = pos.y; G.car.a = pos.a;
@@ -4008,7 +4026,7 @@ window.__NH = {
   takeContract, openNodes, advance,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
-  endRun, showBoard, recordRun,
+  endRun, showBoard, recordRun, failDistrict, damage,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();
