@@ -229,52 +229,33 @@ The roguelite layer resets, the garage layer does not.
 
 ## Audio
 
-Fully synthesised, no files.
+Fully synthesised, no files. A four-layer synthwave bed over an i–VI–III–VII vamp at 126 BPM,
+whose *arrangement* is the intensity dial: the tune, the bass line and the arpeggio carry it,
+and escalation opens the filter and brings in the pad.
 
-**The bed is a score, not a loop.** It started as a four-layer synthwave vamp — i–VI–III–VII
-at 126 BPM with a kick, snare and hat kit on top. That is a 1984 pastiche, and played
-continuously for the length of a run it is mostly a drum machine hitting you. There is no
-kit now, and no backbeat of any kind. Measured on an analyser, the bed's crest factor is
-about 1.2: there is essentially nothing transient in it.
+**The kit sits well back.** A kick on every quarter with eighth-note hats over it is a drum
+machine playing at you for the length of a run. The kick is on 1 and 3 only, hats do not
+appear until Heat 2 and then only on quarters, and every drum voice is mixed roughly half
+what it was. An earlier attempt replaced the whole bed with an ambient score, which was the
+wrong lesson entirely — the tune was never the problem, the drumming was.
 
-What replaced it is four suspended and added-ninth voicings that do not resolve, one chord
-every two bars at 84 BPM, across four layers:
+**The car is a distant electric drivetrain with its own switch.** Two detuned triangles
+54 Hz idling to about 150 Hz flat out, a quiet inverter partial, a sine hum underneath and
+slight vibrato, under a lowpass that never opens past ~530 Hz. At full speed the 2–5 kHz band
+measures 72 dB below the low band. It is the one voice playing without pause for an entire
+run, so it gets a dedicated toggle: engine off measures exactly zero with the music
+unchanged.
 
-| Layer | What it does |
-|---|---|
-| Drone | A quiet filtered sine on the root. Weight, deliberately thin. |
-| Pad | Detuned triangles and sines, ~1s attack and release, so chords cross-fade with no edge. |
-| Shimmer | Sines two and three octaves above the chord, each breathing on its own slow LFO. This is the top end. |
-| Bells | A sine with three inharmonic partials and a long tail, on a sparse off-grid pattern. |
+**Impacts are weight, not brightness.** The wreck sound was band-passed noise from 1.8 kHz
+plus a square wave through a 900 Hz high-pass — a square's odd harmonics with the body
+stripped out, which is buzz and nothing else, on the most frequent event in the game. It is
+now a lowpass sweeping 1.1 kHz down to 180, a sine thump falling to 32 Hz, and two detuned
+triangles low in the midrange for sheet metal. Measured: 40 dB of rolloff from the body of
+the hit to the 4–14 kHz band.
 
-Escalation adds light and motion — more bells, a higher shimmer voice, a wider pad filter,
-and a slow noise *breath* once per two bars — rather than adding drums.
-
-**Brightness and harshness are different axes, and I conflated them twice.** The first fix
-for a harsh mix was to shelve the top down 7 dB, which just made it dull; the actual
-offenders were noise transients and resonance. The hats were noise high-passed at 7.2 kHz on
-sixteenths, the most fatiguing band there is, ticking without pause. The snare was
-high-passed at 1.6 kHz, so its crack carried the whole top octave on every backbeat. The
-bass ran through a Q of 9 — a resonant squelch on every note. With all three gone, the top
-end could be *lifted* instead: the master shelf is now +3 dB above 3.6 kHz, and every voice
-above 1 kHz is a slow-enveloped sine. The result is a bed whose loudest band is 1.5–5 kHz,
-with the sub sitting 9 dB under the bass and a high-pass at 78 Hz keeping mud out entirely.
-
-**The car is a distant electric drivetrain, and it has its own switch.** This also took two
-passes, and the first was worse than what it replaced. The original engine was two detuned
-sawtooths through a resonant lowpass — a combustion growl with a honk in it. Replacing it
-with a motor *whine* at 258–958 Hz fixed the honk and produced something more tiring: a
-sustained pure tone in the band the ear is most sensitive to. Quieter and more fatiguing is
-a real combination.
-
-It now runs 54 Hz idling to about 150 Hz flat out, under a lowpass that never opens past
-~530 Hz. At full speed the 2–5 kHz band measures 72 dB below the low band. And because it is
-the one voice playing without pause for an entire run, it has a dedicated toggle: engine off
-measures exactly zero with the music bed unchanged.
-
-Gameplay voices over the top: tyre squeal (band-passed noise following slip), a two-tone
-siren driven by an LFO, and one-shots for banking, wrecks, threads, pickups, chip picks,
-curses and boss stingers.
+The remaining voices are tyre squeal (band-passed noise following slip), a two-tone siren
+driven by an LFO, and one-shots for banking, threads, pickups, chip picks, curses and boss
+stingers.
 
 ## Art direction
 
