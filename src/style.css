@@ -1278,3 +1278,39 @@ body{
 @media (max-aspect-ratio:1/1){
   .hull{width:calc(var(--u)*20)}
 }
+
+
+/* ============================================================
+   DAILY DROP
+   One screen, one number, one button. It is a gift, not a decision.
+   ============================================================ */
+#daily .panel{max-width:calc(var(--u)*44);text-align:center}
+.dayKick{
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+.dayStreak{
+  margin-top:calc(var(--u)*.8);
+  font-size:calc(var(--u)*2.2);font-weight:800;color:#fff;
+  letter-spacing:.06em;
+}
+.dayAmt{
+  display:flex;align-items:baseline;justify-content:center;gap:calc(var(--u)*.9);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*.8);
+}
+.dayAmt b{
+  font-size:calc(var(--u)*7);font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+}
+.dayAmt span{
+  font-size:calc(var(--u)*1.4);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dayNext{
+  font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+  padding-bottom:calc(var(--u)*2.2);
+  border-bottom:1px solid var(--edge);
+  margin-bottom:calc(var(--u)*2.2);
+}
+#daily .btn{width:100%;justify-content:center}

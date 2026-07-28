@@ -1282,6 +1282,42 @@ body{
 }
 
 
+/* ============================================================
+   DAILY DROP
+   One screen, one number, one button. It is a gift, not a decision.
+   ============================================================ */
+#daily .panel{max-width:calc(var(--u)*44);text-align:center}
+.dayKick{
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+.dayStreak{
+  margin-top:calc(var(--u)*.8);
+  font-size:calc(var(--u)*2.2);font-weight:800;color:#fff;
+  letter-spacing:.06em;
+}
+.dayAmt{
+  display:flex;align-items:baseline;justify-content:center;gap:calc(var(--u)*.9);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*.8);
+}
+.dayAmt b{
+  font-size:calc(var(--u)*7);font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+}
+.dayAmt span{
+  font-size:calc(var(--u)*1.4);letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dayNext{
+  font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+  padding-bottom:calc(var(--u)*2.2);
+  border-bottom:1px solid var(--edge);
+  margin-bottom:calc(var(--u)*2.2);
+}
+#daily .btn{width:100%;justify-content:center}
+
+
 /* --- wrapper chrome, prototype only: not part of the game build --- */
 body{overflow:auto;display:block;background:#02030A}
 .pitch{
@@ -1454,6 +1490,17 @@ body{overflow:auto;display:block;background:#02030A}
       <h2 class="dtitle">Off the street</h2>
       <div class="dsub">One service, then back out there</div>
       <div class="ccards" id="depotCards"></div>
+    </div>
+  </div>
+
+  <!-- ============ daily reward ============ -->
+  <div id="daily" class="layer screen">
+    <div class="panel">
+      <div class="dayKick">Daily drop</div>
+      <div class="dayStreak" id="dayStreak">Day one</div>
+      <div class="dayAmt"><b class="amber" id="dayAmount">900</b><span>coins</span></div>
+      <div class="dayNext" id="dayNext">Tomorrow: 1,800</div>
+      <button class="btn primary" id="btnDaily">Take it<span class="key">Enter</span></button>
     </div>
   </div>
 
@@ -2465,7 +2512,7 @@ const Save = {
   key:'neonheat.v1',
   data:{ best:0, deepest:0, ctrl:'swipe', coins:0, car:'viper',
          up:{ engine:0, grip:0, armor:0, impact:0, nitro:0, payout:0 }, gear:[], runs:0,
-         engineSfx:1 },
+         engineSfx:1, lastDaily:'', dailyStreak:0 },
   load(){
     try {
       const raw = localStorage.getItem(this.key);
@@ -2474,6 +2521,8 @@ const Save = {
       /* saves predating the single-car change carry only four tracks */
       for (const k of ['engine','grip','armor','impact','nitro','payout'])
         if (typeof this.data.up[k] !== 'number') this.data.up[k] = 0;
+      if (typeof this.data.lastDaily !== 'string') this.data.lastDaily = '';
+      if (typeof this.data.dailyStreak !== 'number') this.data.dailyStreak = 0;
     } catch (e) { /* storage blocked — run in-memory */ }
   },
   flush(){
@@ -2506,6 +2555,16 @@ const GEAR = [
 ];
 const Hangar = {
   has: id => Save.data.gear.includes(id),
+  /* A first run in a bare car on an empty board is the weakest possible
+     first impression, and it is the one every new player gets. The Ram Prow
+     is free: it costs the economy almost nothing and it means the opening
+     minute shows the game doing the thing the game is about. */
+  grantStarter(){
+    if (Save.data.gear.length || Save.data.runs > 0) return false;
+    Save.data.gear.push('prow');
+    Save.flush();
+    return true;
+  },
   buy(id){
     const g = GEAR.find(x => x.id === id);
     if (!g || this.has(id) || Save.data.coins < g.price) return false;
@@ -2652,6 +2711,37 @@ function adTick(dt){
     const cb = adCb; adCb = null; cb();
   }
 }
+
+
+/* ============================================================
+   DISTRICTS OF THE CITY
+   Every act drove through the same cyan-and-magenta downtown, so a run that
+   was numerically escalating looked identical the whole way up — which is
+   what makes a roguelite feel like one level repeated. Each act now has its
+   own ground, asphalt, barrier colours, skyline and air. The generator is
+   unchanged; only what it is dressed in moves.
+   ============================================================ */
+const THEMES = [
+  { id:'downtown', name:'The Grid',
+    ground:'#06080F', asphalt:'#131A2C', left:'#3DE8FF', right:'#FF2E88',
+    bldA:'#3DE8FF', bldB:'#FF2E88', face1:'#141A2D', face2:'#0F1424',
+    h:[110, 480], size:[48, 118], gap:0.34, lit:0.80, back:[80, 400],
+    air:null },
+  { id:'docks', name:'Sunken Docks',
+    ground:'#080A0B', asphalt:'#1B1A18', left:'#FFB13D', right:'#2FE08A',
+    bldA:'#FFB13D', bldB:'#6FE3C0', face1:'#1E1C18', face2:'#141310',
+    /* long low sheds instead of towers, and more sky between them */
+    h:[90, 280], size:[110, 240], gap:0.46, lit:0.45, back:[110, 520],
+    air:{ rgb:'150,170,180', rate:0.14, size:[16, 38], life:[1.8, 3.2], drift:26 } },
+  { id:'undercity', name:'The Undercity',
+    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#F2F6FF',
+    bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
+    /* close, tall and constant — it should read as a tunnel, not a skyline */
+    h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
+    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } }
+];
+let TH = THEMES[0];
+function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
 
 /* ---------------- cars ----------------
    One player car. Four selectable chassis were four stat rolls that said the
@@ -2829,7 +2919,8 @@ addEventListener('keydown', e => {
   if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
   NHAudio.resume();
   if (e.code === 'Enter') {
-    if (G.state === 'menu') toGarage();
+    if (G.state === 'daily') closeDaily();
+    else if (G.state === 'menu') $('btnPlay').onclick();
     else if (G.state === 'over') { commitCoins(1); toGarage(); }
     else if (G.state === 'garage') { hide(UI.garage); startRun(); }
     else if (G.state === 'brief') beginDistrict();
@@ -2958,17 +3049,18 @@ class Track {
     if (this.n % 2 === 0) {
       p.b = [];
       for (const side of [-1, 1]) {
-        if (Math.random() < 0.34) continue;
-        const off = this.hw + rnd(80, 400);
+        if (Math.random() < TH.gap) continue;
+        const off = this.hw + rnd(TH.back[0], TH.back[1]);
         const nx = -Math.sin(this.ang), ny = Math.cos(this.ang);
         p.b.push({
           x: this.x + nx * off * side,
           y: this.y + ny * off * side,
-          w: rnd(48, 118), d: rnd(48, 118),
-          h: rnd(110, 480),
+          w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
+          h: rnd(TH.h[0], TH.h[1]),
           a: this.ang + rnd(-0.25, 0.25),
-          hue: Math.random() < 0.5 ? CL.cyan : CL.magenta,
-          lit: Math.random() < 0.80,
+          hue: Math.random() < 0.5 ? TH.bldA : TH.bldB,
+          face1: TH.face1, face2: TH.face2,
+          lit: Math.random() < TH.lit,
           seed: Math.random() * 1000
         });
       }
@@ -3222,7 +3314,6 @@ function districtCfg(n, type, act){
    Depot costs you a district of scoring but repairs your build. Without
    a visible route none of those are decisions.
    ============================================================ */
-const ACT_NAMES = ['The Grid', 'Ironside', 'Terminus'];
 const NODE_ICON = { run:'▲', elite:'✦', depot:'⌂', boss:'☠' };
 const NODE_CAP  = { run:'Run', elite:'Elite', depot:'Depot', boss:'Pursuit' };
 const ROWS = 5;
@@ -3349,6 +3440,9 @@ function openNodes(){
 }
 
 function newWorld(ai){
+  /* the theme has to be chosen before the generator runs — the skyline is
+     baked per node at generation time, not at draw time */
+  setTheme(G.run ? G.run.act : 1);
   G.track = new Track();
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = [];
@@ -3529,6 +3623,25 @@ function dropHazard(b){
   const pos = G.track.at(b.idx + 2, rnd(-0.7, 0.7) * roadHalf(G.track.pts[b.idx] || { w:150 }));
   G.hazards.push({ x:pos.x, y:pos.y, a:pos.a, life:11, hit:0 });
   if (G.hazards.length > 14) G.hazards.shift();
+}
+
+/* Air. A colour change alone still reads as the same road repainted; what
+   sells a different place is something moving through it that was not there
+   before. Fog banks drift across the docks, embers fall through the
+   undercity, and the downtown has neither. */
+function stepAir(dt){
+  const air = TH.air;
+  if (!air || !QF.grain) return;
+  const car = G.car;
+  G.airT = (G.airT || 0) - dt;
+  if (G.airT > 0) return;
+  G.airT = 1 / (air.rate * 26);
+  const ahead = G.track.at(car.idx + rint(6, 30), rnd(-1, 1) * 900);
+  spawn(ahead.x, ahead.y,
+        Math.cos(ahead.a + Math.PI / 2) * air.drift + rnd(-20, 20),
+        Math.sin(ahead.a + Math.PI / 2) * air.drift + rnd(-20, 20),
+        rnd(air.life[0], air.life[1]), rnd(air.size[0], air.size[1]),
+        air.rgb, air.drift < 0, 0);
 }
 
 function stepHazards(dt){
@@ -4027,6 +4140,7 @@ function step(dt){
     G.tier = Math.min(3, G.tier);
 
     stepHazards(dt);
+    stepAir(dt);
     if (G.boss) stepBoss(dt);
 
     /* reaching the checkpoint decides the district */
@@ -4187,7 +4301,7 @@ function applyCam(){
 }
 
 function drawGround(){
-  ctx.fillStyle = CL.ground;
+  ctx.fillStyle = TH.ground;
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
   /* world-aligned grid: cheap, and it reads as motion at speed */
@@ -4227,7 +4341,7 @@ function drawRoad(){
     ctx.lineTo(p.x - nx, p.y - ny);
   }
   ctx.closePath();
-  ctx.fillStyle = CL.asphalt;
+  ctx.fillStyle = TH.asphalt;
   ctx.fill();
 
   /* the barriers spill light onto the surface they enclose */
@@ -4243,7 +4357,7 @@ function drawRoad(){
       const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
-    ctx.strokeStyle = hexA(side < 0 ? CL.cyan : CL.magenta, 0.10);
+    ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.10);
     ctx.lineWidth = 90;
     ctx.stroke();
   }
@@ -4263,7 +4377,7 @@ function drawRoad(){
         if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
         else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
       }
-      ctx.strokeStyle = hexA(side < 0 ? CL.cyan : CL.magenta, 0.13);
+      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.13);
       ctx.lineWidth = 46;
       ctx.setLineDash([70, 34]);
       ctx.lineDashOffset = -(G.dist * 0.35) % 104;
@@ -4305,7 +4419,7 @@ function drawRoad(){
       const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
-    const col = side < 0 ? CL.cyan : CL.magenta;
+    const col = side < 0 ? TH.left : TH.right;
     ctx.lineCap = 'round';
     ctx.strokeStyle = hexA(col, 0.30); ctx.lineWidth = 16; ctx.stroke();
     ctx.strokeStyle = col;             ctx.lineWidth = 5;  ctx.stroke();
@@ -4557,7 +4671,7 @@ function drawCity(){
       ctx.moveTo(b0[0], b0[1]); ctx.lineTo(b1[0], b1[1]);
       ctx.lineTo(t1[0], t1[1]); ctx.lineTo(t0[0], t0[1]);
       ctx.closePath();
-      ctx.fillStyle = i % 2 ? '#141A2D' : '#0F1424';
+      ctx.fillStyle = i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424');
       ctx.fill();
 
       if (bd.lit && QF.windows && !LVL().blackout) {
@@ -4622,7 +4736,7 @@ function drawLamps(){
     for (const side of [-1, 1]) {
       const x = p.x - Math.sin(p.a) * (roadHalf(p) + 16) * side;
       const y = p.y + Math.cos(p.a) * (roadHalf(p) + 16) * side;
-      blitGlow(side < 0 ? CL.cyan : CL.magenta, x, y, 46, 46, 0.30);
+      blitGlow(side < 0 ? TH.left : TH.right, x, y, 46, 46, 0.30);
     }
   }
   ctx.globalCompositeOperation = 'source-over';
@@ -4865,7 +4979,7 @@ function post(){
 function render(){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = CL.void;
+  ctx.fillStyle = TH.ground;
   ctx.fillRect(0, 0, cv.width, cv.height);
 
   applyCam();
@@ -4939,6 +5053,7 @@ const UI = {
   menu:$('menu'), over:$('over'), garage:$('garage'),
   brief:$('brief'), draft:$('draft'),
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
+  daily:$('daily'),
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build')
@@ -5066,6 +5181,7 @@ function toMenu(){
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.draft);
+  hide(UI.daily);
   UI.hud.classList.add('off');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
@@ -5088,7 +5204,7 @@ function showMap(){
   UI.hud.classList.add('off');
   hide(UI.draft); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
-  $('mTitle').textContent = ACT_NAMES[(run.act - 1) % ACT_NAMES.length];
+  $('mTitle').textContent = THEMES[(run.act - 1) % THEMES.length].name;
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
   renderBuild(UI.mapBuild);
@@ -5362,6 +5478,7 @@ function nextAct(){
   const run = G.run;
   if (run.act >= 3) { G.crashReason = 'Run complete'; endRun(true); return; }
   run.act++;
+  setTheme(run.act);
   run.route = makeRoute(run.act);
   run.row = -1; run.col = -1; run.node = null;
   toast('Act ' + run.act, 'gold');
@@ -5541,7 +5658,13 @@ $('btnCtrl').onclick = e => {
   Save.flush(); setCtrlLabel(); NHAudio.ui(true);
 };
 $('btnGo').onclick     = () => beginDistrict();
-$('btnPlay').onclick   = () => { NHAudio.resume(); toGarage(); };
+$('btnDaily').onclick  = () => { NHAudio.ui(true); closeDaily(); };
+$('btnPlay').onclick   = () => {
+  NHAudio.resume();
+  if (Hangar.grantStarter()) toast('Ram Prow fitted — on the house', 'gold');
+  if (dailyReady() && Save.data.runs > 0) { hide(UI.menu); claimDaily(); }
+  else toGarage();
+};
 $('btnAgain').onclick  = () => { commitCoins(1); toGarage(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => toGarage();
@@ -5628,6 +5751,53 @@ if (typeof CanvasRenderingContext2D !== 'undefined' &&
     this.closePath();
     return this;
   };
+}
+
+
+/* ============================================================
+   DAILY
+   The reason to open the tab tomorrow. Paid on the calendar day rather than
+   a rolling 24h timer, so it never drifts later and later; a streak that
+   survives one missed day, because punishing a single miss is how you lose
+   the player who was going to come back on Wednesday.
+   ============================================================ */
+const DAILY_BASE = 900;
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+function yesterdayKey(){
+  const d = new Date(Date.now() - 864e5);
+  return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+}
+function dailyReady(){ return Save.data.lastDaily !== todayKey(); }
+function dailyAmount(streak){
+  /* climbs for a week, then plateaus — an unbounded ramp only rewards the
+     player who was never going to quit anyway */
+  return DAILY_BASE * Math.min(7, streak);
+}
+
+function claimDaily(){
+  if (!dailyReady()) return;
+  const streak = Save.data.lastDaily === yesterdayKey() ? Save.data.dailyStreak + 1 : 1;
+  const amount = dailyAmount(streak);
+  Save.data.dailyStreak = streak;
+  Save.data.lastDaily = todayKey();
+  Save.data.coins += amount;
+  Save.flush();
+  NHAudio.bank(3);
+  $('dayAmount').textContent = fmt(amount);
+  $('dayStreak').textContent = streak === 1 ? 'Day one' : 'Day ' + streak + ' in a row';
+  $('dayNext').textContent = streak < 7
+    ? 'Tomorrow: ' + fmt(dailyAmount(streak + 1))
+    : 'Maximum daily reached';
+  show(UI.daily);
+  G.state = 'daily';
+}
+
+function closeDaily(){
+  hide(UI.daily);
+  toGarage();
 }
 
 /* ============================================================
@@ -5944,6 +6114,7 @@ function renderGarage(){
    better next attempt. Everything routes through here. */
 function toGarage(){
   hide(UI.menu); hide(UI.over); hide(UI.map); hide(UI.draft); hide(UI.brief);
+  hide(UI.daily);
   G.state = 'garage';
   show(UI.garage);
   renderGarage();
@@ -6038,6 +6209,7 @@ Ads.boot();
 resize();
 newWorld(true);
 hide(UI.brief); hide(UI.draft); hide(UI.map); hide(UI.contract); hide(UI.depot);
+hide(UI.daily);
 setCtrlLabel();
 setEngineLabel();
 setMute();
@@ -6053,6 +6225,7 @@ window.__NH = {
   beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
   takeContract, openNodes, advance,
   get offers(){ return G.offers; },
+  setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();

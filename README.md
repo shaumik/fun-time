@@ -4,7 +4,8 @@ A demolition-drift **roguelite** for web distribution. Drift to charge a multipl
 traffic to cash it in, and pay for it out of a hull bar that only ever gets thinner. Pick a
 route through a branching board of city districts, sign a contract that pairs a boon with a
 bane before each one, bank a quota under those terms, and draft a chip on the way out.
-Three acts, each ending in a named pursuit unit.
+Three acts — The Grid, the Sunken Docks and the Undercity, each with its own palette,
+skyline and air — every one ending in a named pursuit unit.
 
 **128 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
 generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint

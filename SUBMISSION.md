@@ -121,7 +121,7 @@ Two things I could not verify from here, both worth ten minutes:
 2. **Test on a real iPhone.** iOS Safari is where web games break — audio unlock and
    viewport behaviour especially. Emulated Chromium is not a substitute.
 
-Not built, in case it comes up in review: no leaderboards, no daily reward, no tutorial
+Not built, in case it comes up in review: no leaderboards, no tutorial
 beyond a one-time control hint, and no banner ads (`requestBanner` is not wired — the
 rewarded and midgame placements are).
 

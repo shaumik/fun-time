@@ -79,6 +79,21 @@ accelerates the multiplier, Ghost Town empties the streets and raises the quota 
 Risk is the currency: a risk-2 contract clears into a rare chip and a four-card draft, a
 safe one into a standard three.
 
+**Each act is a different city.** Every act used to drive through the same cyan-and-magenta
+downtown, so a run that was escalating numerically looked identical the whole way up — which
+is exactly what makes a roguelite feel like one level on repeat. Each act now has its own
+ground, asphalt, barrier colours, skyline and air:
+
+| Act | Place | Reads as |
+|---|---|---|
+| 1 | The Grid | Cyan and magenta, tall glass towers, clean air. |
+| 2 | Sunken Docks | Amber and green rails, warm dark asphalt, long low warehouses, fog banks drifting across. |
+| 3 | The Undercity | Violet and white, near-black ground, tall blocks crowding both sides, embers falling past. |
+
+The generator is untouched; only what it is dressed in changes. That is the cheapest large
+change available — the road you drive is identical, and the place you are driving through
+is not.
+
 **Districts** get longer, hungrier and hotter. Quota grows 1.30× per district (×1.45 on an
 Elite) while the player's build grows through chips — the two curves are meant to stay
 close, so a run ends when the build stops keeping up rather than at a fixed wall.
@@ -224,7 +239,18 @@ The Harpoon deliberately has no fire button. An active weapon would put back exa
 kind of control the rest of this pass took out, and a top-down auto-cannon reads as
 generous rather than passive — you still choose the line that puts a car in front of it.
 
-Coins, cars, tuning and hardware persist across runs; the chip build inside a run does not.
+**The first run is not empty.** A new player used to land in the garage with no coins,
+nothing to buy and a bare car — the weakest possible first impression, given to everyone.
+The Ram Prow is now free on the first Play. It costs the economy almost nothing and it means
+the opening minute shows the game doing the thing the game is about.
+
+**The daily drop** is the reason to open the tab tomorrow: 900 coins on day one, climbing to
+6,300 on a seven-day streak and plateauing there, because an unbounded ramp only rewards the
+player who was never going to quit. It pays on the calendar day rather than a rolling 24-hour
+timer, so the claim never drifts later and later, and the streak survives a missed day —
+punishing a single miss is how you lose the player who was going to come back on Wednesday.
+
+Coins, tuning and hardware persist across runs; the chip build inside a run does not.
 The roguelite layer resets, the garage layer does not.
 
 ## Audio
