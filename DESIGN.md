@@ -84,11 +84,19 @@ Elite) while the player's build grows through chips — the two curves are meant
 close, so a run ends when the build stops keeping up rather than at a fixed wall.
 
 **One axis.** There is no handbrake and no nitro button. Steering is the whole control
-surface, on keyboard and on glass alike. Two things follow. The slide is *automatic* —
+surface, on keyboard and on glass alike. Three things follow. The slide is *automatic* —
 lean hard on the wheel above 420 and the tail comes round on its own, so the car still
-looks and sounds like the same car without asking you to operate it. And turn authority
-had to be retuned to sit between the old gripped and drifting rates: set at the full
-drifting rate the car became twitchy, and every correction overshot into a barrier.
+looks and sounds like the same car without asking you to operate it. Turn authority had to
+be retuned to sit between the old gripped and drifting rates: set at the full drifting rate
+the car became twitchy, and every correction overshot into a barrier.
+
+And the car reverses itself. Square onto a rail and the nose has nowhere to go — throttle
+only presses you harder into it and the run ends sitting still, which is a failure the
+player cannot act on. There is no pedal to add, so the car backs out on its own after a
+third of a second pinned, rotating toward the road as it goes, because reversing out still
+pointing at the wall solves nothing. It triggers only when the nose is actually *aimed* at
+the barrier, so crawling along the edge on purpose does not hand you a reverse you did not
+ask for.
 
 **The chain clock.** With no button to release, the wager moved onto a timer. Every wreck
 resets a ~3.2s clock and adds a link; let it run out and the entire pending bank pays
@@ -263,11 +271,23 @@ becomes a virtual stick wherever it lands: sideways steers (analogue, which the 
 cannot give), pulling back is the handbrake, releasing forward banks, and a second contact
 anywhere is nitro.
 
-Three details make it survivable in practice. The anchor trails the thumb, so the stick
-never saturates somewhere you cannot reach. The handbrake has hysteresis — engage at 42% of
-travel, release at 22% — so an unsteady grip does not chatter the drift on and off. And the
-stick draws itself the moment you touch: a target-free control you cannot see is a control
-you cannot learn, so a ring marks the anchor and a dot shows what it is reading.
+Three details make it survivable in practice.
+
+The anchor trails the thumb, so the stick never saturates somewhere you cannot reach.
+
+**Travel and response curve matter more than anything else.** The first version put full
+lock at 13% of screen width — about 50px on a phone — with a linear response, so the gap
+between a lane change and full opposite lock was a thumb twitch and holding a line was
+guesswork. Full lock is now at 26% of width (about 100px), with a 7% deadzone and a squared
+response: 32px of thumb gives 12% of steering, and full lock is still there at the end of
+the travel. Driving the game entirely through the touch layer, a plain proportional
+controller now holds the centre line to about 10% of the road width at top speed and never
+leaves the road.
+
+And the stick draws itself the moment you touch: a target-free control you cannot see is a
+control you cannot learn. A ring marks the anchor, a dot follows the thumb, and a separate
+tick shows what the car is actually being given — after the response curve those are not
+the same place, and hiding that would make the curve feel like lag.
 
 On a phone the primary fail state should stay "missed the quota", not "fumbled a control".
 The pad layout is retained behind a menu toggle for anyone who prefers it.

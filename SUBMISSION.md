@@ -56,7 +56,8 @@ Paste-ready. Edit to taste.
 
 **Controls**
 > Desktop — Arrow keys or A/D to steer. That is the whole control. M to mute.
-> Mobile — touch anywhere and drag sideways to steer. Nothing else to press.
+> Mobile — touch anywhere and drag sideways to steer. Nothing else to press. Hit a rail
+> head-on and the car reverses out by itself.
 
 **Suggested tags:** driving, racing, drift, crash, destruction, roguelite, arcade, 1 player, singleplayer
 

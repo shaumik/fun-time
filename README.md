@@ -38,9 +38,17 @@ eyes are on the road, which is the wrong demand on a phone. Instead the first fi
 becomes a virtual stick wherever it lands:
 
 Drag sideways to steer. That is the entire input — the handbrake and the nitro pull are
-both gone, so the stick carries one axis and there is nothing to aim at. The anchor trails
-your thumb so it never saturates out of reach, and a ring shows where it anchored and what
-it is reading. A two-pad layout is still there behind a **Controls** toggle on the menu.
+both gone, so the stick carries one axis and there is nothing to aim at.
+
+Full lock sits at 26% of screen width (~100px on a phone) with a small deadzone and a
+squared response, so small thumb movements barely turn and holding a line is possible; an
+earlier 50px linear stick made the difference between a lane change and full lock a twitch.
+The anchor trails your thumb so it never saturates out of reach, a ring shows where it
+anchored, and a tick shows what the car is actually being given. A two-pad layout is still
+there behind a **Controls** toggle on the menu.
+
+**The car reverses itself.** Hit a rail square and it backs out after a moment and turns to
+face down the road — there is no reverse control to add in a game with one axis.
 
 - The HUD rails stack in portrait, the draft becomes a single column, and keyboard hints are
   hidden on touch devices.

@@ -2730,11 +2730,14 @@ touchEl.querySelectorAll('.tbtn').forEach(b => {
    the handbrake and the nitro pull are both gone, so there is one axis and
    nothing to aim at. */
 const GS = {
-  on:false, id:-1, ax:0, ay:0, x:0, y:0, steer:0
+  on:false, id:-1, ax:0, ay:0, x:0, y:0, steer:0, raw:0
 };
-const gsMaxX = () => clamp(W * 0.13, 38, 120);   // travel to full lock
+/* Travel to full lock. This was W*0.13 — about 50px on a phone — which meant
+   the difference between a lane change and full opposite lock was a thumb
+   twitch. More travel is what buys you fine control. */
+const gsMaxX = () => clamp(W * 0.26, 78, 190);
 
-function gsReset(){ GS.on = false; GS.id = -1; GS.steer = 0; }
+function gsReset(){ GS.on = false; GS.id = -1; GS.steer = 0; GS.raw = 0; }
 function gsDown(e){
   /* Touch contacts only. A laptop with a touchscreen reports maxTouchPoints
      but is still driven with the keyboard — a mouse click there should not
@@ -2745,7 +2748,7 @@ function gsDown(e){
   if (!GS.on) {
     GS.on = true; GS.id = e.pointerId;
     GS.ax = GS.x = e.clientX; GS.ay = GS.y = e.clientY;
-    GS.steer = 0;
+    GS.steer = 0; GS.raw = 0;
     /* capture so the stick keeps tracking if the thumb leaves the element */
     try { stage.setPointerCapture(e.pointerId); } catch (err) {}
   }
@@ -2759,12 +2762,19 @@ function gsMove(e){
   let dx = GS.x - GS.ax;
   if (dx >  mx) { GS.ax = GS.x - mx; dx =  mx; }
   if (dx < -mx) { GS.ax = GS.x + mx; dx = -mx; }
-  GS.steer = clamp(dx / mx, -1, 1);
+  /* Squared response with a small deadzone: near the centre the stick barely
+     turns, so holding a line is possible, and full lock is still reachable at
+     the end of the travel. A linear stick gives you neither. */
+  const raw = clamp(dx / mx, -1, 1);
+  GS.raw = raw;
+  const a = Math.abs(raw), DZ = 0.07;
+  const t = a < DZ ? 0 : (a - DZ) / (1 - DZ);
+  GS.steer = Math.sign(raw) * (t * t * 0.72 + t * 0.28);
 }
 function gsUp(e){
   if (e.pointerId !== GS.id) return;
   try { stage.releasePointerCapture(e.pointerId); } catch (err) {}
-  GS.on = false; GS.id = -1; GS.steer = 0;
+  GS.on = false; GS.id = -1; GS.steer = 0; GS.raw = 0;
 }
 function swipeMode(){ return hasTouch && Save.data.ctrl !== 'pads'; }
 
@@ -2783,6 +2793,7 @@ function readInput(){
    stable as you drive past it.
    ============================================================ */
 const SEG = 56;
+const REVERSE_TOP = 190;   // how fast the car will back itself off a rail
 
 class Track {
   constructor(){
@@ -2944,11 +2955,12 @@ class Vehicle {
        the moment you drive over it and runs itself down. */
     this.boostT = Math.max(0, this.boostT - dt);
     this.boost = this.boostT > 0 ? 1 : 0;
-    let acc = throttle * s.power * (this.boost ? 1.9 : 1);
+    let acc = throttle * s.power * (this.boost && throttle > 0 ? 1.9 : 1);
 
     const top = s.top * (M ? M.topMul * (1 + this.topBonus) : 1) * (this.boost ? 1.22 : 1);
     lon += acc * dt;
     if (lon > top) lon = damp(lon, top, 3, dt);
+    if (lon < -REVERSE_TOP) lon = -REVERSE_TOP;   // backing out is slow on purpose
     lon *= Math.exp(-(0.42 + this.offroad * 2.4) * dt);
 
     /* grip is what the whole game is built on: releasing it is the verb */
@@ -3023,7 +3035,8 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0 }, missileT:0, shockAt:5
+  pickups:[], power:{ shield:0, surge:0 }, missileT:0, shockAt:5,
+  stuckT:0, reverseT:0
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
@@ -3210,6 +3223,7 @@ function newWorld(ai){
   G.ghost = 0; G.pulseWarn = 0;
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
+  G.stuckT = 0; G.reverseT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
   G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0));
@@ -3792,7 +3806,32 @@ function step(dt){
 
     if (G.ai) autoDrive(car, dt, true);
     else {
-      car.drive(dt, IN.steer, 1);
+      /* Reverse, without a reverse control.
+         Square onto a rail and the nose has nowhere to go: throttle only
+         presses you harder into it and the run ends sitting still. Since
+         steering is the whole control surface there is no pedal to add, so
+         the car backs itself out — and rotates toward the road as it goes,
+         because reversing out still pointing at the wall solves nothing. */
+      const side = Math.sign(loc.lat) || 1;
+      const bnx = -Math.sin(loc.p.a) * side, bny = Math.cos(loc.p.a) * side;
+      const pinned = Math.abs(loc.lat) > roadHalf(loc.p) - car.spec.wid * 0.7;
+      /* aimed at the rail, not merely beside it — otherwise crawling along the
+         edge on purpose would trigger a reverse you did not ask for */
+      const nosing = Math.cos(car.a) * bnx + Math.sin(car.a) * bny > 0.15;
+      if (car.speed < 90 && ((pinned && nosing) || car.offroad)) G.stuckT += dt;
+      else G.stuckT = Math.max(0, G.stuckT - dt * 2.5);
+      if (G.stuckT > 0.30 && G.reverseT <= 0) {
+        G.reverseT = 1.1;
+        toast('Backing out', 'pink');
+      }
+      if (G.reverseT > 0) {
+        G.reverseT -= dt;
+        const want = T.at(car.idx + 2, 0).a;
+        car.a += clamp(adiff(want, car.a), -1.2, 1.2) * 2.4 * dt;
+        if (!nosing && !car.offroad && car.speed > 40) { G.reverseT = 0; G.stuckT = 0; }
+      }
+
+      car.drive(dt, IN.steer, G.reverseT > 0 ? -0.75 : 1);
       const into = barrier(car, loc);
       if (into > 40) {
         /* graze sparks; only a hard perpendicular hit ends the run */
@@ -4595,10 +4634,19 @@ function drawStick(){
   ctx.moveTo(GS.ax - r, GS.ay); ctx.lineTo(GS.ax + r, GS.ay);
   ctx.stroke();
 
-  const px = GS.ax + GS.steer * r;
+  /* the dot is where your thumb is; the tick is what the car is being given,
+     which after the response curve is not the same place */
+  const px = GS.ax + GS.raw * r;
+  const tx = GS.ax + GS.steer * r;
   ctx.strokeStyle = hexA(CL.cyan, 0.35);
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(GS.ax, GS.ay); ctx.lineTo(px, GS.ay); ctx.stroke();
+
+  ctx.strokeStyle = hexA(CL.magenta, 0.75);
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(tx, GS.ay - 11); ctx.lineTo(tx, GS.ay + 11);
+  ctx.stroke();
 
   blitGlow(CL.cyan, px, GS.ay, 26, 26, 0.55);
   ctx.fillStyle = CL.cyan;
@@ -5830,7 +5878,8 @@ window.__NH = {
   get workAvg(){ return workAvg; },
   beginDistrict, takeOffer, districtCfg, showDraft, bank, showMap, enterNode,
   takeContract, openNodes, advance,
-  get offers(){ return G.offers; }
+  get offers(){ return G.offers; },
+  GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();
 
