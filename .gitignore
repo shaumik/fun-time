@@ -1,2 +1,5 @@
+# Harness captures. The test scripts screenshot into whatever directory they
+# are run from, and a `git add -A` once swept 45 MB of them into the repo.
+# Store screenshots live in press/ and are committed deliberately.
+/*.png
 node_modules/
-.DS_Store
