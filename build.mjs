@@ -148,7 +148,7 @@ ${body}
     <div><b>86</b><span>KB, zipped</span></div>
     <div><b>0</b><span>image files</span></div>
     <div><b>0</b><span>audio files</span></div>
-    <div><b>49</b><span>perks in the pool</span></div>
+    <div><b>58</b><span>perks in the pool</span></div>
   </div>
 
   <div class="row">
@@ -185,13 +185,16 @@ ${body}
     <h2>The build</h2>
     <div>
       <p>Wrecks, banks and clears all pay XP into one track: fifteen levels, three perks
-      offered at each, drawn from forty-nine. They lean toward the toys rather than the
-      stat line — a wrecking ball out on a chain, arc lightning that hops car to car, a
-      singularity you plant up the road, escort drones that pick targets and hold a beam
-      on them. Some offers arrive <b>Overclocked</b>: stronger, welded to a permanent curse
-      — narrower streets, heavier traffic, a hotter start. The cost is always on the card.</p>
-      <p>Hull carries between districts, so a run wears down rather than resetting at every
-      line, and the depot's rebuild is worth the district you skip to reach it.</p>
+      offered at each, drawn from fifty-eight. <i>Nine of them are weapons</i>, and you own
+      them outright rather than waiting on a pickup — Kickoff launches the car you just hit
+      down the road as live ordnance that wrecks whatever it bowls into, Fuel Cell makes
+      your wreckage cook off a beat after it lands, Tailgunner lays a burning wake that
+      anything following you drives into. The rest hand you a wrecking ball on a chain, arc
+      lightning that hops car to car, or two escort drones, permanently.</p>
+      <p>Some offers arrive <b>Overclocked</b>: stronger, welded to a permanent curse —
+      narrower streets, heavier traffic, a hotter start. The cost is always on the card. And
+      hull carries between districts, so a run wears down rather than resetting at every
+      line, which is what makes the depot's rebuild worth the district you skip for it.</p>
     </div>
   </div>
 

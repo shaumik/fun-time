@@ -53,7 +53,23 @@ function defaults(){
     startDrones: 0,    // seconds of Escort Drones at each district start
     coinPerWreck: 0,   // garage coins per wreck
     scoreMul: 1,       // flat multiplier on everything banked
-    chainStep: 0       // extra links granted every fifth wreck
+    chainStep: 0,      // extra links granted every fifth wreck
+
+    /* ---- weapons ----
+       Everything above is a number the engine multiplies by. These are
+       systems the engine has to *run*: the perk pool was 49 cards deep and
+       every one of them was a passive buff, and the eight that touched a toy
+       only extended a toy you still had to find on the road. A card that
+       reads "singularities pull harder" is a dead card until a singularity
+       shows up. These grant the verb outright. */
+    punt: 0,           // wrecked cars fire forward and bowl through traffic
+    cook: 0,           // seconds until a wreck detonates; 0 = never
+    cookR: 0,          // detonation radius
+    slick: 0,          // seconds between burning slicks dropped behind you
+    ballAlways: 0,     // the wrecking ball is out for the whole run
+    arcAlways: 0,      // every wreck arcs without the pickup
+    dronesAlways: 0,   // escort drones for the whole run
+    autoload: 0        // seconds between free rockets
   };
 }
 
@@ -84,6 +100,38 @@ const PERKS = [
   { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
     desc:'The multiplier ceiling comes off — ×22.',
     apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+
+  /* ---- weapons: cards that hand you a verb, not a coefficient ----
+     Everything else in this pool multiplies something the engine already
+     does. These make it do something new, and they are owned from the moment
+     you take the card rather than waiting on a pickup to show up. */
+  { id:'w_punt',    name:'Kickoff',        rarity:'uncommon', tag:'Weapon',
+    desc:'The car you hit is launched down the road and wrecks what it bowls into.',
+    apply(M){ M.punt = Math.max(M.punt, 1); } },
+  { id:'w_punt2',   name:'Break Shot',     rarity:'rare',     tag:'Weapon',
+    desc:'Cars you hit are launched, and pass the hit on twice more down the lane.',
+    apply(M){ M.punt = Math.max(M.punt, 1) + 2; } },
+  { id:'w_cook',    name:'Fuel Cell',      rarity:'uncommon', tag:'Weapon',
+    desc:'Wrecks cook off a beat later and take out anything close.',
+    apply(M){ M.cook = M.cook || 0.7; M.cookR = Math.max(M.cookR, 165); } },
+  { id:'w_cook2',   name:'Thermite',       rarity:'rare',     tag:'Weapon',
+    desc:'Wrecks detonate sooner and twice as wide.',
+    apply(M){ M.cook = 0.42; M.cookR = Math.max(M.cookR, 165) + 105; } },
+  { id:'w_slick',   name:'Tailgunner',     rarity:'uncommon', tag:'Weapon',
+    desc:'You leave a burning wake. Anything that follows you into it goes up.',
+    apply(M){ M.slick = M.slick ? M.slick * 0.6 : 0.45; } },
+  { id:'w_ball',    name:'Dead Weight',    rarity:'rare',     tag:'Weapon',
+    desc:'The wrecking ball is out for the rest of the run.',
+    apply(M){ M.ballAlways = 1; } },
+  { id:'w_arc',     name:'Live Wire',      rarity:'rare',     tag:'Weapon',
+    desc:'Every wreck arcs to the nearest car, no pickup needed.',
+    apply(M){ M.arcAlways = 1; } },
+  { id:'w_drones',  name:'Wingmen',        rarity:'rare',     tag:'Weapon',
+    desc:'Two escort drones fly with you for the rest of the run.',
+    apply(M){ M.dronesAlways = 1; } },
+  { id:'w_load',    name:'Autoloader',     rarity:'uncommon', tag:'Weapon',
+    desc:'A rocket loads itself every 5s, forever.',
+    apply(M){ M.autoload = M.autoload ? M.autoload * 0.6 : 5; } },
 
   /* ---- the ball ---- */
   { id:'p_ball1',   name:'Heavy Iron',     rarity:'common',   tag:'Ball',
@@ -232,8 +280,19 @@ function rollPerks(owned, level, takenCurses){
                         : { common: 62, uncommon: 31, rare: 7 };
   const picks = [];
   const used = new Set();
+  /* A weapon is nine cards in fifty-eight, and left to chance a run can go
+     six levels without being offered one — which reads as "this pool is all
+     passive buffs", because for that player it was. So the first weapon is
+     guaranteed: until you own one, one slot in the offer is reserved for it.
+     After that they take their chances with everything else. */
+  const armed = owned.some(id => { const p = perkById(id); return p && p.tag === 'Weapon'; });
   for (let n = 0; n < 3 && pool.length; n++) {
-    const avail = pool.filter(p => !used.has(p.id));
+    let avail = pool.filter(p => !used.has(p.id));
+    if (!armed && n === 0) {
+      const guns = avail.filter(p => p.tag === 'Weapon' &&
+                                     (level >= 4 || p.rarity !== 'rare'));
+      if (guns.length) avail = guns;
+    }
     if (!avail.length) break;
     let total = 0;
     for (const p of avail) total += W[p.rarity];

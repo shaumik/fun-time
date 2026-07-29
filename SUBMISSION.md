@@ -51,7 +51,9 @@ Paste-ready. Edit to taste.
 >
 > Every district demands a points quota before the checkpoint, and you choose the route and
 > the event you drive under before each one — risk pays XP, and XP is the only thing that
-> levels you. Fifteen levels, three perks offered at each, drawn from forty-nine. Some come
+> levels you. Fifteen levels, three perks offered at each, drawn from fifty-eight — nine of
+> them weapons you own outright: a car you punt down the road that bowls through traffic,
+> wreckage that cooks off behind you, a burning wake. Some come
 > Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
 > traffic, a hotter start. Every third district sends a named pursuit unit after you, and
 > the only way to hurt it is to keep banking while it rams you.

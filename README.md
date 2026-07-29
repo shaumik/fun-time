@@ -4,7 +4,8 @@ A demolition-drift **roguelite** for web distribution. Drift to charge a multipl
 traffic to cash it in, and pay for it out of a hull bar that only ever gets thinner. Pick a
 route through a branching board of city districts, pick an event that pairs a boon with a
 bane before each one, and bank a quota under those terms. Wrecks and clears pay XP; every
-level hands you a perk from three, fifteen levels deep out of a pool of forty-nine.
+level hands you a perk from three, fifteen levels deep out of a pool of fifty-eight — nine
+of which are weapons that fire on their own rather than multiplying a number.
 Three acts — The Grid, the Sunken Docks and the Undercity, each with its own palette,
 skyline and air — every one ending in a named pursuit unit.
 

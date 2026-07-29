@@ -1925,7 +1925,7 @@ body{overflow:auto;display:block}
     <div><b>86</b><span>KB, zipped</span></div>
     <div><b>0</b><span>image files</span></div>
     <div><b>0</b><span>audio files</span></div>
-    <div><b>49</b><span>perks in the pool</span></div>
+    <div><b>58</b><span>perks in the pool</span></div>
   </div>
 
   <div class="row">
@@ -1962,13 +1962,16 @@ body{overflow:auto;display:block}
     <h2>The build</h2>
     <div>
       <p>Wrecks, banks and clears all pay XP into one track: fifteen levels, three perks
-      offered at each, drawn from forty-nine. They lean toward the toys rather than the
-      stat line — a wrecking ball out on a chain, arc lightning that hops car to car, a
-      singularity you plant up the road, escort drones that pick targets and hold a beam
-      on them. Some offers arrive <b>Overclocked</b>: stronger, welded to a permanent curse
-      — narrower streets, heavier traffic, a hotter start. The cost is always on the card.</p>
-      <p>Hull carries between districts, so a run wears down rather than resetting at every
-      line, and the depot's rebuild is worth the district you skip to reach it.</p>
+      offered at each, drawn from fifty-eight. <i>Nine of them are weapons</i>, and you own
+      them outright rather than waiting on a pickup — Kickoff launches the car you just hit
+      down the road as live ordnance that wrecks whatever it bowls into, Fuel Cell makes
+      your wreckage cook off a beat after it lands, Tailgunner lays a burning wake that
+      anything following you drives into. The rest hand you a wrecking ball on a chain, arc
+      lightning that hops car to car, or two escort drones, permanently.</p>
+      <p>Some offers arrive <b>Overclocked</b>: stronger, welded to a permanent curse —
+      narrower streets, heavier traffic, a hotter start. The cost is always on the card. And
+      hull carries between districts, so a run wears down rather than resetting at every
+      line, which is what makes the depot's rebuild worth the district you skip for it.</p>
     </div>
   </div>
 
@@ -2597,7 +2600,23 @@ function defaults(){
     startDrones: 0,    // seconds of Escort Drones at each district start
     coinPerWreck: 0,   // garage coins per wreck
     scoreMul: 1,       // flat multiplier on everything banked
-    chainStep: 0       // extra links granted every fifth wreck
+    chainStep: 0,      // extra links granted every fifth wreck
+
+    /* ---- weapons ----
+       Everything above is a number the engine multiplies by. These are
+       systems the engine has to *run*: the perk pool was 49 cards deep and
+       every one of them was a passive buff, and the eight that touched a toy
+       only extended a toy you still had to find on the road. A card that
+       reads "singularities pull harder" is a dead card until a singularity
+       shows up. These grant the verb outright. */
+    punt: 0,           // wrecked cars fire forward and bowl through traffic
+    cook: 0,           // seconds until a wreck detonates; 0 = never
+    cookR: 0,          // detonation radius
+    slick: 0,          // seconds between burning slicks dropped behind you
+    ballAlways: 0,     // the wrecking ball is out for the whole run
+    arcAlways: 0,      // every wreck arcs without the pickup
+    dronesAlways: 0,   // escort drones for the whole run
+    autoload: 0        // seconds between free rockets
   };
 }
 
@@ -2628,6 +2647,38 @@ const PERKS = [
   { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
     desc:'The multiplier ceiling comes off — ×22.',
     apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+
+  /* ---- weapons: cards that hand you a verb, not a coefficient ----
+     Everything else in this pool multiplies something the engine already
+     does. These make it do something new, and they are owned from the moment
+     you take the card rather than waiting on a pickup to show up. */
+  { id:'w_punt',    name:'Kickoff',        rarity:'uncommon', tag:'Weapon',
+    desc:'The car you hit is launched down the road and wrecks what it bowls into.',
+    apply(M){ M.punt = Math.max(M.punt, 1); } },
+  { id:'w_punt2',   name:'Break Shot',     rarity:'rare',     tag:'Weapon',
+    desc:'Cars you hit are launched, and pass the hit on twice more down the lane.',
+    apply(M){ M.punt = Math.max(M.punt, 1) + 2; } },
+  { id:'w_cook',    name:'Fuel Cell',      rarity:'uncommon', tag:'Weapon',
+    desc:'Wrecks cook off a beat later and take out anything close.',
+    apply(M){ M.cook = M.cook || 0.7; M.cookR = Math.max(M.cookR, 165); } },
+  { id:'w_cook2',   name:'Thermite',       rarity:'rare',     tag:'Weapon',
+    desc:'Wrecks detonate sooner and twice as wide.',
+    apply(M){ M.cook = 0.42; M.cookR = Math.max(M.cookR, 165) + 105; } },
+  { id:'w_slick',   name:'Tailgunner',     rarity:'uncommon', tag:'Weapon',
+    desc:'You leave a burning wake. Anything that follows you into it goes up.',
+    apply(M){ M.slick = M.slick ? M.slick * 0.6 : 0.45; } },
+  { id:'w_ball',    name:'Dead Weight',    rarity:'rare',     tag:'Weapon',
+    desc:'The wrecking ball is out for the rest of the run.',
+    apply(M){ M.ballAlways = 1; } },
+  { id:'w_arc',     name:'Live Wire',      rarity:'rare',     tag:'Weapon',
+    desc:'Every wreck arcs to the nearest car, no pickup needed.',
+    apply(M){ M.arcAlways = 1; } },
+  { id:'w_drones',  name:'Wingmen',        rarity:'rare',     tag:'Weapon',
+    desc:'Two escort drones fly with you for the rest of the run.',
+    apply(M){ M.dronesAlways = 1; } },
+  { id:'w_load',    name:'Autoloader',     rarity:'uncommon', tag:'Weapon',
+    desc:'A rocket loads itself every 5s, forever.',
+    apply(M){ M.autoload = M.autoload ? M.autoload * 0.6 : 5; } },
 
   /* ---- the ball ---- */
   { id:'p_ball1',   name:'Heavy Iron',     rarity:'common',   tag:'Ball',
@@ -2776,8 +2827,19 @@ function rollPerks(owned, level, takenCurses){
                         : { common: 62, uncommon: 31, rare: 7 };
   const picks = [];
   const used = new Set();
+  /* A weapon is nine cards in fifty-eight, and left to chance a run can go
+     six levels without being offered one — which reads as "this pool is all
+     passive buffs", because for that player it was. So the first weapon is
+     guaranteed: until you own one, one slot in the offer is reserved for it.
+     After that they take their chances with everything else. */
+  const armed = owned.some(id => { const p = perkById(id); return p && p.tag === 'Weapon'; });
   for (let n = 0; n < 3 && pool.length; n++) {
-    const avail = pool.filter(p => !used.has(p.id));
+    let avail = pool.filter(p => !used.has(p.id));
+    if (!armed && n === 0) {
+      const guns = avail.filter(p => p.tag === 'Weapon' &&
+                                     (level >= 4 || p.rarity !== 'rare'));
+      if (guns.length) avail = guns;
+    }
     if (!avail.length) break;
     let total = 0;
     for (const p of avail) total += W[p.rarity];
@@ -3728,7 +3790,7 @@ const G = {
   state:'menu',      // menu | brief | play | levelup | cleared | crash | over | garage
   ai:true,
   track:null, car:null, spec:null,
-  traffic:[], police:[], boss:null, hazards:[],
+  traffic:[], police:[], boss:null, hazards:[], slicks:[], slickT:0,
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
@@ -3740,7 +3802,11 @@ const G = {
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
-  stuckT:0, reverseT:0
+  stuckT:0, reverseT:0,
+  /* weapon fire counters. Five increments in hot paths, and the only way a
+     test can assert that a weapon perk did something rather than that the
+     modifier table changed — the difference the whole pool turns on. */
+  wstat:{ punt:0, cook:0, slick:0, arc:0, load:0 }
 };
 
 const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
@@ -3951,6 +4017,7 @@ function newWorld(ai){
   G.track = new Track();
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
+  G.slicks = []; G.slickT = 0;
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
   G.car.mods = G.run ? G.run.M : NHChips.defaults();
@@ -4305,6 +4372,8 @@ function smash(v, rel){
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
   toast('Wreck +' + fmt(gain), 'gold');
   if (Hangar.has('shockplate') && G.chain >= G.shockAt) { G.shockAt = G.chain + 5; shockwave(); }
+  if (M.punt) punt(v, M.punt);
+  if (M.cook) { v.cook = M.cook; v.cookGen = 0; }
   arcFrom(v);
   addXP(1);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
@@ -4315,6 +4384,172 @@ function smash(v, rel){
   }
 }
 
+
+/* ============================================================
+   WEAPONS
+   The perk pool was 49 passive buffs. These are the systems that let a perk
+   hand you a verb instead of a coefficient — a wrecked car you can bowl down
+   the road, wreckage that cooks off behind you, a burning trail. Each one
+   pays into the same chain as a hand-made wreck, because the chain is the
+   game and a weapon that scored on its own ledger would compete with it.
+   ============================================================ */
+
+/* Every weapon ends up here: wreck a live car with something that is not the
+   player's bumper, pay it into the chain, and leave the hull alone. */
+function killCar(t, vx, vy, pay){
+  if (t.wrecked) return false;
+  const M = G.run.M;
+  t.vx += vx; t.vy += vy;
+  t.spin = rnd(-11, 11);
+  t.wrecked = 1; t.hitFlash = 1;
+  G.totalWreck++;
+  G.pending += Math.round((pay || 200) * G.mult * M.wreckMul
+             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
+  G.chain += 1;
+  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  G.topMult = Math.max(G.topMult, G.mult);
+  G.chainT = G.chainMax = chainTime();
+  addXP(1);
+  if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
+  return true;
+}
+
+/* KICKOFF — the car you hit does not tumble aside, it goes down the road
+   ahead of you at speed and takes out whatever it reaches. Traffic is
+   ammunition; this is the card where the game means it literally. Hops are
+   capped so a dense lane cannot cascade the whole district in one frame. */
+function punt(v, hops){
+  const car = G.car;
+  G.wstat.punt++;
+  const cs = Math.cos(car.a), sn = Math.sin(car.a);
+  v.vx = cs * 1450; v.vy = sn * 1450;
+  v.spin = rnd(-4, 4);
+  v.punt = hops;
+  v.puntHit = null;
+  for (let i = 0; i < 14; i++)
+    spawn(v.x, v.y, cs * rnd(120, 420) + rnd(-90, 90), sn * rnd(120, 420) + rnd(-90, 90),
+          rnd(0.2, 0.5), rnd(3, 7), '255,220,140', true, -6);
+}
+
+/* A punted car is live ordnance until it slows down. Runs inside the debris
+   branch of the traffic step, where the punted body is already moving. */
+function stepPunt(p){
+  if (!p.punt || p.punt <= 0) return;
+  const sp = hyp(p.vx, p.vy);
+  if (sp < 380) { p.punt = 0; return; }
+  for (const t of G.traffic) {
+    if (t === p || t.wrecked) continue;
+    const r = (t.spec.len + p.spec.len) * 0.55;
+    if (hyp(t.x - p.x, t.y - p.y) > r) continue;
+    const nx = (t.x - p.x) / (r || 1), ny = (t.y - p.y) / (r || 1);
+    if (!killCar(t, nx * 300 + p.vx * 0.5, ny * 300 + p.vy * 0.5, 230)) continue;
+    NHAudio.smash(0.8);
+    G.flash = Math.max(G.flash, 0.22);
+    /* the strike passes on, one hop shorter, and the striker loses steam */
+    if (p.punt > 1) { t.vx = p.vx * 0.8; t.vy = p.vy * 0.8; t.punt = p.punt - 1; t.spin = rnd(-4, 4); }
+    p.vx *= 0.55; p.vy *= 0.55;
+    p.punt = 0;
+    break;
+  }
+}
+
+/* FUEL CELL — wreckage cooks off a beat after it lands. Unlike the arc,
+   which is instant and picks a target, this is positional: what you leave
+   behind you is dangerous, so where you wreck a car starts to matter as much
+   as whether you reach it. */
+function stepCook(v, dt){
+  if (!v.cook) return;
+  v.cook -= dt;
+  if (v.cook > 0) return;
+  const gen = v.cookGen || 0;
+  v.cook = 0;
+  G.wstat.cook++;
+  const M = G.run.M, R = M.cookR || 165;
+  G.flash = Math.max(G.flash, 0.3);
+  hitstop(0.04, 14);
+  NHAudio.smash(1.15);
+  for (let i = 0; i < 34; i++) {
+    const a = rnd(0, TAU), sp = rnd(180, 720);
+    spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.25, 0.7), rnd(4, 12),
+          i % 3 ? '255,170,80' : '255,90,50', true, -7);
+  }
+  for (const t of G.traffic) {
+    if (t.wrecked) continue;
+    const d = hyp(t.x - v.x, t.y - v.y);
+    if (d > R) continue;
+    if (!killCar(t, (t.x - v.x) / (d || 1) * 620, (t.y - v.y) / (d || 1) * 620, 210)) continue;
+    /* Bounded at two generations. Unbounded, this is a wreck fountain: each
+       detonation seeds its victims, traffic refills the gap ahead, and the
+       fresh cars detonate on arrival. One run measured 10,434 wrecks and hit
+       the level cap on four districts. Two generations is a satisfying
+       cluster; three is a chain letter. */
+    if (gen < 2) { t.cook = M.cook; t.cookGen = gen + 1; }
+  }
+  /* pursuit is caught in it too — the same knock a Static Discharge bank
+     gives, so being spun out reads the same wherever it comes from */
+  for (const p of G.police) {
+    const d = hyp(p.x - v.x, p.y - v.y);
+    if (d > R) continue;
+    p.vx += (p.x - v.x) / (d || 1) * 520; p.vy += (p.y - v.y) / (d || 1) * 520;
+    p.a += rnd(-1.7, 1.7);
+    p.hitFlash = 1;
+  }
+}
+
+/* TAILGUNNER — a burning slick every few seconds, laid where you have just
+   been. The only perk that points backwards: everything else in the pool
+   rewards what is in front of you, and pursuit sits behind. */
+function stepSlicks(dt){
+  const M = G.run && G.run.M, car = G.car;
+  if (M && M.slick && G.state === 'play') {
+    G.slickT -= dt;
+    if (G.slickT <= 0) {
+      G.slickT = M.slick;
+      G.wstat.slick++;
+      /* Laid as a continuous wake rather than discrete pools. A pool every
+         three seconds was invisible: the camera looks ahead, so at 350km/h
+         the thing you dropped was off the bottom of the frame before you
+         could see it land, and a weapon you never see is a stat line. */
+      G.slicks.push({ x: car.x - Math.cos(car.a) * 40, y: car.y - Math.sin(car.a) * 40,
+                      life: 3.4, r: 68, t: 0 });
+      if (G.slicks.length > 34) G.slicks.shift();
+    }
+  }
+  for (let i = G.slicks.length - 1; i >= 0; i--) {
+    const s = G.slicks[i];
+    s.life -= dt; s.t += dt;
+    if (s.life <= 0) { G.slicks.splice(i, 1); continue; }
+    if (Math.random() < dt * 14)
+      spawn(s.x + rnd(-s.r, s.r), s.y + rnd(-s.r, s.r), rnd(-30, 30), rnd(-30, 30),
+            rnd(0.3, 0.8), rnd(4, 9), '255,150,60', true, -30);
+    for (const t of G.traffic) {
+      if (t.wrecked) continue;
+      if (hyp(t.x - s.x, t.y - s.y) > s.r + 16) continue;
+      const d = hyp(t.x - s.x, t.y - s.y) || 1;
+      killCar(t, (t.x - s.x) / d * 380, (t.y - s.y) / d * 380, 180);
+    }
+    for (const p of G.police) {
+      const d = hyp(p.x - s.x, p.y - s.y);
+      if (d > s.r + 16) continue;
+      p.vx += (p.x - s.x) / (d || 1) * 300; p.vy += (p.y - s.y) / (d || 1) * 300;
+      p.a += rnd(-1.3, 1.3);
+      p.hitFlash = 1;
+    }
+  }
+}
+
+/* AUTOLOADER — a rocket every few seconds for the rest of the run, so the
+   Bazooka perks stop being dead cards on a run that never found a Bazooka. */
+function stepAutoload(dt){
+  const M = G.run && G.run.M;
+  if (!M || !M.autoload || G.state !== 'play') return;
+  G.loadT = (G.loadT || 0) - dt;
+  if (G.loadT > 0) return;
+  G.loadT = M.autoload;
+  G.wstat.load++;
+  G.rockets = Math.min(G.rockets + 1, 6);
+}
 
 /* Getting hit burns clock, not links. Docking the chain itself would drop
    the multiplier by an amount the player never sees coming; taking time off
@@ -4528,7 +4763,22 @@ function stepPowers(dt){
                             if (G.power.ball === 0) G.ball = null; }
   if (G.power.drones > 0) { G.power.drones = Math.max(0, G.power.drones - dt);
                             if (G.power.drones === 0) G.drones = []; }
+  /* the perks that grant a toy outright keep its timer topped up, so the
+     system downstream never has to know where the toy came from */
+  const PM = G.run ? G.run.M : null;
+  const pcar = G.car;
+  if (PM && PM.ballAlways) {
+    G.power.ball = Math.max(G.power.ball, 2);
+    if (!G.ball) G.ball = { x:pcar.x, y:pcar.y, vx:0, vy:0, ang:pcar.a + Math.PI };
+  }
+  if (PM && PM.dronesAlways) {
+    G.power.drones = Math.max(G.power.drones, 2);
+    if (G.drones.length < 2)
+      G.drones = [-1, 1].map(side => ({ x:pcar.x, y:pcar.y, side, vx:0, vy:0,
+                                        target:null, dwell:0, ang:0 }));
+  }
   stepBall(dt); stepWells(dt); stepDrones(dt); stepScav(dt);
+  stepSlicks(dt); stepAutoload(dt);
   for (let i = G.arcs.length - 1; i >= 0; i--)
     if ((G.arcs[i].t -= dt) <= 0) G.arcs.splice(i, 1);
   /* eased rather than switched, so it lands as a swell instead of a jolt */
@@ -4769,7 +5019,7 @@ function stepBall(dt){
    which turns a crowded lane from a problem into the reason you went there.
    ============================================================ */
 function arcFrom(src, depth){
-  if (G.power.arc <= 0) return;
+  if (G.power.arc <= 0 && !(G.run && G.run.M.arcAlways)) return;
   const hops = depth || 0;
   if (hops >= 3 + ((G.run && G.run.M.arcHops) || 0)) return;
   const M = G.run.M;
@@ -4781,6 +5031,7 @@ function arcFrom(src, depth){
   }
   if (!best) return;
 
+  G.wstat.arc++;
   G.arcs.push({ ax:src.x, ay:src.y, bx:best.x, by:best.y, t:0.22 });
   const nx = (best.x - src.x) / (bd || 1), ny = (best.y - src.y) / (bd || 1);
   best.vx += nx * 380; best.vy += ny * 380;
@@ -5023,6 +5274,7 @@ function takePerk(i){
   if (!p) return;
   G.run.perks.push(p.id);
   rebuildMods();
+  renderBuild();
   NHAudio.chip();
   hide(UI.levelup);
   UI.hud.classList.remove('off');
@@ -5420,10 +5672,14 @@ function step(dt){
     if (t.wrecked) {
       t.a += t.spin * dt;
       t.spin *= Math.exp(-1.2 * dt);
-      t.vx *= Math.exp(-0.9 * dt); t.vy *= Math.exp(-0.9 * dt);
+      /* a punted car keeps its legs: bleeding it off at the debris rate
+         stopped it a car length short of anything worth hitting */
+      const drag = t.punt ? 0.22 : 0.9;
+      t.vx *= Math.exp(-drag * dt); t.vy *= Math.exp(-drag * dt);
       t.x += t.vx * dt; t.y += t.vy * dt;
       t.hitFlash = Math.max(0, t.hitFlash - dt * 3);
-      if (t.idx < car.idx - 24) { G.traffic.splice(i, 1); }
+      if (playing) { stepPunt(t); stepCook(t, dt); }
+      if (t.idx < car.idx - 24 && !t.punt) { G.traffic.splice(i, 1); }
       continue;
     }
     autoDrive(t, dt * G.worldSlow, false);
@@ -5715,6 +5971,61 @@ function drawParticles(){
     ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
     ctx.fill();
   }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* Burning slicks, drawn additively under the cars so the road glows through
+   the fire rather than the pool sitting on it like a decal.
+
+   Composited with 'screen' rather than 'lighter'. Additive was the obvious
+   choice and it was wrong: a wake is dense enough that three blobs overlap,
+   and 3x an orange clips both R and G to 255 — the fire came out white, then
+   the bloom pass finished the job and it read as smoke. Screen saturates
+   toward the source colour instead of toward white, so a thick patch of it
+   is deep orange rather than blown out.
+
+   Also cheap by construction: one radial gradient per slick per frame
+   allocates 34 objects a frame at this drop rate, so the blob is baked once
+   and blitted. */
+let slickSprite = null;
+function makeSlickSprite(){
+  const R = 64, c = document.createElement('canvas');
+  c.width = c.height = R * 2;
+  const g = c.getContext('2d');
+  const rad = g.createRadialGradient(R, R, 0, R, R, R);
+  rad.addColorStop(0,    'rgba(255,196,92,0.98)');
+  rad.addColorStop(0.30, 'rgba(255,132,38,0.78)');
+  rad.addColorStop(0.64, 'rgba(228,58,20,0.34)');
+  rad.addColorStop(1,    'rgba(180,30,12,0)');
+  g.fillStyle = rad;
+  g.fillRect(0, 0, R * 2, R * 2);
+  return c;
+}
+
+/* Burning slicks, drawn under the cars so the road glows through the fire
+   rather than the pool sitting on it like a decal.
+
+   Composited with 'screen' rather than 'lighter'. Additive was the obvious
+   choice and it was wrong: a wake is dense enough that three blobs overlap,
+   and three times an orange clips both R and G to 255 — the fire came out
+   white, and the bloom pass finished the job. Screen saturates toward the
+   source colour instead of toward white, so a thick patch reads as deep
+   orange rather than blown out.
+
+   Cheap by construction: one gradient per slick per frame would allocate
+   thirty-odd objects a frame at this drop rate, so the blob is baked once
+   and blitted. */
+function drawSlicks(){
+  if (!G.slicks.length) return;
+  if (!slickSprite) slickSprite = makeSlickSprite();
+  ctx.globalCompositeOperation = 'screen';
+  for (const s of G.slicks) {
+    const fade = clamp(Math.min(s.life, 1.2) / 1.2, 0, 1);
+    const r = s.r * (0.86 + Math.sin(s.t * 8 + s.x * 0.01) * 0.14);
+    ctx.globalAlpha = 0.95 * fade;
+    ctx.drawImage(slickSprite, s.x - r, s.y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -6394,6 +6705,7 @@ function render(){
   drawRoad();
   drawSkids();
   drawLamps();
+  drawSlicks();
   drawHazards();
   drawToys();
   drawPickups();

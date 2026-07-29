@@ -254,9 +254,29 @@ so the correct play is always slightly more dangerous than the comfortable one.
 
 **Perks** are the build, and there is exactly one track. Wrecks, banks and district clears
 all pay XP; fifteen levels deep, three cards offered at each, drawn from a pool of
-forty-nine across six tags. Effects are declarative — every perk writes into one flat
-modifier table the physics and scoring read each frame — so builds stack and interact
-without special cases anywhere in the engine.
+fifty-eight. Effects are declarative — every perk writes into one flat modifier table the
+physics and scoring read each frame — so builds stack and interact without special cases
+anywhere in the engine.
+
+**Nine of them are weapons**, and that distinction is the point. The pool was forty-nine
+cards and every one was a coefficient: the table multiplied harder, the clock ran longer,
+the hull held more. Even the cards that named a toy only *extended* a toy you still had to
+find on the road, so "singularities pull half again as hard" was a dead card on a run that
+never saw a singularity. A weapon card grants the verb outright, from the moment you take
+it. Kickoff launches the car you hit down the road as live ordnance that wrecks whatever it
+bowls into — the game taking its own "traffic is ammunition" line literally, and the first
+card that makes *where the lane goes* matter as much as which car you reach. Fuel Cell
+makes your wreckage cook off a beat after it lands, so what you leave behind is a hazard
+and the shape of the pile-up starts to matter. Tailgunner lays a burning wake, and is the
+only card in the pool that points backwards — everything else rewards what is ahead, and
+pursuit sits behind. The rest hand you the ball, the arc, the drones or a self-loading
+rocket permanently, which is also what makes the eight amplifier cards worth drawing.
+
+Measured against the same bot on the same track, a weapon roughly doubles the kill rate in
+an eight-second window. So the first one is guaranteed rather than left to chance: until
+you own a weapon, one of the three slots is reserved for one. Nine cards in fifty-eight
+means an unlucky run could go six levels without seeing one, and that run would be right to
+conclude the pool is all passive buffs — because for that player it was.
 
 This used to be two systems. Chips were drafted after a district, perks on level-up, and
 both were the same object: run-long modifiers picked from three cards, writing into the same
@@ -576,7 +596,7 @@ regardless of render scale. Only the game world softens.
 ## Scope of this prototype
 
 Built: full drift model with self-aligning torque, procedural districts, quota and boss
-objectives, three boss archetypes with distinct mechanics, 49 perks and 6 curses with a
+objectives, three boss archetypes with distinct mechanics, 58 perks and 6 curses with a
 level-weighted offer, traffic and pursuit AI, spike-strip hazards, off-screen threat indicators,
 particles and decals, bloom pipeline with adaptive quality, synthesised music and SFX,
 garage with four cars and four upgrade tracks, localStorage persistence, and a
