@@ -461,8 +461,8 @@ from wrecks and districts cleared — a casual run pays much what it always did,
 pays an eighth, and the worst-case grind for any single item is four to six runs with the
 daily drop closing the gap.
 
-**The Crew** is the garage's third tier and its long sink: fifteen permanent ranks across
-three doctrines — Offense (wreck pay, First Blood, Opening Salvo, wider blasts, boss
+**The Crew** is the garage's third tier and its long sink: fifteen permanent nodes (twenty
+ranks) across three doctrines — Offense (wreck pay, First Blood, Opening Salvo, wider blasts, boss
 damage), Defense (hull, cheaper walls, faster heat decay under pressure, one survived
 crash per run) and Greed (coins, XP, the daily drop, heat payout, starting at level 2).
 ~150,000 coins to finish. Every rank is felt in-run, and the quota index counts crew ranks

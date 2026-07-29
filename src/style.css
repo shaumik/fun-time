@@ -293,7 +293,10 @@ body{
 
 /* toasts */
 #toasts{
-  position:absolute;left:50%;top:calc(var(--u)*24);transform:translateX(-50%);
+  /* below the centre HUD stack — at 24u the rail sat exactly on the pile-up
+     counter and convoy badge, and a hot chain turned the screen centre into
+     word soup at precisely the moments that mattered */
+  position:absolute;left:50%;top:36%;transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
@@ -595,6 +598,7 @@ body{
   box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
 }
 .ovBadge.hide{display:none}
+.btn.hide{display:none}
 .ovScore{
   font-size:calc(var(--u)*9);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;

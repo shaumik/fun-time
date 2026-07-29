@@ -100,8 +100,9 @@ const Hangar = {
 /* ============================================================
    CREW — the permanent skill tree
    Hardware changes a verb; the crew shifts the odds. Three doctrines,
-   fifteen ranks, ~150k coins to finish — the long-term sink the six
-   hardware items alone could not carry, and every rank is felt in-run.
+   fifteen nodes over twenty ranks, ~160k coins to finish — the long-term
+   sink the six hardware items alone could not carry, and every rank is
+   felt in-run.
    ============================================================ */
 const TREE = [
   { id:'t_prow',   br:'offense', name:'Sharpened Prow',  ranks:3, cost:[1800, 4000, 9000],
@@ -120,6 +121,8 @@ const TREE = [
     desc:'Walls cost 40% less hull.' },
   { id:'t_cool',   br:'defense', name:'Cool Head',       ranks:1, cost:[10000],
     desc:'Below 30% hull, heat drains 40% faster.' },
+  { id:'t_wind',   br:'defense', name:'Second Wind',     ranks:1, cost:[7500],
+    desc:'Banking welds on 2 extra hull.' },
   { id:'t_cage',   br:'defense', name:'Safety Cage',     ranks:1, cost:[18000],
     desc:'Survive one fatal crash per run.' },
   { id:'t_change', br:'greed',   name:'Loose Change',    ranks:3, cost:[1200, 3000, 7000],
@@ -152,6 +155,7 @@ const Tree = {
     M.wreckMul += 0.06 * Tree.rank('t_prow');
     if (Tree.has('t_chain') && M.cookR) M.cookR *= 1.3;
     if (Tree.has('t_exec')) M.convoyArmour = (M.convoyArmour || 0) + 1;
+    if (Tree.has('t_wind')) M.bankHeal = (M.bankHeal || 0) + 2;
     M.wallMul = Tree.has('t_hands') ? 0.6 : 1;
   }
 };
@@ -1231,7 +1235,7 @@ function addTraffic(ahead){
       len:56, wid:26, nose:0.85, tail:0.9,
       col:'#5E6B85', col2:'#11141F', power:300, grip:8, top:rnd(200, 280)
     });
-  } else if (roll < 0.18 && G.tier >= 2) {
+  } else if (roll < 0.18 && (G.tier >= 2 || (G.tier === 1 && roll < 0.155))) {
     arch = 'bike';
     spec = Object.assign({}, c, {
       len:30, wid:13, nose:0.5, tail:0.6,
@@ -1371,7 +1375,10 @@ function stepBoss(dt){
       G.shake = Math.max(G.shake, 22);
       car.hitFlash = 1; car.inv = 0.5;
       burnChain(1.2);
-      damage(b.charge > 0 ? 26 : 18, 'boss');
+      /* the first boss is where casual runs were ending — soften the rams
+         while the save is still learning the fight */
+      damage(Math.round((b.charge > 0 ? 26 : 18)
+           * ((Save.data.runs || 0) < 5 ? 0.6 : 1)), 'boss');
       hitstop(0.06, 24);
       NHAudio.hit(1.2);
     }
@@ -1871,10 +1878,13 @@ function addPickup(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
+  /* a boss fight triples the odds of a Repair on the road: the fight is a
+     race between two health bars, and the player's needs a supply line */
+  const wOf = k => k.id === 'repair' && G.boss ? k.w * 3 : k.w;
   let total = 0;
-  for (const k of POWERS) total += k.w;
+  for (const k of POWERS) total += wOf(k);
   let r = Math.random() * total, kind = POWERS[0];
-  for (const k of POWERS) { r -= k.w; if (r <= 0) { kind = k; break; } }
+  for (const k of POWERS) { r -= wOf(k); if (r <= 0) { kind = k; break; } }
   const pos = G.track.at(idx, (LANES[rint(0, LANES.length)] + rnd(-0.05, 0.05)) * roadHalf(p));
   G.pickups.push({ kind, x:pos.x, y:pos.y, idx, spin:rnd(0, TAU), got:0 });
 }
@@ -2448,14 +2458,28 @@ const LEVEL_CAP = 15;
 /* Clearing a district pays a large XP lump on top of the wrecks, so there
    is exactly one level track rather than two counters that drift apart —
    the old clear-grants-a-free-perk path handed out 21 perks by level 12. */
-/* First level cheap so the first perk card lands ~20s into a first run;
-   the tail flattened so a casual 5-district run still reaches the
-   rare-heavy offer tables instead of dying at level 4. */
-const xpFor = l => l <= 1 ? 26 : 32 + l * 7;
+/* First level cheap so the first perk card lands ~20s into a first run.
+   The tail is quadratic: a flat-linear curve capped a skilled run at level
+   15 inside act 1 — measured, 3.8 level-ups per district and then ten
+   straight districts of silence, which mutes the game's own addiction
+   engine for exactly the players who are winning. Early levels are still
+   cheap (casual cadence unchanged); the cap now lands mid act 2 or later. */
+const xpFor = l => l <= 1 ? 26 : Math.round(18 + l * l * 2.2);
 
 function addXP(n){
   const run = G.run;
-  if (!run || run.level >= LEVEL_CAP) return;
+  if (!run) return;
+  if (run.level >= LEVEL_CAP) {
+    /* past the cap the meter still pays: every 300 overflow XP is a 150-coin
+       dividend, so a capped run never goes fully silent */
+    run.xpOverflow = (run.xpOverflow || 0) + n;
+    if (run.xpOverflow >= 300) {
+      run.xpOverflow -= 300;
+      G.coinsRun += 150;
+      toast('Veteran dividend +150c', 'gold');
+    }
+    return;
+  }
   run.xp += n * (run.L ? run.L.xpMul : 1) * (run.overtime ? 1.5 : 1)
               * (Tree.has('t_know') ? 1.15 : 1);
   while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
@@ -2682,17 +2706,24 @@ function bank(){
   const M = G.run.M;
   const heatMul = 1 + G.tier * (Tree.has('t_roller') ? 0.45 : 0.35)
                 + (G.tier >= 2 ? M.heatBonus : 0);
+  /* Overtime banking pays half score. The district is already won; XP (×1.5)
+     carries the incentive to keep driving, and without the taper a casual
+     district-2 surplus banked 307k against an 8.8k quota — score stopped
+     meaning anything the leaderboard could compare. */
   const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
+              * (G.run.overtime ? 0.5 : 1)
               * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
 
   G.score += gained;
   G.run.banked += gained;
   addXP(Math.min(6, Math.round(gained / 2600)));
-  /* Scaled to the quota, not a constant: at a flat /14000 the late-game
-     40k banks pegged heat at 3.0 permanently from district two, and the
-     whole pursuit ladder became background. A quota's worth of banking is
-     ~+0.67 heat at any depth, so decay actually matters mid-district. */
-  G.heat = Math.min(3.0, G.heat + gained / Math.max(14000, G.run.quota * 1.5));
+  /* Scaled to the quota AND capped per bank: chain-multiplier inflation
+     means income can outrun any fixed divisor by 10-30x, which pegged heat
+     at 3.0 by district two and turned the pursuit ladder into a constant.
+     Capped, a monster bank is still only just over half a tier — heat
+     climbs across a district in steps the decay can actually fight. */
+  G.heat = Math.min(3.0, G.heat
+         + Math.min(0.55, gained / Math.max(14000, G.run.quota * 2)));
   NHAudio.bank(G.mult);
 
   /* perks that trigger on the cash-in, not on the wreck */
@@ -2759,7 +2790,7 @@ function toast(text, cls){
   el.textContent = text;
   UI.toasts.appendChild(el);
   el._t = setTimeout(() => el.remove(), 1150);
-  while (UI.toasts.children.length > 3) UI.toasts.firstChild.remove();
+  while (UI.toasts.children.length > 2) UI.toasts.firstChild.remove();
 }
 
 /* the payoff moment travels: a bank throws its number from the combo rail
@@ -2960,6 +2991,7 @@ function step(dt){
            * (Tree.has('t_cool') && G.hp < G.hpMax * 0.3 ? 1.4 : 1));
     G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
     G.tier = Math.min(3, G.tier);
+    if (G.run.grace) G.tier = 0;
 
     stepHazards(dt);
     stepAir(dt);
@@ -4831,9 +4863,12 @@ function beginNode(){
   G.car.topBonus = 0;
   G.heat = run.cfg.heatFloor + run.M.policeStart;
   /* the first district a new player ever drives has no pursuit in it,
-     whatever the contract says — the mugging at 9 seconds is how you lose
-     the player who was deciding whether to have a second run */
-  if (run.act === 1 && run.district === 1 && (Save.data.runs || 0) < 3) G.heat = 0;
+     whatever the node or the contract says — the mugging at 9 seconds is
+     how you lose the player who was deciding whether to have a second run.
+     The flag holds for the whole district: banked heat and elite floors
+     re-created the cop mid-district when only the start was zeroed. */
+  run.grace = run.act === 1 && run.district === 1 && (Save.data.runs || 0) < 3;
+  if (run.grace) G.heat = 0;
   G.tier = Math.min(3, Math.floor(G.heat));
   G.policeCool = 0;
   if (run.L.hazards) seedHazards();
@@ -5013,7 +5048,9 @@ function endRun(won){
   $('btnRevive').disabled = G.revived || G.score < 400;
   $('btnDouble').disabled = false;
 
-  const showOver = () => { show(UI.over); };
+  /* guarded so a deferred ad callback can never draw a stale over-panel
+     across a run the player has already restarted */
+  const showOver = () => { if (G.state === 'over') show(UI.over); };
   /* every 3rd run end, but never an ad within 4 minutes of the last one —
      three 20-second learning deaths must not read as three ad breaks */
   if (Save.data.runs % 3 === 0 && G.playSinceAd > 240) {
@@ -5059,8 +5096,12 @@ $('btnGo').onclick     = () => beginDistrict();
 $('btnCleared').onclick = () => { NHAudio.ui(true); leaveCleared(); };
 $('btnLoop').onclick = () => {
   NHAudio.ui(true);
-  if (G.run) G.run.loopArmed = true;
-  toast('The Loop — no way back but through', 'pink');
+  /* only a boss clear can arm the Loop — arming it from any other cleared
+     screen would make a later CASH OUT loop anyway */
+  if (G.run && G.run.cfg && G.run.cfg.boss && G.run.act >= 3) {
+    G.run.loopArmed = true;
+    toast('The Loop — no way back but through', 'pink');
+  }
   leaveCleared();
 };
 $('btnDaily').onclick  = () => { NHAudio.ui(true); closeDaily(); };
