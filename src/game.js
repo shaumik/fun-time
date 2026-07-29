@@ -5630,10 +5630,182 @@ function drawFitted(g, s, sc){
   }
 }
 
+/* ---------------- workshop icons ----------------
+   Every purchasable thing in the garage is drawn as an object, because a
+   card that is only name+description+price reads as a settings form no
+   matter how it is skinned. All vector, all cached per id. */
+const wsIconCache = new Map();
+function wsIcon(kind, id, w, h){
+  const key = kind + ':' + id;
+  let c = wsIconCache.get(key);
+  if (c) return c.cloneNode ? cloneIcon(c) : c;
+  c = document.createElement('canvas');
+  c.width = w * 2; c.height = h * 2;
+  c.style.width = '100%'; c.style.height = 'auto';
+  const g = c.getContext('2d');
+  g.scale(2, 2);
+  g.translate(w / 2, h / 2);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  (kind === 'gear' ? drawGearIcon : kind === 'up' ? drawUpIcon : drawBranchIcon)(g, id, w, h);
+  wsIconCache.set(key, c);
+  return cloneIcon(c);
+}
+function cloneIcon(src){
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.style.width = '100%'; c.style.height = 'auto';
+  c.getContext('2d').drawImage(src, 0, 0);
+  return c;
+}
+
+function drawGearIcon(g, id){
+  g.lineWidth = 2.5;
+  if (id === 'prow') {                      // the ram bar, face on
+    g.strokeStyle = CL.amber; g.fillStyle = '#232C40';
+    g.beginPath(); g.roundRect(-26, -6, 52, 12, 5); g.fill(); g.stroke();
+    for (const x of [-16, 0, 16]) {
+      g.beginPath(); g.roundRect(x - 3, 6, 6, 10, 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.85);
+    for (const x of [-20, -7, 7, 20]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+  } else if (id === 'welder') {             // gas bottle + torch hose
+    g.strokeStyle = '#2FE08A'; g.fillStyle = '#183226';
+    g.beginPath(); g.roundRect(-22, -12, 18, 26, 6); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-13, -12); g.lineTo(-13, -17); g.stroke();
+    g.beginPath(); g.moveTo(-4, 0); g.quadraticCurveTo(14, -14, 20, 2); g.stroke();
+    g.fillStyle = '#2FE08A';
+    g.beginPath(); g.moveTo(20, 2); g.lineTo(27, 6); g.lineTo(19, 9); g.closePath(); g.fill();
+  } else if (id === 'turbine') {            // bonnet scoop with vanes
+    g.strokeStyle = CL.cyan; g.fillStyle = '#0E1421';
+    g.beginPath(); g.moveTo(-24, 10); g.lineTo(-14, -10); g.lineTo(24, -10);
+    g.lineTo(24, 10); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.6);
+    for (const x of [-6, 4, 14]) { g.beginPath(); g.moveTo(x, -7); g.lineTo(x - 4, 7); g.stroke(); }
+  } else if (id === 'missile') {            // twin tubes, tips hot
+    g.strokeStyle = CL.magenta; g.fillStyle = '#191F30';
+    for (const y of [-9, 5]) {
+      g.beginPath(); g.roundRect(-24, y, 40, 8, 4); g.fill(); g.stroke();
+      g.fillStyle = hexA(CL.magenta, 0.9);
+      g.beginPath(); g.arc(18, y + 4, 3.2, 0, TAU); g.fill();
+      g.fillStyle = '#191F30';
+    }
+  } else if (id === 'shockplate') {         // riveted flank plate, arcing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#1B2334';
+    g.beginPath(); g.roundRect(-26, -8, 40, 16, 4); g.fill(); g.stroke();
+    g.fillStyle = hexA(CL.cyan, 0.8);
+    for (const x of [-19, -8, 3]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+    g.strokeStyle = '#EAFBFF';
+    g.beginPath(); g.moveTo(17, -10); g.lineTo(22, -2); g.lineTo(18, -2); g.lineTo(24, 8); g.stroke();
+  } else if (id === 'blackbox') {           // box + whip aerial
+    g.strokeStyle = CL.ice; g.fillStyle = '#0E1420';
+    g.beginPath(); g.roundRect(-18, -4, 24, 16, 3); g.fill(); g.stroke();
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.moveTo(12, -2); g.quadraticCurveTo(14, -14, 22, -16); g.stroke();
+    g.fillStyle = CL.cyan;
+    g.beginPath(); g.arc(22, -16, 2.2, 0, TAU); g.fill();
+  }
+}
+
+function drawUpIcon(g, id){
+  g.lineWidth = 2.4;
+  if (id === 'engine') {                    // speedo arc, needle pinned
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.arc(0, 4, 14, Math.PI, TAU); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.5);
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI + i / 4 * Math.PI;
+      g.beginPath(); g.moveTo(Math.cos(a) * 11, 4 + Math.sin(a) * 11);
+      g.lineTo(Math.cos(a) * 14, 4 + Math.sin(a) * 14); g.stroke();
+    }
+    g.strokeStyle = CL.amber;
+    g.beginPath(); g.moveTo(0, 4); g.lineTo(9, -6); g.stroke();
+  } else if (id === 'grip') {               // tyre, tread showing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#12161F';
+    g.beginPath(); g.arc(0, 0, 13, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * TAU;
+      g.beginPath(); g.moveTo(Math.cos(a) * 7, Math.sin(a) * 7);
+      g.lineTo(Math.cos(a) * 12, Math.sin(a) * 12); g.stroke();
+    }
+  } else if (id === 'armor') {              // hull plate chevron
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -13); g.lineTo(12, -7); g.lineTo(12, 5);
+    g.lineTo(0, 13); g.lineTo(-12, 5); g.lineTo(-12, -7); g.closePath();
+    g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    g.beginPath(); g.moveTo(-6, -2); g.lineTo(0, 2); g.lineTo(6, -2); g.stroke();
+  } else if (id === 'impact') {             // burst
+    g.strokeStyle = CL.amber;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU, r1 = i % 2 ? 6 : 9;
+      g.beginPath(); g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+      g.lineTo(Math.cos(a) * (r1 + 6), Math.sin(a) * (r1 + 6)); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.9);
+    g.beginPath(); g.arc(0, 0, 3.4, 0, TAU); g.fill();
+  } else if (id === 'nitro') {              // flame
+    g.fillStyle = hexA(CL.amber, 0.9); g.strokeStyle = CL.amber;
+    g.beginPath();
+    g.moveTo(0, -13);
+    g.quadraticCurveTo(10, -2, 6, 6);
+    g.quadraticCurveTo(4, 11, 0, 13);
+    g.quadraticCurveTo(-4, 11, -6, 6);
+    g.quadraticCurveTo(-10, -2, 0, -13);
+    g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(0, -4); g.quadraticCurveTo(4, 3, 0, 8);
+    g.quadraticCurveTo(-4, 3, 0, -4); g.fill();
+  } else if (id === 'payout') {             // coin
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    g.beginPath(); g.arc(0, 0, 12, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.amber, 0.9); g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.stroke();
+    g.beginPath(); g.moveTo(-3, -7); g.lineTo(-3, 7); g.moveTo(3, -7); g.lineTo(3, 7); g.stroke();
+  }
+}
+
+function drawBranchIcon(g, id){
+  g.lineWidth = 2.2;
+  if (id === 'offense') {                   // crosshair
+    g.strokeStyle = CL.magenta;
+    g.beginPath(); g.arc(0, 0, 9, 0, TAU); g.stroke();
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      g.beginPath(); g.moveTo(dx * 5, dy * 5); g.lineTo(dx * 13, dy * 13); g.stroke();
+    }
+  } else if (id === 'defense') {            // shield
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -11); g.lineTo(10, -7); g.lineTo(10, 2);
+    g.quadraticCurveTo(10, 9, 0, 12); g.quadraticCurveTo(-10, 9, -10, 2);
+    g.lineTo(-10, -7); g.closePath(); g.fill(); g.stroke();
+  } else {                                  // greed: coin stack
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    for (const y of [5, 0, -5]) {
+      g.beginPath(); g.ellipse(0, y, 10, 4.5, 0, 0, TAU); g.fill(); g.stroke();
+    }
+  }
+}
+
+/* one station on screen at a time — the tab rail kills the settings scroll */
+let gTab = 'tune';
+function syncGTabs(){
+  document.querySelectorAll('#gTabs .gTab').forEach(b =>
+    b.classList.toggle('on', b.dataset.sec === gTab));
+  document.querySelectorAll('#garage .gSec').forEach(s =>
+    s.classList.toggle('on', s.dataset.sec === gTab));
+}
+$('gTabs').addEventListener('click', e => {
+  const b = e.target.closest('.gTab');
+  if (!b) return;
+  gTab = b.dataset.sec;
+  NHAudio.ui(true);
+  syncGTabs();
+});
+
 function renderGarage(){
   const bal = Save.data.coins;
   const spec = G.spec = activeSpec();
   $('gCoins').textContent = fmt(bal);
+  syncGTabs();
 
   /* --- the spec plate: what is actually fitted, in units --- */
   $('gPlate').innerHTML = UPGRADES.map(u => {
@@ -5657,6 +5829,7 @@ function renderGarage(){
     const el = document.createElement('div');
     el.className = 'up' + (maxed ? ' maxed' : '');
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="info">' +
         '<div class="nm">' + u.name + '<em>' + u.read(lvl) + '</em></div>' +
         '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
@@ -5664,6 +5837,7 @@ function renderGarage(){
       '</div>' +
       '<button ' + (maxed || !afford ? 'disabled' : '') + '>' +
         (maxed ? 'Max' : fmt(cost)) + '</button>';
+    el.querySelector('.ico').appendChild(wsIcon('up', u.id, 40, 34));
     el.querySelector('button').onclick = () => {
       if (maxed || Save.data.coins < cost) return;
       Save.data.coins -= cost;
@@ -5688,10 +5862,14 @@ function renderGarage(){
     el.setAttribute('role', 'button');
     el.tabIndex = owned ? -1 : 0;
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="nm">' + g.name + '</div>' +
       '<div class="ds">' + g.desc + '</div>' +
-      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) +
-        (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</div>';
+      (owned
+        ? '<span class="stamp">Fitted</span>'
+        : '<span class="tag">' + fmt(g.price) +
+          (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</span>');
+    el.querySelector('.ico').appendChild(wsIcon('gear', g.id, 76, 44));
     const buy = () => {
       if (owned) return;
       if (!Hangar.buy(g.id)) {
@@ -5718,7 +5896,8 @@ function renderGarage(){
   for (const br of ['offense', 'defense', 'greed']) {
     const col = document.createElement('div');
     col.className = 'tBranch ' + br;
-    col.innerHTML = '<div class="tHead">' + BR[br] + '</div>';
+    col.innerHTML = '<div class="tHead"><span class="ico"></span>' + BR[br] + '</div>';
+    col.querySelector('.ico').appendChild(wsIcon('branch', br, 28, 26));
     for (const t of TREE.filter(x => x.br === br)) {
       const r = Tree.rank(t.id);
       ranksOwned += r; ranksTotal += t.ranks;
@@ -5735,8 +5914,10 @@ function renderGarage(){
             '<b class="' + (k < r ? 'on' : '') + '"></b>').join('') + '</i>' : '') +
         '</div>' +
         '<div class="ds">' + t.desc + '</div>' +
-        '<div class="pr">' + (maxed ? 'Trained' : fmt(cost)) +
-          (broke ? '<em>short ' + fmt(cost - bal) + '</em>' : '') + '</div>';
+        (maxed
+          ? '<span class="stamp">Trained</span>'
+          : '<span class="tag">' + fmt(cost) +
+            (broke ? '<em>short ' + fmt(cost - bal) + '</em>' : '') + '</span>');
       const buyNode = () => {
         if (maxed) return;
         if (!Tree.buy(t.id)) {
@@ -5769,9 +5950,12 @@ function renderGarage(){
     el.setAttribute('role', 'button');
     el.tabIndex = 0;
     el.innerHTML =
-      '<i class="sw" style="background:linear-gradient(135deg,' + l.col + ',' + l.col2 + ')"></i>' +
+      '<i class="sw" style="background:radial-gradient(circle at 34% 30%,' +
+        hexA('#FFFFFF', 0.75) + ' 0%,' + l.col + ' 38%,' + l.col2 + ' 100%)"></i>' +
       '<div class="nm">' + l.name + '</div>' +
-      '<div class="pr">' + (worn ? 'Fitted' : owned ? 'Owned' : fmt(l.price)) + '</div>';
+      (worn ? '<span class="stamp">On car</span>'
+            : '<span class="tag' + (owned ? ' own' : '') + '">' +
+              (owned ? 'Owned' : fmt(l.price)) + '</span>');
     const wear = () => {
       if (worn) return;
       if (!Livery.buyOrWear(l.id)) {

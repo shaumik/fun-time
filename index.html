@@ -285,16 +285,18 @@
           <div class="gFitted" id="gFitted"></div>
         </div>
 
-        <!-- the work order -->
+        <!-- the workshop: one station at a time, not a settings scroll -->
         <div class="gWork" id="gWork">
-          <div class="gwHead"><h3>Tuning</h3><span id="gwUps">0 / 30</span></div>
-          <div class="gUps" id="gUps"></div>
-          <div class="gwHead"><h3>Hardware</h3><span id="gwGear">0 / 6</span></div>
-          <div class="gGear" id="gGear"></div>
-          <div class="gwHead"><h3>Crew</h3><span id="gwTree">0 / 15</span></div>
-          <div class="gTree" id="gTree"></div>
-          <div class="gwHead"><h3>Paint shop</h3><span id="gwLiv">1 / 6</span></div>
-          <div class="gLiv" id="gLiv"></div>
+          <div class="gTabs" id="gTabs">
+            <button class="gTab on" data-sec="tune">Tuning<span id="gwUps">0 / 30</span></button>
+            <button class="gTab" data-sec="parts">Parts<span id="gwGear">0 / 6</span></button>
+            <button class="gTab" data-sec="crew">Crew<span id="gwTree">0 / 20</span></button>
+            <button class="gTab" data-sec="paint">Paint<span id="gwLiv">1 / 6</span></button>
+          </div>
+          <div class="gSec on" data-sec="tune"><div class="gUps" id="gUps"></div></div>
+          <div class="gSec" data-sec="parts"><div class="gGear" id="gGear"></div></div>
+          <div class="gSec" data-sec="crew"><div class="gTree" id="gTree"></div></div>
+          <div class="gSec" data-sec="paint"><div class="gLiv" id="gLiv"></div></div>
         </div>
       </div>
     </div>

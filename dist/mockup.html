@@ -632,7 +632,9 @@ body{
 #garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
   width:100%;max-width:calc(var(--u)*116);
-  height:auto;max-height:100%;
+  /* pinned height: switching workshop tabs must not resize the whole bay —
+     a panel that breathes per tab reads as a web page, not a room */
+  height:min(calc(var(--u)*78),100%);
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,#0E131E,#080B12);
   border:1px solid rgba(150,175,215,.16);
@@ -768,17 +770,56 @@ body{
   font-variant-numeric:tabular-nums;letter-spacing:.1em;
 }
 
-/* tuning: docket rows, flat and square */
+/* ============ the workshop ============
+   Tab rail: one station on screen at a time. The old work order was four
+   sections of name+description+price cards in a single scroll — a settings
+   form wearing neon. Stations give each kind of purchase its own furniture. */
+.gTabs{
+  display:flex;gap:3px;
+  border-bottom:1px solid rgba(255,177,61,.35);
+  margin-bottom:calc(var(--u)*1.1);
+}
+.gTab{
+  flex:1;cursor:pointer;font-family:var(--sans);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.25);
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  border:1px solid rgba(150,175,215,.16);border-bottom:none;
+  border-radius:calc(var(--u)*.5) calc(var(--u)*.5) 0 0;
+  padding:calc(var(--u)*.7) calc(var(--u)*.4) calc(var(--u)*.55);
+  color:var(--dim);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);
+  transition:background .14s,color .14s,border-color .14s;
+}
+.gTab span{
+  font-size:calc(var(--u)*.95);letter-spacing:.08em;
+  font-variant-numeric:tabular-nums;color:var(--dim);font-weight:700;
+}
+.gTab:hover{color:var(--ice);background:rgba(255,255,255,.07)}
+.gTab:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.gTab.on{
+  color:#fff;border-color:rgba(255,177,61,.55);
+  background:
+    repeating-linear-gradient(-45deg,rgba(255,177,61,.14) 0 calc(var(--u)*.7),transparent calc(var(--u)*.7) calc(var(--u)*1.4)),
+    linear-gradient(180deg,rgba(255,177,61,.10),rgba(255,177,61,.02));
+}
+.gTab.on span{color:var(--amber)}
+.gSec{display:none}
+.gSec.on{display:block;animation:fade .16s}
+
+/* icon slots — the drawn object every card leads with */
+.up .ico{flex:0 0 calc(var(--u)*5);width:calc(var(--u)*5)}
+.tHead .ico{width:calc(var(--u)*2.6);display:block}
+
+/* --- tuning: the dyno console --- */
 .gUps{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up{
   display:flex;align-items:center;gap:calc(var(--u)*1.2);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.28);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#131A2C,#0D1322);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.7) calc(var(--u)*1.1);
 }
-.up.maxed{border-left-color:var(--cyan);background:rgba(61,232,255,.05)}
-.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
+.up.maxed{border-color:rgba(61,232,255,.45);background:linear-gradient(180deg,#0F1F2C,#0C1420)}
+.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up .nm{
   display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
   font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
@@ -786,19 +827,31 @@ body{
 }
 .up .nm em{
   font-style:normal;letter-spacing:.04em;text-transform:none;
-  font-size:calc(var(--u)*1.2);color:var(--cyan);font-variant-numeric:tabular-nums;
+  font-size:calc(var(--u)*1.35);color:var(--cyan);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.55);
 }
-.pips{display:flex;gap:2px}
-.pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
-.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.6)}
+/* the meter reads as dyno segments, not a progress bar */
+.pips{display:flex;gap:calc(var(--u)*.35)}
+.pips i{
+  flex:1;height:calc(var(--u)*.95);
+  background:rgba(255,255,255,.10);
+  transform:skewX(-18deg);
+  border-radius:1px;
+}
+.pips i.on{
+  background:linear-gradient(180deg,#9FF3FF,var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(61,232,255,.75);
+}
+/* the buy control is a torque bolt, not a form button */
 .up button{
-  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
+  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*9.5);
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.1em;
+  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.08em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
-  border:none;border-radius:calc(var(--u)*.25);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  border:none;
+  clip-path:polygon(10% 0,90% 0,100% 50%,90% 100%,10% 100%,0 50%);
+  padding:calc(var(--u)*.85) calc(var(--u)*1.4);
   transition:filter .14s,transform .08s;
 }
 .up button:hover{filter:brightness(1.12)}
@@ -807,119 +860,151 @@ body{
 .up button[disabled]{background:rgba(255,255,255,.07);color:var(--dim);cursor:not-allowed}
 .up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.10)}
 
-/* hardware: parts on a rack — the reason a lost run still moves you forward */
-.gGear{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.6)}
+/* --- price tags and stamps, shared by every station --- */
+.tag{
+  position:relative;align-self:flex-start;margin-top:auto;
+  display:inline-flex;align-items:baseline;gap:calc(var(--u)*.6);
+  background:#221905;border:1px solid var(--amber);color:var(--amber);
+  font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;
+  font-size:calc(var(--u)*1.2);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7) calc(var(--u)*.3) calc(var(--u)*1.5);
+  clip-path:polygon(0 50%,calc(var(--u)*.9) 0,100% 0,100% 100%,calc(var(--u)*.9) 100%);
+}
+.tag::before{
+  content:'';position:absolute;left:calc(var(--u)*.55);top:50%;
+  width:calc(var(--u)*.4);height:calc(var(--u)*.4);
+  transform:translateY(-50%);border-radius:50%;
+  background:var(--void);box-shadow:0 0 0 1px var(--amber);
+}
+.tag em{
+  font-style:normal;font-size:calc(var(--u)*.95);color:var(--dim);
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+}
+.tag.own{border-color:rgba(150,175,215,.5);color:var(--ice);background:rgba(255,255,255,.05)}
+.tag.own::before{box-shadow:0 0 0 1px rgba(150,175,215,.5)}
+.stamp{
+  align-self:flex-start;margin-top:auto;
+  transform:rotate(-6deg);
+  border:2px solid var(--cyan);color:var(--cyan);border-radius:2px;
+  font-weight:900;letter-spacing:.3em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);
+  padding:calc(var(--u)*.22) calc(var(--u)*.55) calc(var(--u)*.22) calc(var(--u)*.85);
+  opacity:.9;
+  mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+  -webkit-mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+}
+
+/* --- parts: a pegboard of drawn objects --- */
+.gGear{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.8);
+  padding:calc(var(--u)*.9);
+  background:
+    radial-gradient(rgba(150,175,215,.13) 1.2px,transparent 1.6px);
+  background-size:calc(var(--u)*1.9) calc(var(--u)*1.9);
+  border:1px solid rgba(150,175,215,.12);
+}
 .gear{
   position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid var(--amber);
-  padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#151C2F,#0C1120);
+  border:1px solid rgba(150,175,215,.18);
+  clip-path:polygon(0 0,calc(100% - var(--u)*1.2) 0,100% calc(var(--u)*1.2),100% 100%,calc(var(--u)*1.2) 100%,0 calc(100% - var(--u)*1.2));
+  padding:0 calc(var(--u)*1.1) calc(var(--u)*1);
   display:flex;flex-direction:column;gap:calc(var(--u)*.45);
   transition:background .14s,border-color .14s;
 }
-.gear:hover{background:rgba(255,177,61,.10)}
+.gear:hover{border-color:rgba(255,177,61,.6);background:linear-gradient(180deg,#1A2138,#0E1424)}
 .gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+/* the part itself, on a dark plate strip across the top of the card */
+.gear .ico{
+  display:grid;place-items:center;
+  margin:0 calc(var(--u)*-1.1) calc(var(--u)*.3);
+  padding:calc(var(--u)*.6) 0 calc(var(--u)*.4);
+  background:rgba(0,0,0,.32);
+  border-bottom:1px solid rgba(150,175,215,.10);
+}
+.gear .ico canvas{width:62% !important;max-width:150px}
 .gear .nm{
-  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.14em;
+  font-size:calc(var(--u)*1.25);font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
-.gear .ds{font-size:calc(var(--u)*1.15);line-height:1.4;color:var(--ice);opacity:.75}
-.gear .pr{
-  margin-top:auto;padding-top:calc(var(--u)*.4);
-  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.3);font-weight:800;
-  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
-}
-/* the shortfall, so "too expensive" is a number rather than a dimmed card */
-.gear .pr em{
-  font-style:normal;font-size:calc(var(--u)*1);color:var(--dim);
-  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-}
-.gear.owned{
-  border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
-}
-.gear.owned:hover{background:rgba(61,232,255,.07)}
-.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.1)}
-.gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
-.gear.broke:hover{background:rgba(255,255,255,.03)}
-.gear.broke .pr{color:var(--dim)}
+.gear .ds{font-size:calc(var(--u)*1.05);line-height:1.4;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.4)}
+.gear.owned{border-color:rgba(61,232,255,.5);cursor:default}
+.gear.owned .ico{background:rgba(61,232,255,.06)}
+.gear.broke{opacity:.55}
+.gear.broke:hover{border-color:rgba(150,175,215,.18)}
 
-/* ============ crew — the permanent skill tree ============ */
-.gTree{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.6)}
-.tBranch{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+/* --- crew: doctrine badges, not settings cards --- */
+.gTree{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
+.tBranch{display:flex;flex-direction:column;gap:calc(var(--u)*.55)}
 .tHead{
-  font-size:calc(var(--u)*1.05);font-weight:800;letter-spacing:.3em;
-  text-transform:uppercase;padding:calc(var(--u)*.35) 0 calc(var(--u)*.2);
-  border-bottom:1px solid rgba(150,175,215,.16);
+  display:flex;align-items:center;gap:calc(var(--u)*.55);
+  font-size:calc(var(--u)*1.1);font-weight:900;letter-spacing:.32em;
+  text-transform:uppercase;padding:calc(var(--u)*.3) 0 calc(var(--u)*.35);
+  border-bottom:2px solid rgba(150,175,215,.16);
 }
-.tBranch.offense .tHead{color:var(--magenta)}
-.tBranch.defense .tHead{color:var(--cyan)}
-.tBranch.greed   .tHead{color:var(--amber)}
+.tBranch.offense .tHead{color:var(--magenta);border-color:rgba(255,46,136,.4)}
+.tBranch.defense .tHead{color:var(--cyan);border-color:rgba(61,232,255,.4)}
+.tBranch.greed   .tHead{color:var(--amber);border-color:rgba(255,177,61,.4)}
 .tNode{
   position:relative;cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.16);
+  clip-path:polygon(0 0,calc(100% - var(--u)*.9) 0,100% calc(var(--u)*.9),100% 100%,0 100%);
   padding:calc(var(--u)*.7) calc(var(--u)*.8);
-  display:flex;flex-direction:column;gap:calc(var(--u)*.3);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.35);
   transition:background .14s,border-color .14s;
 }
-.tBranch.offense .tNode{border-left:calc(var(--u)*.24) solid var(--magenta)}
-.tBranch.defense .tNode{border-left:calc(var(--u)*.24) solid var(--cyan)}
-.tBranch.greed   .tNode{border-left:calc(var(--u)*.24) solid var(--amber)}
-.tNode:hover{background:rgba(255,255,255,.07)}
+.tBranch.offense .tNode{border-left:calc(var(--u)*.26) solid var(--magenta)}
+.tBranch.defense .tNode{border-left:calc(var(--u)*.26) solid var(--cyan)}
+.tBranch.greed   .tNode{border-left:calc(var(--u)*.26) solid var(--amber)}
+.tNode:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
 .tNode:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .tNode .nm{
   font-size:calc(var(--u)*1.1);font-weight:800;letter-spacing:.1em;
   text-transform:uppercase;color:#fff;display:flex;align-items:center;
-  gap:calc(var(--u)*.5);
+  gap:calc(var(--u)*.5);flex-wrap:wrap;
 }
-.tNode .ds{font-size:calc(var(--u)*1);line-height:1.35;color:var(--ice);opacity:.72}
-.tNode .pr{
-  font-size:calc(var(--u)*1.1);font-weight:800;color:var(--amber);
-  font-variant-numeric:tabular-nums;letter-spacing:.06em;
-  display:flex;gap:calc(var(--u)*.6);align-items:baseline;
-}
-.tNode .pr em{
-  font-style:normal;font-size:calc(var(--u)*.9);color:var(--dim);
-  font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-}
-.tNode.owned{background:rgba(61,232,255,.06);cursor:default}
-.tNode.owned .pr{color:var(--cyan);letter-spacing:.18em;text-transform:uppercase}
-.tNode.broke{opacity:.5}
+.tNode .ds{font-size:calc(var(--u)*1);line-height:1.35;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.25)}
+.tNode.owned{cursor:default;border-color:rgba(61,232,255,.45)}
+.tNode.broke{opacity:.55}
+.tNode .tag{font-size:calc(var(--u)*1.05);padding:calc(var(--u)*.24) calc(var(--u)*.55) calc(var(--u)*.24) calc(var(--u)*1.3)}
+.tNode .stamp{font-size:calc(var(--u)*.9);letter-spacing:.24em;transform:rotate(-4deg)}
+/* rank chevrons — sergeant stripes, not a progress dot row */
 .tPips{display:inline-flex;gap:3px}
 .tPips b{
-  width:calc(var(--u)*.8);height:calc(var(--u)*.5);
-  background:rgba(150,175,215,.2);display:block;
+  width:calc(var(--u)*1);height:calc(var(--u)*.9);display:block;
+  background:rgba(150,175,215,.22);
+  clip-path:polygon(0 0,55% 0,100% 50%,55% 100%,0 100%,45% 50%);
 }
-.tPips b.on{background:var(--cyan)}
+.tPips b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.7)}
 
-/* ============ paint shop ============ */
-.gLiv{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.6)}
+/* --- paint shop: can lids on the rack --- */
+.gLiv{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
 .liv{
   cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  padding:calc(var(--u)*.7);
-  display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.4);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.9) calc(var(--u)*.7) calc(var(--u)*.7);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.5);
+  text-align:center;
   transition:background .14s,border-color .14s;
 }
-.liv:hover{background:rgba(255,255,255,.07)}
+.liv:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
 .liv:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .liv .sw{
-  width:100%;height:calc(var(--u)*2.4);border-radius:2px;
-  box-shadow:0 0 calc(var(--u)*1.2) rgba(255,255,255,.12) inset;
+  width:calc(var(--u)*6.2);height:calc(var(--u)*6.2);border-radius:50%;
+  border:calc(var(--u)*.32) solid #232D44;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,.4),
+    0 calc(var(--u)*.3) calc(var(--u)*1.2) rgba(0,0,0,.55);
 }
 .liv .nm{
   font-size:calc(var(--u)*1.05);font-weight:800;letter-spacing:.12em;
   text-transform:uppercase;color:#fff;
 }
-.liv .pr{
-  font-size:calc(var(--u)*1.05);font-weight:800;color:var(--amber);
-  font-variant-numeric:tabular-nums;
-}
-.liv.worn{border-color:var(--cyan);background:rgba(61,232,255,.08)}
-.liv.worn .pr{color:var(--cyan);letter-spacing:.16em;text-transform:uppercase}
+.liv .tag,.liv .stamp{align-self:center;margin-top:0}
+.liv.worn{border-color:var(--cyan)}
+.liv.worn .sw{outline:2px solid var(--cyan);outline-offset:4px}
 .liv.broke{opacity:.55}
 
 /* the Loop offer on a final-boss clear */
@@ -2008,16 +2093,18 @@ body{overflow:auto;display:block}
           <div class="gFitted" id="gFitted"></div>
         </div>
 
-        <!-- the work order -->
+        <!-- the workshop: one station at a time, not a settings scroll -->
         <div class="gWork" id="gWork">
-          <div class="gwHead"><h3>Tuning</h3><span id="gwUps">0 / 30</span></div>
-          <div class="gUps" id="gUps"></div>
-          <div class="gwHead"><h3>Hardware</h3><span id="gwGear">0 / 6</span></div>
-          <div class="gGear" id="gGear"></div>
-          <div class="gwHead"><h3>Crew</h3><span id="gwTree">0 / 15</span></div>
-          <div class="gTree" id="gTree"></div>
-          <div class="gwHead"><h3>Paint shop</h3><span id="gwLiv">1 / 6</span></div>
-          <div class="gLiv" id="gLiv"></div>
+          <div class="gTabs" id="gTabs">
+            <button class="gTab on" data-sec="tune">Tuning<span id="gwUps">0 / 30</span></button>
+            <button class="gTab" data-sec="parts">Parts<span id="gwGear">0 / 6</span></button>
+            <button class="gTab" data-sec="crew">Crew<span id="gwTree">0 / 20</span></button>
+            <button class="gTab" data-sec="paint">Paint<span id="gwLiv">1 / 6</span></button>
+          </div>
+          <div class="gSec on" data-sec="tune"><div class="gUps" id="gUps"></div></div>
+          <div class="gSec" data-sec="parts"><div class="gGear" id="gGear"></div></div>
+          <div class="gSec" data-sec="crew"><div class="gTree" id="gTree"></div></div>
+          <div class="gSec" data-sec="paint"><div class="gLiv" id="gLiv"></div></div>
         </div>
       </div>
     </div>
@@ -8767,10 +8854,182 @@ function drawFitted(g, s, sc){
   }
 }
 
+/* ---------------- workshop icons ----------------
+   Every purchasable thing in the garage is drawn as an object, because a
+   card that is only name+description+price reads as a settings form no
+   matter how it is skinned. All vector, all cached per id. */
+const wsIconCache = new Map();
+function wsIcon(kind, id, w, h){
+  const key = kind + ':' + id;
+  let c = wsIconCache.get(key);
+  if (c) return c.cloneNode ? cloneIcon(c) : c;
+  c = document.createElement('canvas');
+  c.width = w * 2; c.height = h * 2;
+  c.style.width = '100%'; c.style.height = 'auto';
+  const g = c.getContext('2d');
+  g.scale(2, 2);
+  g.translate(w / 2, h / 2);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  (kind === 'gear' ? drawGearIcon : kind === 'up' ? drawUpIcon : drawBranchIcon)(g, id, w, h);
+  wsIconCache.set(key, c);
+  return cloneIcon(c);
+}
+function cloneIcon(src){
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.style.width = '100%'; c.style.height = 'auto';
+  c.getContext('2d').drawImage(src, 0, 0);
+  return c;
+}
+
+function drawGearIcon(g, id){
+  g.lineWidth = 2.5;
+  if (id === 'prow') {                      // the ram bar, face on
+    g.strokeStyle = CL.amber; g.fillStyle = '#232C40';
+    g.beginPath(); g.roundRect(-26, -6, 52, 12, 5); g.fill(); g.stroke();
+    for (const x of [-16, 0, 16]) {
+      g.beginPath(); g.roundRect(x - 3, 6, 6, 10, 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.85);
+    for (const x of [-20, -7, 7, 20]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+  } else if (id === 'welder') {             // gas bottle + torch hose
+    g.strokeStyle = '#2FE08A'; g.fillStyle = '#183226';
+    g.beginPath(); g.roundRect(-22, -12, 18, 26, 6); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-13, -12); g.lineTo(-13, -17); g.stroke();
+    g.beginPath(); g.moveTo(-4, 0); g.quadraticCurveTo(14, -14, 20, 2); g.stroke();
+    g.fillStyle = '#2FE08A';
+    g.beginPath(); g.moveTo(20, 2); g.lineTo(27, 6); g.lineTo(19, 9); g.closePath(); g.fill();
+  } else if (id === 'turbine') {            // bonnet scoop with vanes
+    g.strokeStyle = CL.cyan; g.fillStyle = '#0E1421';
+    g.beginPath(); g.moveTo(-24, 10); g.lineTo(-14, -10); g.lineTo(24, -10);
+    g.lineTo(24, 10); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.6);
+    for (const x of [-6, 4, 14]) { g.beginPath(); g.moveTo(x, -7); g.lineTo(x - 4, 7); g.stroke(); }
+  } else if (id === 'missile') {            // twin tubes, tips hot
+    g.strokeStyle = CL.magenta; g.fillStyle = '#191F30';
+    for (const y of [-9, 5]) {
+      g.beginPath(); g.roundRect(-24, y, 40, 8, 4); g.fill(); g.stroke();
+      g.fillStyle = hexA(CL.magenta, 0.9);
+      g.beginPath(); g.arc(18, y + 4, 3.2, 0, TAU); g.fill();
+      g.fillStyle = '#191F30';
+    }
+  } else if (id === 'shockplate') {         // riveted flank plate, arcing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#1B2334';
+    g.beginPath(); g.roundRect(-26, -8, 40, 16, 4); g.fill(); g.stroke();
+    g.fillStyle = hexA(CL.cyan, 0.8);
+    for (const x of [-19, -8, 3]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+    g.strokeStyle = '#EAFBFF';
+    g.beginPath(); g.moveTo(17, -10); g.lineTo(22, -2); g.lineTo(18, -2); g.lineTo(24, 8); g.stroke();
+  } else if (id === 'blackbox') {           // box + whip aerial
+    g.strokeStyle = CL.ice; g.fillStyle = '#0E1420';
+    g.beginPath(); g.roundRect(-18, -4, 24, 16, 3); g.fill(); g.stroke();
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.moveTo(12, -2); g.quadraticCurveTo(14, -14, 22, -16); g.stroke();
+    g.fillStyle = CL.cyan;
+    g.beginPath(); g.arc(22, -16, 2.2, 0, TAU); g.fill();
+  }
+}
+
+function drawUpIcon(g, id){
+  g.lineWidth = 2.4;
+  if (id === 'engine') {                    // speedo arc, needle pinned
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.arc(0, 4, 14, Math.PI, TAU); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.5);
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI + i / 4 * Math.PI;
+      g.beginPath(); g.moveTo(Math.cos(a) * 11, 4 + Math.sin(a) * 11);
+      g.lineTo(Math.cos(a) * 14, 4 + Math.sin(a) * 14); g.stroke();
+    }
+    g.strokeStyle = CL.amber;
+    g.beginPath(); g.moveTo(0, 4); g.lineTo(9, -6); g.stroke();
+  } else if (id === 'grip') {               // tyre, tread showing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#12161F';
+    g.beginPath(); g.arc(0, 0, 13, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * TAU;
+      g.beginPath(); g.moveTo(Math.cos(a) * 7, Math.sin(a) * 7);
+      g.lineTo(Math.cos(a) * 12, Math.sin(a) * 12); g.stroke();
+    }
+  } else if (id === 'armor') {              // hull plate chevron
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -13); g.lineTo(12, -7); g.lineTo(12, 5);
+    g.lineTo(0, 13); g.lineTo(-12, 5); g.lineTo(-12, -7); g.closePath();
+    g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    g.beginPath(); g.moveTo(-6, -2); g.lineTo(0, 2); g.lineTo(6, -2); g.stroke();
+  } else if (id === 'impact') {             // burst
+    g.strokeStyle = CL.amber;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU, r1 = i % 2 ? 6 : 9;
+      g.beginPath(); g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+      g.lineTo(Math.cos(a) * (r1 + 6), Math.sin(a) * (r1 + 6)); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.9);
+    g.beginPath(); g.arc(0, 0, 3.4, 0, TAU); g.fill();
+  } else if (id === 'nitro') {              // flame
+    g.fillStyle = hexA(CL.amber, 0.9); g.strokeStyle = CL.amber;
+    g.beginPath();
+    g.moveTo(0, -13);
+    g.quadraticCurveTo(10, -2, 6, 6);
+    g.quadraticCurveTo(4, 11, 0, 13);
+    g.quadraticCurveTo(-4, 11, -6, 6);
+    g.quadraticCurveTo(-10, -2, 0, -13);
+    g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(0, -4); g.quadraticCurveTo(4, 3, 0, 8);
+    g.quadraticCurveTo(-4, 3, 0, -4); g.fill();
+  } else if (id === 'payout') {             // coin
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    g.beginPath(); g.arc(0, 0, 12, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.amber, 0.9); g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.stroke();
+    g.beginPath(); g.moveTo(-3, -7); g.lineTo(-3, 7); g.moveTo(3, -7); g.lineTo(3, 7); g.stroke();
+  }
+}
+
+function drawBranchIcon(g, id){
+  g.lineWidth = 2.2;
+  if (id === 'offense') {                   // crosshair
+    g.strokeStyle = CL.magenta;
+    g.beginPath(); g.arc(0, 0, 9, 0, TAU); g.stroke();
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      g.beginPath(); g.moveTo(dx * 5, dy * 5); g.lineTo(dx * 13, dy * 13); g.stroke();
+    }
+  } else if (id === 'defense') {            // shield
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -11); g.lineTo(10, -7); g.lineTo(10, 2);
+    g.quadraticCurveTo(10, 9, 0, 12); g.quadraticCurveTo(-10, 9, -10, 2);
+    g.lineTo(-10, -7); g.closePath(); g.fill(); g.stroke();
+  } else {                                  // greed: coin stack
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    for (const y of [5, 0, -5]) {
+      g.beginPath(); g.ellipse(0, y, 10, 4.5, 0, 0, TAU); g.fill(); g.stroke();
+    }
+  }
+}
+
+/* one station on screen at a time — the tab rail kills the settings scroll */
+let gTab = 'tune';
+function syncGTabs(){
+  document.querySelectorAll('#gTabs .gTab').forEach(b =>
+    b.classList.toggle('on', b.dataset.sec === gTab));
+  document.querySelectorAll('#garage .gSec').forEach(s =>
+    s.classList.toggle('on', s.dataset.sec === gTab));
+}
+$('gTabs').addEventListener('click', e => {
+  const b = e.target.closest('.gTab');
+  if (!b) return;
+  gTab = b.dataset.sec;
+  NHAudio.ui(true);
+  syncGTabs();
+});
+
 function renderGarage(){
   const bal = Save.data.coins;
   const spec = G.spec = activeSpec();
   $('gCoins').textContent = fmt(bal);
+  syncGTabs();
 
   /* --- the spec plate: what is actually fitted, in units --- */
   $('gPlate').innerHTML = UPGRADES.map(u => {
@@ -8794,6 +9053,7 @@ function renderGarage(){
     const el = document.createElement('div');
     el.className = 'up' + (maxed ? ' maxed' : '');
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="info">' +
         '<div class="nm">' + u.name + '<em>' + u.read(lvl) + '</em></div>' +
         '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
@@ -8801,6 +9061,7 @@ function renderGarage(){
       '</div>' +
       '<button ' + (maxed || !afford ? 'disabled' : '') + '>' +
         (maxed ? 'Max' : fmt(cost)) + '</button>';
+    el.querySelector('.ico').appendChild(wsIcon('up', u.id, 40, 34));
     el.querySelector('button').onclick = () => {
       if (maxed || Save.data.coins < cost) return;
       Save.data.coins -= cost;
@@ -8825,10 +9086,14 @@ function renderGarage(){
     el.setAttribute('role', 'button');
     el.tabIndex = owned ? -1 : 0;
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="nm">' + g.name + '</div>' +
       '<div class="ds">' + g.desc + '</div>' +
-      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) +
-        (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</div>';
+      (owned
+        ? '<span class="stamp">Fitted</span>'
+        : '<span class="tag">' + fmt(g.price) +
+          (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</span>');
+    el.querySelector('.ico').appendChild(wsIcon('gear', g.id, 76, 44));
     const buy = () => {
       if (owned) return;
       if (!Hangar.buy(g.id)) {
@@ -8855,7 +9120,8 @@ function renderGarage(){
   for (const br of ['offense', 'defense', 'greed']) {
     const col = document.createElement('div');
     col.className = 'tBranch ' + br;
-    col.innerHTML = '<div class="tHead">' + BR[br] + '</div>';
+    col.innerHTML = '<div class="tHead"><span class="ico"></span>' + BR[br] + '</div>';
+    col.querySelector('.ico').appendChild(wsIcon('branch', br, 28, 26));
     for (const t of TREE.filter(x => x.br === br)) {
       const r = Tree.rank(t.id);
       ranksOwned += r; ranksTotal += t.ranks;
@@ -8872,8 +9138,10 @@ function renderGarage(){
             '<b class="' + (k < r ? 'on' : '') + '"></b>').join('') + '</i>' : '') +
         '</div>' +
         '<div class="ds">' + t.desc + '</div>' +
-        '<div class="pr">' + (maxed ? 'Trained' : fmt(cost)) +
-          (broke ? '<em>short ' + fmt(cost - bal) + '</em>' : '') + '</div>';
+        (maxed
+          ? '<span class="stamp">Trained</span>'
+          : '<span class="tag">' + fmt(cost) +
+            (broke ? '<em>short ' + fmt(cost - bal) + '</em>' : '') + '</span>');
       const buyNode = () => {
         if (maxed) return;
         if (!Tree.buy(t.id)) {
@@ -8906,9 +9174,12 @@ function renderGarage(){
     el.setAttribute('role', 'button');
     el.tabIndex = 0;
     el.innerHTML =
-      '<i class="sw" style="background:linear-gradient(135deg,' + l.col + ',' + l.col2 + ')"></i>' +
+      '<i class="sw" style="background:radial-gradient(circle at 34% 30%,' +
+        hexA('#FFFFFF', 0.75) + ' 0%,' + l.col + ' 38%,' + l.col2 + ' 100%)"></i>' +
       '<div class="nm">' + l.name + '</div>' +
-      '<div class="pr">' + (worn ? 'Fitted' : owned ? 'Owned' : fmt(l.price)) + '</div>';
+      (worn ? '<span class="stamp">On car</span>'
+            : '<span class="tag' + (owned ? ' own' : '') + '">' +
+              (owned ? 'Owned' : fmt(l.price)) + '</span>');
     const wear = () => {
       if (worn) return;
       if (!Livery.buyOrWear(l.id)) {
