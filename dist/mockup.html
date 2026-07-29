@@ -23,6 +23,17 @@
 
   --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI Variable Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --u:8px; /* unit, set from JS to stage height / 100 */
+
+  /* Safe-area insets. The viewport is declared viewport-fit=cover so the
+     canvas can reach the physical edges of a notched phone — which also
+     means anything positioned at those edges lands under the notch, the
+     rounded corners or the home indicator unless it pays these back.
+     Every edge-anchored element below adds them; the canvas deliberately
+     does not, since artwork under the notch is the point. */
+  --sa-t:env(safe-area-inset-top,0px);
+  --sa-r:env(safe-area-inset-right,0px);
+  --sa-b:env(safe-area-inset-bottom,0px);
+  --sa-l:env(safe-area-inset-left,0px);
 }
 
 *{box-sizing:border-box}
@@ -79,7 +90,10 @@ body{
 #hud{transition:opacity .3s}
 #hud.off{opacity:0}
 .hudTop{
-  position:absolute;top:calc(var(--u)*3);left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);
+  position:absolute;
+  top:calc(var(--u)*3 + var(--sa-t));
+  left:calc(var(--u)*3.4 + var(--sa-l));
+  right:calc(var(--u)*3.4 + var(--sa-r));
   display:flex;align-items:flex-start;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .stat.right{text-align:right}
@@ -217,7 +231,10 @@ body{
 @keyframes pip{50%{opacity:.35}}
 
 .hudBot{
-  position:absolute;left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);bottom:calc(var(--u)*3);
+  position:absolute;
+  left:calc(var(--u)*3.4 + var(--sa-l));
+  right:calc(var(--u)*3.4 + var(--sa-r));
+  bottom:calc(var(--u)*3 + var(--sa-b));
   display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
@@ -302,15 +319,21 @@ body{
 }
 .tbtn svg{width:45%;height:45%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .tbtn:active,.tbtn.down{background:rgba(61,232,255,.24);transform:scale(.94)}
-.tl{left:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4))}
-.tr{left:calc(max(14px,calc(var(--u)*2.4)) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
-    bottom:max(14px,calc(var(--u)*2.4))}
+/* These are the steering controls and they sit in the bottom-left corner —
+   the same place iOS puts the home indicator, and the corner a landscape
+   phone rounds off. Both offsets clear the inset before applying their own. */
+.tl{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l));
+    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
+.tr{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
+    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
 
 /* ============ screens ============ */
 .screen{
   pointer-events:auto;
   display:grid;place-items:center;
-  padding:calc(var(--u)*3);
+  padding:
+    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
+    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));
   /* the attract driver runs live behind these screens, so the scrim has to
      hold contrast for the copy no matter what is on screen underneath */
   background:radial-gradient(115% 85% at 50% 45%,rgba(5,6,14,.86) 0%,rgba(3,4,10,.96) 68%);
@@ -525,7 +548,9 @@ body{
 }
 
 .opts{
-  position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*3);
+  position:absolute;
+  right:calc(var(--u)*3 + var(--sa-r));
+  bottom:calc(var(--u)*3 + var(--sa-b));
   display:flex;gap:calc(var(--u)*.8);
 }
 #btnCtrl{display:none}
@@ -588,6 +613,9 @@ body{
 }
 .ovRow b{font-size:calc(var(--u)*2.1);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .ovActs{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
+/* Geometry is shared across the whole stack so the decline path is exactly
+   as large and as reachable as the rewarded offers above it. */
+.ovActs .btn{width:100%;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
 .ovFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.2)}
 .ovFoot .btn{flex:1;justify-content:center}
 
@@ -597,7 +625,10 @@ body{
    on it wearing everything you have bolted on, and a work order beside it.
    Steel edges, hazard tape and printed dockets rather than rounded web cards.
    ============================================================ */
-#garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
+#garage.screen{align-items:flex-start;
+  padding:
+    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
+    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));}
 .gPanel{
   width:100%;max-width:calc(var(--u)*116);
   height:auto;max-height:100%;
@@ -894,7 +925,9 @@ body{
    ============================================================ */
 @media (max-aspect-ratio:1/1){
   .hudTop{
-    top:calc(var(--u)*2.2);left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
+    top:calc(var(--u)*2.2 + var(--sa-t));
+    left:calc(var(--u)*2.2 + var(--sa-l));
+    right:calc(var(--u)*2.2 + var(--sa-r));
     flex-direction:column;align-items:stretch;gap:calc(var(--u)*1.4);
   }
   /* objective first: it is the thing you are actually playing against */
@@ -923,8 +956,9 @@ body{
   #hud .build i{font-size:calc(var(--u)*.95);padding:calc(var(--u)*.22) calc(var(--u)*.55)}
 
   .hudBot{
-    left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
-    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6);
+    left:calc(var(--u)*2.2 + var(--sa-l));right:calc(var(--u)*2.2 + var(--sa-r));
+    /* clears the touch buttons, which have themselves moved up by --sa-b */
+    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6 + var(--sa-b));
   }
   .spdv{font-size:calc(var(--u)*4.4)}
   .hudDrv{gap:calc(var(--u)*1.9)}
@@ -956,7 +990,10 @@ body{
 
   /* Garage on a phone: the action bar wraps so Roll out stays full width and
      thumb-sized, and the bay sits above the work order rather than beside it. */
-  #garage.screen{padding:calc(var(--u)*1.2);align-items:flex-start}
+  #garage.screen{align-items:flex-start;
+    padding:
+      calc(var(--u)*1.2 + var(--sa-t)) calc(var(--u)*1.2 + var(--sa-r))
+      calc(var(--u)*1.2 + var(--sa-b)) calc(var(--u)*1.2 + var(--sa-l));}
   .gPanel{max-height:100%}
   .gTop{
     flex-wrap:wrap;gap:calc(var(--u)*1.2);
@@ -991,8 +1028,9 @@ body{
   .bname{font-size:calc(var(--u)*6)}
   .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
   .ovScore{font-size:calc(var(--u)*7)}
-  .hudBot{bottom:calc(var(--u)*2.4)}
-  /* keep the speedo clear of the left-hand steering pads */
+  .hudBot{bottom:calc(var(--u)*2.4 + var(--sa-b))}
+  /* keep the speedo clear of the left-hand steering pads, which sit one
+     safe-area inset further right on a landscape phone with rounded corners */
   .hudDrv{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
 }
 
@@ -1826,12 +1864,16 @@ body{overflow:auto;display:block}
         <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
         <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
       </div>
+      <!-- The two rewarded offers and the way past them sit in one stack at
+           one width. CrazyGames requires the continue-without-watching path
+           to match the ad offer in size, font and weight, so "Spend it in
+           the garage" cannot go back to being a third of a footer row. -->
       <div class="ovActs">
         <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
+        <button class="btn primary" id="btnAgain">Spend it in the garage</button>
       </div>
       <div class="ovFoot">
-        <button class="btn primary" id="btnAgain">Spend it in the garage</button>
         <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
       </div>
@@ -7390,11 +7432,20 @@ function endRun(won){
   $('ovPlace').textContent = rank ? 'Personal best #' + rank : 'Outside your top ' + BOARD_MAX;
   $('ovPlace').classList.toggle('in', !!rank);
   /* one revive per run, and only when the run was worth saving */
-  $('btnRevive').disabled = G.revived || G.score < 400;
+  const reviveOffered = !G.revived && G.score >= 400;
+  $('btnRevive').disabled = !reviveOffered;
   $('btnDouble').disabled = false;
 
+  /* Their ad policy forbids pairing a midgame ad with a "watch a rewarded ad
+     to keep playing" offer at the same break: between two attempts you may
+     run a midgame and restart, or offer the revive, but not both. The revive
+     button is precisely that offer, so it suppresses the midgame whenever it
+     is live. Double-your-coins is not affected — it rewards a run that is
+     already over rather than continuing the current one, so it may sit
+     alongside a midgame. */
   const showOver = () => { show(UI.over); };
-  if (Save.data.runs % 3 === 0) Ads.midroll(showOver); else showOver();
+  if (!reviveOffered && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  else showOver();
 }
 
 function commitCoins(mult){

@@ -116,6 +116,11 @@ audio back. Test it locally with `?muteAudio=true`.
 | No console errors | Verified against a mocked SDK |
 | `happytime()` used sparingly | On a boss kill and a new personal best only |
 | `settings.muteAudio` honoured, outranking the in-game toggle | Yes — verified silent, and unmutable from in-game while set |
+| Midgame never paired with a "keep playing" rewarded offer | Yes — the midgame is skipped on any run end where Revive is live |
+| Continue-without-watching matches the ad offer in size/font/weight | Yes — measured identical at 215×50 on a 390-wide viewport |
+| Safe-area insets honoured on notched devices | Yes — every edge-anchored element, in both orientations |
+| No custom fullscreen button | Yes — none exists |
+| No cross-promotion or external links | Yes — the build requests nothing but the SDK |
 
 ## 6. Before you hit submit
 
@@ -134,13 +139,37 @@ local top-ten of the player's own runs — and no tutorial
 beyond a one-time control hint, and no banner ads (`requestBanner` is not wired — the
 rewarded and midgame placements are).
 
+**No sitelock either**, and that one is deliberate. Their guide suggests checking that
+`"crazygames"` appears within the last three parts of the hostname and blanking the
+screen otherwise. The failure mode is asymmetric: the upside is deterring clone sites,
+the downside of getting the domain list wrong is a black screen for real players on a
+CrazyGames domain this build never got to see. It is a ten-minute change once you can
+test against the live platform, and a bad bet before then.
+
 ## 7. Ad placement summary
 
 | Placement | Trigger |
 |---|---|
 | Rewarded — revive | On a wreck, once per run, only if the run was worth saving |
 | Rewarded — double coins | Game over screen |
-| Midgame interstitial | Every third run end |
+| Midgame interstitial | Every third run end, **unless** the Revive offer is live |
 
 All three degrade to a simulated overlay when the SDK is absent, so the flow stays
 demonstrable off-platform.
+
+That exception is the ads policy, not a preference: a midgame ad and a "watch a
+rewarded ad to keep playing" offer may not both sit between the same two attempts.
+Revive is that offer, so it wins the slot whenever it is available — which also
+means the midgame lands mostly on short runs, where there is nothing to revive.
+Double-your-coins is unaffected, because it pays out a run that has already ended
+rather than continuing the current one.
+
+Nothing in the game requests an ad while the car is moving. Every placement sits on
+the game-over screen, which is what their driving-game guidance asks for.
+
+**One judgment call left open.** Their driving-genre ad guide suggests capping a
+revive at *once per session*; this build caps it at once per *run*, which is what
+the phrase most likely means and what the genre does as standard. Read strictly, a
+player who takes a revive in run 1 should not be offered one again in run 2. That
+is a monetization decision rather than a compliance fix, so it is left as-is —
+`reviveOffered` in `endRun()` is the single place to tighten if you disagree.
