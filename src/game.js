@@ -5437,16 +5437,19 @@ function drawBay(){
   g.beginPath(); g.ellipse(cx, cy, W * 0.46, H * 0.30, 0, 0, TAU); g.fill();
   g.restore();
 
-  /* --- turntable: a rotating hazard-dash ring under the car --- */
+  /* --- turntable: a rotating hazard-dash ring under the car ---
+     radii clamped against the bay height so the short, wide mobile bay
+     does not push the ring off the deck */
+  const trx = Math.min(W * 0.235, H * 0.42), try_ = Math.min(W * 0.155, H * 0.34);
   g.save();
   g.strokeStyle = 'rgba(150,175,215,0.16)';
   g.lineWidth = 2;
-  g.beginPath(); g.ellipse(cx, cy, W * 0.235, W * 0.155, 0, 0, TAU); g.stroke();
+  g.beginPath(); g.ellipse(cx, cy, trx, try_, 0, 0, TAU); g.stroke();
   g.strokeStyle = 'rgba(255,177,61,0.30)';
   g.lineWidth = 5;
   g.setLineDash([18, 26]);
   g.lineDashOffset = -bayT * 30;
-  g.beginPath(); g.ellipse(cx, cy, W * 0.215, W * 0.14, 0, 0, TAU); g.stroke();
+  g.beginPath(); g.ellipse(cx, cy, trx * 0.92, try_ * 0.9, 0, 0, TAU); g.stroke();
   g.setLineDash([]);
   g.restore();
 
@@ -5799,6 +5802,7 @@ $('gTabs').addEventListener('click', e => {
   gTab = b.dataset.sec;
   NHAudio.ui(true);
   syncGTabs();
+  $('gWork').scrollTop = 0;      // each station starts at its own top
 });
 
 function renderGarage(){

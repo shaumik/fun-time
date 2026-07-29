@@ -631,6 +631,7 @@ body{
    ============================================================ */
 #garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
+  position:relative;
   width:100%;max-width:calc(var(--u)*116);
   /* pinned height: switching workshop tabs must not resize the whole bay —
      a panel that breathes per tab reads as a web page, not a room */
@@ -751,7 +752,7 @@ body{
 /* --- the work order --- */
 .gWork{
   min-width:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(var(--u)*1.6) calc(var(--u)*2) calc(var(--u)*2.2);
+  padding:0 calc(var(--u)*2) calc(var(--u)*2.2);
 }
 .gwHead{
   display:flex;align-items:baseline;justify-content:space-between;
@@ -778,6 +779,12 @@ body{
   display:flex;gap:3px;
   border-bottom:1px solid rgba(255,177,61,.35);
   margin-bottom:calc(var(--u)*1.1);
+  /* the station rail rides the top of the scroll, so changing stations
+     never means scrolling back up */
+  position:sticky;top:0;z-index:5;
+  background:#0E131E;
+  box-shadow:0 calc(var(--u)*.6) calc(var(--u)*1) rgba(5,8,14,.55);
+  padding-top:calc(var(--u)*1.2);
 }
 .gTab{
   flex:1;cursor:pointer;font-family:var(--sans);
@@ -1156,29 +1163,48 @@ body{
 
   .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
 
-  /* Garage on a phone: the action bar wraps so Roll out stays full width and
-     thumb-sized, and the bay sits above the work order rather than beside it. */
-  #garage.screen{padding:calc(var(--u)*1.2);align-items:flex-start}
-  .gPanel{max-height:100%}
+  /* Garage on a phone. Three rules fix the portrait layout:
+     the panel owns the whole viewport (no dead black below it), the bay
+     is a compact car card instead of 40% of the screen, and ROLL OUT
+     lives in a fixed bar at the bottom — where the thumb already is —
+     instead of at the top where nothing should ask to be pressed. */
+  #garage.screen{padding:calc(var(--u)*.9);align-items:stretch}
+  .gPanel{height:100%;max-height:100%}
   .gTop{
-    flex-wrap:wrap;gap:calc(var(--u)*1.2);
-    padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
+    flex-wrap:nowrap;gap:calc(var(--u)*1.2);
+    padding:calc(var(--u)*1.2) calc(var(--u)*1.6);
   }
   .gId b{font-size:calc(var(--u)*2.2)}
   .gBal b{font-size:calc(var(--u)*2.4)}
-  .gAct{order:3;width:100%;flex-direction:row-reverse}
-  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
+  .gAct{
+    position:absolute;left:0;right:0;bottom:0;z-index:7;
+    flex-direction:row-reverse;gap:calc(var(--u)*.8);
+    padding:calc(var(--u)*2.6) calc(var(--u)*1.2)
+            calc(var(--u)*1.1 + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(180deg,rgba(8,11,18,0),rgba(8,11,18,.94) 42%);
+  }
+  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*1.2)}
   .gAct #btnBack{flex:0 0 auto}
   .gFloor{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:0}
-  .gBay{border-right:none;border-bottom:1px solid rgba(150,175,215,.14)}
-
-  .gBay{min-height:calc(var(--u)*34)}
+  .gBay{
+    border-right:none;border-bottom:1px solid rgba(150,175,215,.14);
+    min-height:0;height:clamp(150px,26vh,250px);flex:0 0 auto;
+  }
   /* The plate would sit across the car's nose at this width, and the tuning
      rows directly below already carry the same numbers. */
   .gPlate{display:none}
-  .gFitted{padding:calc(var(--u)*1) calc(var(--u)*1.4) calc(var(--u)*1.2);border-top:none}
-  .gWork{padding:calc(var(--u)*1.4) calc(var(--u)*1.6) calc(var(--u)*2)}
+  /* fitted chips float over the deck instead of spending a row of height */
+  .gFitted{
+    position:absolute;left:0;right:0;bottom:0;border-top:none;
+    padding:calc(var(--u)*.5) calc(var(--u)*1);
+    background:linear-gradient(180deg,rgba(5,8,14,0),rgba(5,8,14,.78));
+  }
+  /* room under the last card for the fixed action bar */
+  .gWork{padding:0 calc(var(--u)*1.4) calc(var(--u)*10)}
   .gGear{grid-template-columns:1fr}
+  .gear .ico canvas{width:34% !important}
+  /* three doctrine columns are 110px wide on a phone — stack them */
+  .gTree{grid-template-columns:1fr}
 }
 
 /* Short landscape (a phone turned sideways) — vertical room is the
@@ -8661,16 +8687,19 @@ function drawBay(){
   g.beginPath(); g.ellipse(cx, cy, W * 0.46, H * 0.30, 0, 0, TAU); g.fill();
   g.restore();
 
-  /* --- turntable: a rotating hazard-dash ring under the car --- */
+  /* --- turntable: a rotating hazard-dash ring under the car ---
+     radii clamped against the bay height so the short, wide mobile bay
+     does not push the ring off the deck */
+  const trx = Math.min(W * 0.235, H * 0.42), try_ = Math.min(W * 0.155, H * 0.34);
   g.save();
   g.strokeStyle = 'rgba(150,175,215,0.16)';
   g.lineWidth = 2;
-  g.beginPath(); g.ellipse(cx, cy, W * 0.235, W * 0.155, 0, 0, TAU); g.stroke();
+  g.beginPath(); g.ellipse(cx, cy, trx, try_, 0, 0, TAU); g.stroke();
   g.strokeStyle = 'rgba(255,177,61,0.30)';
   g.lineWidth = 5;
   g.setLineDash([18, 26]);
   g.lineDashOffset = -bayT * 30;
-  g.beginPath(); g.ellipse(cx, cy, W * 0.215, W * 0.14, 0, 0, TAU); g.stroke();
+  g.beginPath(); g.ellipse(cx, cy, trx * 0.92, try_ * 0.9, 0, 0, TAU); g.stroke();
   g.setLineDash([]);
   g.restore();
 
@@ -9023,6 +9052,7 @@ $('gTabs').addEventListener('click', e => {
   gTab = b.dataset.sec;
   NHAudio.ui(true);
   syncGTabs();
+  $('gWork').scrollTop = 0;      // each station starts at its own top
 });
 
 function renderGarage(){
