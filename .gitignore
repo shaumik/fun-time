@@ -3,3 +3,6 @@
 # Store screenshots live in press/ and are committed deliberately.
 /*.png
 node_modules/
+
+# Rendered checks from test/sizes.mjs — regenerate with `node test/sizes.mjs`
+/press/iframe-sizes/

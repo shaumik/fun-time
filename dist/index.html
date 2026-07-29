@@ -44,6 +44,14 @@ body{
   display:flex;align-items:center;justify-content:center;
   -webkit-font-smoothing:antialiased;
   -webkit-tap-highlight-color:transparent;
+  /* Verbatim from the CrazyGames technical requirements, and it belongs on the
+     body rather than only on the stage: on tablets a double-tap or a press-hold
+     otherwise raises the magnifier, or selects the whole game and opens a
+     context menu over it. */
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  user-select:none;
 }
 
 /* Fill whatever viewport we are given. A hard 16:9 lock turned a 390x844
@@ -87,8 +95,16 @@ body{
 /* ============ HUD ============ */
 #hud{transition:opacity .3s}
 #hud.off{opacity:0}
+/* Safe areas. The page already asks for viewport-fit=cover, and inside the
+   CrazyGames App games open fullscreen on devices with notches and home
+   indicators — so the HUD has to be inset by whatever the device reserves, or
+   the score sits under a camera cutout. env() resolves to 0 everywhere that
+   has no such reservation, which is why it can be added unconditionally. */
 .hudTop{
-  position:absolute;top:calc(var(--u)*3);left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);
+  position:absolute;
+  top:calc(var(--u)*3 + env(safe-area-inset-top));
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
   display:flex;align-items:flex-start;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .stat.right{text-align:right}
@@ -226,7 +242,10 @@ body{
 @keyframes pip{50%{opacity:.35}}
 
 .hudBot{
-  position:absolute;left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);bottom:calc(var(--u)*3);
+  position:absolute;
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
+  bottom:calc(var(--u)*3 + env(safe-area-inset-bottom));
   display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
@@ -414,6 +433,26 @@ body{
   border:1px solid rgba(255,177,61,.42);box-shadow:none;
 }
 .btn.rew.ghost:hover{background:rgba(255,177,61,.18);color:var(--amber)}
+/* The no-ad route to the same reward. Deliberately the same footprint and
+   weight as the rewarded offer above it: CrazyGames requires that the option
+   which does not involve watching an ad is not made smaller, dimmer or harder
+   to find than the one that does. */
+.btn.alt{
+  width:100%;justify-content:center;
+  color:var(--ice);
+  background:rgba(198,210,232,.08);
+  border:1px solid rgba(198,210,232,.30);
+}
+.btn.alt:hover{background:rgba(198,210,232,.16);color:#fff}
+.btn.hide{display:none}
+
+/* Says why an ad-funded offer is missing, on the occasions it is. */
+.ovAdNote{
+  margin-top:calc(var(--u)*1.2);
+  font-size:calc(var(--u)*1.4);
+  line-height:1.45;color:var(--dim);text-align:center;
+}
+.ovAdNote.hide{display:none}
 .btn .play{
   width:0;height:0;flex:0 0 auto;
   border-left:calc(var(--u)*1.1) solid currentColor;
@@ -1754,7 +1793,11 @@ body{
       <div class="ovActs">
         <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
+        <!-- The no-ad route to the same reward, which their rewarded rules
+             require, and the only revive left when ads cannot be served. -->
+        <button class="btn alt" id="btnRevCoin">Revive for 250 coins</button>
       </div>
+      <div class="ovAdNote hide" id="ovAdNote"></div>
       <div class="ovFoot">
         <button class="btn primary" id="btnAgain">Spend it in the garage</button>
         <button class="btn" id="btnOvBoard">Records</button>
@@ -1935,10 +1978,16 @@ function init(){
   tick();
 }
 
+/* iOS parks the AudioContext in 'interrupted' when the tab is backgrounded or
+   a call arrives, and WebKit will not restart it from a visibilitychange — it
+   wants a real user gesture. Android uses 'suspended' for the same situation.
+   Accept both states, and drive this off touchend as well as the pointer and
+   key handlers, which is the gesture CrazyGames names for the iOS case. */
 function resume(){
   if (!ready) { init(); return; }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume();
 }
+addEventListener('touchend', () => { if (ready) resume(); }, { passive: true });
 
 /* ---------------------------------------------------------- engine voice
    An electric drivetrain, not a combustion one. The first version was two
@@ -2134,7 +2183,7 @@ const A = {
   /* browsers throttle a hidden tab's timers; stop the sequencer outright */
   setActive(on){
     if (!ready) return;
-    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    if (on) { if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume(); }
     else if (ac.state === 'running') ac.suspend();
   },
 
@@ -2987,15 +3036,37 @@ const Ads = {
      reliable "am I the CrazyGames build" test that costs no network. */
   onPlatform(){ return !!document.querySelector('script[src*="sdk.crazygames.com"]'); },
 
+  /* Rewarded ads can be unavailable for reasons we cannot see in advance:
+     they are switched off outright for the whole of Basic Launch, an ad
+     blocker stops them everywhere, and fill is never guaranteed. CrazyGames
+     is blunt about the consequence — "there should not be rewarded ad buttons
+     without effect", and a game that leaves one there is rejected. So failures
+     are counted, and once the offer has proved dead it is withdrawn from the
+     UI for the session rather than left on screen doing nothing. */
+  rewardFails: 0,
+  rewardDead: false,
+  /* One miss is bad luck and the player is told to try later; two is a
+     platform that is not going to serve us. */
+  noteRewardFail(){ if (++this.rewardFails >= 2) this.rewardDead = true; },
+  rewardOffered(){
+    if (!this.onPlatform()) return true;      // the off-platform demo simulates
+    return this.ready && !this.rewardDead;
+  },
+
   request(type, msg, simSecs, done){
+    const rewardedAd = type === 'rewarded';
     if (!this.ready) {
-      /* On-platform with no working SDK means an ad blocker ate the script or
-         init failed. There is no ad to show, so do not mime one: a player
-         watching a fake progress bar is being charged time for nothing, and
-         CrazyGames requires the game to work under AdBlock. Grant and drive
-         on. Off-platform the simulated placement is the whole point of the
-         demo, so it still runs there. */
-      if (this.onPlatform()) { done(true); return; }
+      /* On-platform with no working SDK means an ad blocker ate the script.
+         Do not mime an ad — a fake progress bar charges the player time for
+         nothing — and do not hand over the reward either, because rewarding
+         without an ad is not ours to do. Retire the offer instead, which is
+         what their AdBlock rules actually ask for: the feature goes away and
+         says why, and nothing about the rest of the game changes. */
+      if (this.onPlatform()) {
+        if (rewardedAd) { this.rewardFails = 2; this.rewardDead = true; }
+        done(false);
+        return;
+      }
       simAd(msg, simSecs, () => done(true));
       return;
     }
@@ -3005,11 +3076,16 @@ const Ads = {
       if (settled) return;
       settled = true;
       clearTimeout(guard);
+      if (!ok && rewardedAd) this.noteRewardFail();
+      adMute(false);
       adPause(false);
       done(ok);
     };
-    /* Pause and mute before the request, not on adStarted: an ad that opens
-       instantly would otherwise get a frame or two of game audio over it. */
+    /* Block the game for the duration of the request — their rules require
+       that the player cannot progress while an ad is being fetched — but do
+       NOT mute yet. Muting is deferred to adStarted on their instruction:
+       the request may return nothing, and dipping the music for an ad that
+       never appears is a glitch from the player's side. */
     adPause(true);
     /* if the network stalls and neither callback ever fires, do not
        leave the player staring at a frozen game */
@@ -3017,7 +3093,7 @@ const Ads = {
 
     try {
       this.sdk.ad.requestAd(type, {
-        adStarted:  () => adPause(true),
+        adStarted:  () => { adPause(true); adMute(true); },
         adFinished: () => finish(true),
         adError:    () => finish(false)
       });
@@ -3032,14 +3108,29 @@ const Ads = {
    Several things can suspend play — an ad, a backgrounded tab, a blurred
    iframe. Track them by reason so the last one to clear resumes the game. */
 const pauseReasons = new Set();
+
+/* Audio is ducked while an ad is actually on screen, and while the tab is
+   away. It is deliberately *not* ducked merely because the game is blocked
+   waiting on an ad request: CrazyGames asks that the music not dip for an ad
+   the player may never be shown. */
+let adMuted = false;
+function applyDuck(){
+  const away = pauseReasons.has('hidden') || pauseReasons.has('blur');
+  NHAudio.duck(adMuted || away);
+}
+function adMute(on){
+  if (adMuted === !!on) return;
+  adMuted = !!on;
+  applyDuck();
+}
+
 function setPause(reason, on){
-  const before = pauseReasons.size;
+  const before = pauseReasons.size > 0;
   if (on) pauseReasons.add(reason); else pauseReasons.delete(reason);
-  const now = pauseReasons.size;
-  if ((before > 0) === (now > 0)) return;
-  const paused = now > 0;
+  const paused = pauseReasons.size > 0;
+  applyDuck();                          // reasons can change without 0<->n
+  if (before === paused) return;
   G.paused = paused;
-  NHAudio.duck(paused);
   if (paused) Ads.gameplay(false);
   for (const k in keys) keys[k] = 0;   // never resume with a key stuck down
 }
@@ -3219,7 +3310,13 @@ function resize(){
   /* In portrait the narrow axis governs legibility: height/100 on a 390x844
      phone gives 8.4px units inside a 390px-wide column, which overflows. */
   const portrait = W / H < 1.15;
-  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 3.2, 11);
+  /* The landscape floor is set by legibility, not by taste. CrazyGames require
+     text to be readable at devicePixelRatio 1 in their responsive iframe sizes,
+     the smallest of which are 821x462 and 800x450 — and at height/100 those
+     gave a 4.5px unit, which put the HUD's caption type at just over 6px. A
+     floor of 5.6 lifts the smallest captions back to ~8px without changing
+     anything at the sizes where the formula was already above it. */
+  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 5.6, 11);
   stage.style.setProperty('--u', u.toFixed(2) + 'px');
   /* plates are drawn at CSS size, so a resolution tweak must not rebuild
      them — that is three full-screen canvases of work */
@@ -3297,7 +3394,7 @@ addEventListener('keydown', e => {
      fullscreen", and CrazyGames lists it as a restricted key for exactly
      that reason: a player who hits it to un-fullscreen would have had the
      run abandoned underneath them at the same time. Quitting is a button. */
-  if (steerCode(e.code)) dismissHint();
+  if (steerCode(e.code)) { dismissHint(); MS.on = false; }   // keys reclaim the wheel
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
@@ -3354,7 +3451,7 @@ function showControlHint(){
   el.innerHTML =
     '<b>' + (swipeMode() ? 'Drag anywhere to steer'
                          : hasTouch ? 'Hold either arrow to steer'
-                         : '&#8592; &#8594; to steer') + '</b>' +
+                         : '&#8592; &#8594; or move the mouse to steer') + '</b>' +
     '<span>Ram traffic to build the chain &middot; grab power-ups &middot; it banks itself</span>';
   el.classList.add('on');
   clearTimeout(el._t);
@@ -3407,11 +3504,31 @@ const STEER_L = ['ArrowLeft','KeyA','KeyQ'];
 const STEER_R = ['ArrowRight','KeyD'];
 const steerCode = c => STEER_L.includes(c) || STEER_R.includes(c);
 
+/* ---- mouse steering ----
+   CrazyGames requires desktop games to support the mouse, and this one was
+   keyboard-only. Steering follows how far the cursor sits from the centre of
+   the stage — the analogue equivalent of the touch drag, and nothing to hold
+   down. It arms on the first mouse movement and disarms the moment a steering
+   key is pressed, so somebody playing on the keyboard never ends up fighting a
+   cursor parked at the edge of the screen. */
+const MS = { on:false, steer:0 };
+stage.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse') return;
+  const dx = e.clientX - W / 2;
+  const dead = W * 0.03;                 // no drift from a near-centred cursor
+  const span = Math.max(1, W * 0.30);    // full lock a third of the way out
+  MS.steer = clamp((Math.abs(dx) < dead ? 0 : dx - Math.sign(dx) * dead) / span, -1, 1);
+  MS.on = true;
+  dismissHint();
+}, { passive: true });
+stage.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') MS.on = false; });
+
 function readInput(){
   const l = keys.ArrowLeft  || keys.KeyA || keys.KeyQ || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
   if (swipeMode() && GS.on && !steer) steer = GS.steer;  // analogue, unlike the keyboard
+  if (!steer && MS.on && G.state === 'play') steer = MS.steer;
   IN.steer = steer;
 }
 
@@ -7283,12 +7400,39 @@ function endRun(won){
   /* a rank is a more useful thing to see than a badge you may never earn */
   $('ovPlace').textContent = rank ? 'Personal best #' + rank : 'Outside your top ' + BOARD_MAX;
   $('ovPlace').classList.toggle('in', !!rank);
-  /* one revive per run, and only when the run was worth saving */
-  $('btnRevive').disabled = G.revived || G.score < 400;
   $('btnDouble').disabled = false;
+  refreshOverOffers();
 
   const showOver = () => { show(UI.over); };
-  if (Save.data.runs % 3 === 0) Ads.midroll(showOver); else showOver();
+  /* Never a midgame ad on the transition that also offers a rewarded continue.
+     CrazyGames allows one or the other between levels, not both: "you can have
+     either a midgame ad and restart, or a 'watch rewarded to keep playing',
+     but not both". The revive is the continue, so it wins. */
+  if (!offeringRevive() && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  else showOver();
+}
+
+/* one revive per run, and only when the run was worth saving */
+function canRevive(){ return !G.revived && G.score >= 400; }
+function offeringRevive(){ return canRevive() && Ads.rewardOffered(); }
+
+/* Keeps the game-over offers honest. A rewarded button that does nothing is
+   grounds for rejection, so an offer that cannot be served is withdrawn and
+   explained rather than left sitting there disabled and unexplained. */
+function refreshOverOffers(note){
+  const live = Ads.rewardOffered();
+  const rev  = canRevive();
+  $('btnRevive').classList.toggle('hide', !(rev && live));
+  $('btnDouble').classList.toggle('hide', !live);
+
+  const coin = $('btnRevCoin');
+  coin.classList.toggle('hide', !rev);
+  coin.disabled = Save.data.coins < REVIVE_COST;
+  coin.innerHTML = 'Revive for ' + fmt(REVIVE_COST) + ' coins';
+
+  const el = $('ovAdNote');
+  el.textContent = note || (live ? '' : 'Ad-funded bonuses are unavailable — an ad blocker, or ads are off for this build.');
+  el.classList.toggle('hide', !el.textContent);
 }
 
 function commitCoins(mult){
@@ -7342,9 +7486,14 @@ $('btnBdBack').onclick  = () => { NHAudio.ui(true); closeBoard(); };
 $('btnBack').onclick   = () => { hide(UI.garage); toMenu(); };
 $('btnRace').onclick   = () => { hide(UI.garage); startRun(); };
 
-$('btnRevive').onclick = () => {
-  Ads.rewarded('Reviving your run', ok => {
-    if (!ok) return;
+/* The price of the non-ad revive. CrazyGames requires an alternative to
+   watching a rewarded ad, and coins are the currency the game already pays
+   out on every run, win or lose — so the alternative is one the player has
+   been earning towards whether or not they ever watch an ad. It is also the
+   only revive on offer when ads are unavailable. */
+const REVIVE_COST = 250;
+
+function doRevive(){
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
@@ -7377,12 +7526,28 @@ $('btnRevive').onclick = () => {
     G.heat = Math.max(0, G.heat - 1);
     G.slow = 1;
     toast('Back in the race', 'gold');
+}
+
+$('btnRevive').onclick = () => {
+  Ads.rewarded('Reviving your run', ok => {
+    /* No reward on adError — their rules are explicit about that. Say so and
+       leave the coin option standing. */
+    if (!ok) { refreshOverOffers('No ad available right now — try again later'); return; }
+    doRevive();
   });
+};
+
+$('btnRevCoin').onclick = () => {
+  if (Save.data.coins < REVIVE_COST) return;
+  Save.data.coins -= REVIVE_COST;
+  Save.flush();
+  NHAudio.ui(true);
+  doRevive();
 };
 
 $('btnDouble').onclick = () => {
   Ads.rewarded('Doubling your coins', ok => {
-    if (!ok) return;
+    if (!ok) { refreshOverOffers('No ad available right now — try again later'); return; }
     commitCoins(2);
     $('btnDouble').disabled = true;
     $('ovCoins').textContent = '0';
@@ -7990,6 +8155,7 @@ requestAnimationFrame(frame);
 /* debug handle for tuning passes and automated playtests */
 window.__NH = {
   G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
+  MS, get adMuted(){ return adMuted; },   // ad audio must not dip before adStarted
   get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
   beginDistrict, takePerk, districtCfg, bank, showMap, enterNode,

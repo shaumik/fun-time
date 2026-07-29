@@ -101,10 +101,16 @@ function init(){
   tick();
 }
 
+/* iOS parks the AudioContext in 'interrupted' when the tab is backgrounded or
+   a call arrives, and WebKit will not restart it from a visibilitychange — it
+   wants a real user gesture. Android uses 'suspended' for the same situation.
+   Accept both states, and drive this off touchend as well as the pointer and
+   key handlers, which is the gesture CrazyGames names for the iOS case. */
 function resume(){
   if (!ready) { init(); return; }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume();
 }
+addEventListener('touchend', () => { if (ready) resume(); }, { passive: true });
 
 /* ---------------------------------------------------------- engine voice
    An electric drivetrain, not a combustion one. The first version was two
@@ -300,7 +306,7 @@ const A = {
   /* browsers throttle a hidden tab's timers; stop the sequencer outright */
   setActive(on){
     if (!ready) return;
-    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    if (on) { if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume(); }
     else if (ac.state === 'running') ac.suspend();
   },
 

@@ -33,6 +33,14 @@ body{
   display:flex;align-items:center;justify-content:center;
   -webkit-font-smoothing:antialiased;
   -webkit-tap-highlight-color:transparent;
+  /* Verbatim from the CrazyGames technical requirements, and it belongs on the
+     body rather than only on the stage: on tablets a double-tap or a press-hold
+     otherwise raises the magnifier, or selects the whole game and opens a
+     context menu over it. */
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  -ms-user-select:none;
+  user-select:none;
 }
 
 /* Fill whatever viewport we are given. A hard 16:9 lock turned a 390x844
@@ -76,8 +84,16 @@ body{
 /* ============ HUD ============ */
 #hud{transition:opacity .3s}
 #hud.off{opacity:0}
+/* Safe areas. The page already asks for viewport-fit=cover, and inside the
+   CrazyGames App games open fullscreen on devices with notches and home
+   indicators — so the HUD has to be inset by whatever the device reserves, or
+   the score sits under a camera cutout. env() resolves to 0 everywhere that
+   has no such reservation, which is why it can be added unconditionally. */
 .hudTop{
-  position:absolute;top:calc(var(--u)*3);left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);
+  position:absolute;
+  top:calc(var(--u)*3 + env(safe-area-inset-top));
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
   display:flex;align-items:flex-start;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .stat.right{text-align:right}
@@ -215,7 +231,10 @@ body{
 @keyframes pip{50%{opacity:.35}}
 
 .hudBot{
-  position:absolute;left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);bottom:calc(var(--u)*3);
+  position:absolute;
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
+  bottom:calc(var(--u)*3 + env(safe-area-inset-bottom));
   display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
@@ -403,6 +422,26 @@ body{
   border:1px solid rgba(255,177,61,.42);box-shadow:none;
 }
 .btn.rew.ghost:hover{background:rgba(255,177,61,.18);color:var(--amber)}
+/* The no-ad route to the same reward. Deliberately the same footprint and
+   weight as the rewarded offer above it: CrazyGames requires that the option
+   which does not involve watching an ad is not made smaller, dimmer or harder
+   to find than the one that does. */
+.btn.alt{
+  width:100%;justify-content:center;
+  color:var(--ice);
+  background:rgba(198,210,232,.08);
+  border:1px solid rgba(198,210,232,.30);
+}
+.btn.alt:hover{background:rgba(198,210,232,.16);color:#fff}
+.btn.hide{display:none}
+
+/* Says why an ad-funded offer is missing, on the occasions it is. */
+.ovAdNote{
+  margin-top:calc(var(--u)*1.2);
+  font-size:calc(var(--u)*1.4);
+  line-height:1.45;color:var(--dim);text-align:center;
+}
+.ovAdNote.hide{display:none}
 .btn .play{
   width:0;height:0;flex:0 0 auto;
   border-left:calc(var(--u)*1.1) solid currentColor;
