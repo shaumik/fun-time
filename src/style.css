@@ -113,6 +113,34 @@ body{
   text-shadow:0 0 calc(var(--u)*3) rgba(255,46,136,.75);
 }
 .combo.hot .cmult{color:var(--amber);text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
+/* the meter dresses up as it climbs */
+.combo.t2 .cmult{letter-spacing:.01em;transform:scale(1.08)}
+.combo.t3 .cmult{transform:scale(1.18);animation:comboBurn .5s ease-in-out infinite alternate}
+@keyframes comboBurn{
+  from{text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
+  to{text-shadow:0 0 calc(var(--u)*6) rgba(255,177,61,1),0 0 calc(var(--u)*10) rgba(255,46,136,.7)}
+}
+/* a SIREN pulse is armed and the pending bank is fat enough to die */
+.combo.threat .cpts{color:var(--red);animation:threatFlash .3s steps(2) infinite}
+@keyframes threatFlash{50%{opacity:.35}}
+/* quota met — surplus banking, XP half again */
+#obj.overtime #objLbl,#obj.overtime #objVal{color:var(--amber)}
+#obj.overtime #objFill{background:var(--amber);box-shadow:0 0 calc(var(--u)*1.4) rgba(255,177,61,.9)}
+/* the bank pop: the number flies up from the combo rail */
+.bankPop{
+  position:absolute;top:calc(var(--u)*14);left:50%;transform:translateX(-50%);
+  font-size:calc(var(--u)*3.4);font-weight:800;color:var(--amber);
+  font-variant-numeric:tabular-nums;pointer-events:none;
+  text-shadow:0 0 calc(var(--u)*3) rgba(255,177,61,.9);
+  animation:bankFly .85s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes bankFly{
+  0%{opacity:0;transform:translateX(-50%) translateY(calc(var(--u)*3)) scale(.7)}
+  18%{opacity:1;transform:translateX(-50%) scale(1.15)}
+  100%{opacity:0;transform:translateX(-50%) translateY(calc(var(--u)*-9)) scale(.9)}
+}
+#score.pop{animation:scorePop .5s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes scorePop{35%{transform:scale(1.12);text-shadow:0 0 calc(var(--u)*4) rgba(255,177,61,.9)}}
 .cpts{
   font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;margin-top:calc(var(--u)*.2);
@@ -284,7 +312,10 @@ body{
 
 /* toasts */
 #toasts{
-  position:absolute;left:50%;top:calc(var(--u)*24);transform:translateX(-50%);
+  /* below the centre HUD stack — at 24u the rail sat exactly on the pile-up
+     counter and convoy badge, and a hot chain turned the screen centre into
+     word soup at precisely the moments that mattered */
+  position:absolute;left:50%;top:36%;transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
@@ -606,6 +637,7 @@ body{
   box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
 }
 .ovBadge.hide{display:none}
+.btn.hide{display:none}
 .ovScore{
   font-size:calc(var(--u)*9);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;
@@ -636,8 +668,11 @@ body{
    ============================================================ */
 #garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
+  position:relative;
   width:100%;max-width:calc(var(--u)*116);
-  height:auto;max-height:100%;
+  /* pinned height: switching workshop tabs must not resize the whole bay —
+     a panel that breathes per tab reads as a web page, not a room */
+  height:min(calc(var(--u)*78),100%);
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,#0E131E,#080B12);
   border:1px solid rgba(150,175,215,.16);
@@ -754,7 +789,7 @@ body{
 /* --- the work order --- */
 .gWork{
   min-width:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(var(--u)*1.6) calc(var(--u)*2) calc(var(--u)*2.2);
+  padding:0 calc(var(--u)*2) calc(var(--u)*2.2);
 }
 .gwHead{
   display:flex;align-items:baseline;justify-content:space-between;
@@ -773,17 +808,62 @@ body{
   font-variant-numeric:tabular-nums;letter-spacing:.1em;
 }
 
-/* tuning: docket rows, flat and square */
+/* ============ the workshop ============
+   Tab rail: one station on screen at a time. The old work order was four
+   sections of name+description+price cards in a single scroll — a settings
+   form wearing neon. Stations give each kind of purchase its own furniture. */
+.gTabs{
+  display:flex;gap:3px;
+  border-bottom:1px solid rgba(255,177,61,.35);
+  margin-bottom:calc(var(--u)*1.1);
+  /* the station rail rides the top of the scroll, so changing stations
+     never means scrolling back up */
+  position:sticky;top:0;z-index:5;
+  background:#0E131E;
+  box-shadow:0 calc(var(--u)*.6) calc(var(--u)*1) rgba(5,8,14,.55);
+  padding-top:calc(var(--u)*1.2);
+}
+.gTab{
+  flex:1;cursor:pointer;font-family:var(--sans);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.25);
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  border:1px solid rgba(150,175,215,.16);border-bottom:none;
+  border-radius:calc(var(--u)*.5) calc(var(--u)*.5) 0 0;
+  padding:calc(var(--u)*.7) calc(var(--u)*.4) calc(var(--u)*.55);
+  color:var(--dim);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);
+  transition:background .14s,color .14s,border-color .14s;
+}
+.gTab span{
+  font-size:calc(var(--u)*.95);letter-spacing:.08em;
+  font-variant-numeric:tabular-nums;color:var(--dim);font-weight:700;
+}
+.gTab:hover{color:var(--ice);background:rgba(255,255,255,.07)}
+.gTab:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.gTab.on{
+  color:#fff;border-color:rgba(255,177,61,.55);
+  background:
+    repeating-linear-gradient(-45deg,rgba(255,177,61,.14) 0 calc(var(--u)*.7),transparent calc(var(--u)*.7) calc(var(--u)*1.4)),
+    linear-gradient(180deg,rgba(255,177,61,.10),rgba(255,177,61,.02));
+}
+.gTab.on span{color:var(--amber)}
+.gSec{display:none}
+.gSec.on{display:block;animation:fade .16s}
+
+/* icon slots — the drawn object every card leads with */
+.up .ico{flex:0 0 calc(var(--u)*5);width:calc(var(--u)*5)}
+.tHead .ico{width:calc(var(--u)*2.6);display:block}
+
+/* --- tuning: the dyno console --- */
 .gUps{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up{
   display:flex;align-items:center;gap:calc(var(--u)*1.2);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.28);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#131A2C,#0D1322);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.7) calc(var(--u)*1.1);
 }
-.up.maxed{border-left-color:var(--cyan);background:rgba(61,232,255,.05)}
-.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
+.up.maxed{border-color:rgba(61,232,255,.45);background:linear-gradient(180deg,#0F1F2C,#0C1420)}
+.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up .nm{
   display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
   font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
@@ -791,19 +871,31 @@ body{
 }
 .up .nm em{
   font-style:normal;letter-spacing:.04em;text-transform:none;
-  font-size:calc(var(--u)*1.2);color:var(--cyan);font-variant-numeric:tabular-nums;
+  font-size:calc(var(--u)*1.35);color:var(--cyan);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.55);
 }
-.pips{display:flex;gap:2px}
-.pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
-.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.6)}
+/* the meter reads as dyno segments, not a progress bar */
+.pips{display:flex;gap:calc(var(--u)*.35)}
+.pips i{
+  flex:1;height:calc(var(--u)*.95);
+  background:rgba(255,255,255,.10);
+  transform:skewX(-18deg);
+  border-radius:1px;
+}
+.pips i.on{
+  background:linear-gradient(180deg,#9FF3FF,var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(61,232,255,.75);
+}
+/* the buy control is a torque bolt, not a form button */
 .up button{
-  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
+  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*9.5);
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.1em;
+  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.08em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
-  border:none;border-radius:calc(var(--u)*.25);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  border:none;
+  clip-path:polygon(10% 0,90% 0,100% 50%,90% 100%,10% 100%,0 50%);
+  padding:calc(var(--u)*.85) calc(var(--u)*1.4);
   transition:filter .14s,transform .08s;
 }
 .up button:hover{filter:brightness(1.12)}
@@ -812,43 +904,160 @@ body{
 .up button[disabled]{background:rgba(255,255,255,.07);color:var(--dim);cursor:not-allowed}
 .up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.10)}
 
-/* hardware: parts on a rack — the reason a lost run still moves you forward */
-.gGear{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.6)}
+/* --- price tags and stamps, shared by every station --- */
+.tag{
+  position:relative;align-self:flex-start;margin-top:auto;
+  display:inline-flex;align-items:baseline;gap:calc(var(--u)*.6);
+  background:#221905;border:1px solid var(--amber);color:var(--amber);
+  font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;
+  font-size:calc(var(--u)*1.2);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7) calc(var(--u)*.3) calc(var(--u)*1.5);
+  clip-path:polygon(0 50%,calc(var(--u)*.9) 0,100% 0,100% 100%,calc(var(--u)*.9) 100%);
+}
+.tag::before{
+  content:'';position:absolute;left:calc(var(--u)*.55);top:50%;
+  width:calc(var(--u)*.4);height:calc(var(--u)*.4);
+  transform:translateY(-50%);border-radius:50%;
+  background:var(--void);box-shadow:0 0 0 1px var(--amber);
+}
+.tag em{
+  font-style:normal;font-size:calc(var(--u)*.95);color:var(--dim);
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+}
+.tag.own{border-color:rgba(150,175,215,.5);color:var(--ice);background:rgba(255,255,255,.05)}
+.tag.own::before{box-shadow:0 0 0 1px rgba(150,175,215,.5)}
+.stamp{
+  align-self:flex-start;margin-top:auto;
+  transform:rotate(-6deg);
+  border:2px solid var(--cyan);color:var(--cyan);border-radius:2px;
+  font-weight:900;letter-spacing:.3em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);
+  padding:calc(var(--u)*.22) calc(var(--u)*.55) calc(var(--u)*.22) calc(var(--u)*.85);
+  opacity:.9;
+  mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+  -webkit-mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+}
+
+/* --- parts: a pegboard of drawn objects --- */
+.gGear{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.8);
+  padding:calc(var(--u)*.9);
+  background:
+    radial-gradient(rgba(150,175,215,.13) 1.2px,transparent 1.6px);
+  background-size:calc(var(--u)*1.9) calc(var(--u)*1.9);
+  border:1px solid rgba(150,175,215,.12);
+}
 .gear{
   position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid var(--amber);
-  padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#151C2F,#0C1120);
+  border:1px solid rgba(150,175,215,.18);
+  clip-path:polygon(0 0,calc(100% - var(--u)*1.2) 0,100% calc(var(--u)*1.2),100% 100%,calc(var(--u)*1.2) 100%,0 calc(100% - var(--u)*1.2));
+  padding:0 calc(var(--u)*1.1) calc(var(--u)*1);
   display:flex;flex-direction:column;gap:calc(var(--u)*.45);
   transition:background .14s,border-color .14s;
 }
-.gear:hover{background:rgba(255,177,61,.10)}
+.gear:hover{border-color:rgba(255,177,61,.6);background:linear-gradient(180deg,#1A2138,#0E1424)}
 .gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+/* the part itself, on a dark plate strip across the top of the card */
+.gear .ico{
+  display:grid;place-items:center;
+  margin:0 calc(var(--u)*-1.1) calc(var(--u)*.3);
+  padding:calc(var(--u)*.6) 0 calc(var(--u)*.4);
+  background:rgba(0,0,0,.32);
+  border-bottom:1px solid rgba(150,175,215,.10);
+}
+.gear .ico canvas{width:62% !important;max-width:150px}
 .gear .nm{
-  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.14em;
+  font-size:calc(var(--u)*1.25);font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
-.gear .ds{font-size:calc(var(--u)*1.15);line-height:1.4;color:var(--ice);opacity:.75}
-.gear .pr{
-  margin-top:auto;padding-top:calc(var(--u)*.4);
-  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.3);font-weight:800;
-  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
+.gear .ds{font-size:calc(var(--u)*1.05);line-height:1.4;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.4)}
+.gear.owned{border-color:rgba(61,232,255,.5);cursor:default}
+.gear.owned .ico{background:rgba(61,232,255,.06)}
+.gear.broke{opacity:.55}
+.gear.broke:hover{border-color:rgba(150,175,215,.18)}
+
+/* --- crew: doctrine badges, not settings cards --- */
+.gTree{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
+.tBranch{display:flex;flex-direction:column;gap:calc(var(--u)*.55)}
+.tHead{
+  display:flex;align-items:center;gap:calc(var(--u)*.55);
+  font-size:calc(var(--u)*1.1);font-weight:900;letter-spacing:.32em;
+  text-transform:uppercase;padding:calc(var(--u)*.3) 0 calc(var(--u)*.35);
+  border-bottom:2px solid rgba(150,175,215,.16);
 }
-/* the shortfall, so "too expensive" is a number rather than a dimmed card */
-.gear .pr em{
-  font-style:normal;font-size:calc(var(--u)*1);color:var(--dim);
-  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+.tBranch.offense .tHead{color:var(--magenta);border-color:rgba(255,46,136,.4)}
+.tBranch.defense .tHead{color:var(--cyan);border-color:rgba(61,232,255,.4)}
+.tBranch.greed   .tHead{color:var(--amber);border-color:rgba(255,177,61,.4)}
+.tNode{
+  position:relative;cursor:pointer;font-family:var(--sans);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.16);
+  clip-path:polygon(0 0,calc(100% - var(--u)*.9) 0,100% calc(var(--u)*.9),100% 100%,0 100%);
+  padding:calc(var(--u)*.7) calc(var(--u)*.8);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.35);
+  transition:background .14s,border-color .14s;
 }
-.gear.owned{
-  border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
+.tBranch.offense .tNode{border-left:calc(var(--u)*.26) solid var(--magenta)}
+.tBranch.defense .tNode{border-left:calc(var(--u)*.26) solid var(--cyan)}
+.tBranch.greed   .tNode{border-left:calc(var(--u)*.26) solid var(--amber)}
+.tNode:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
+.tNode:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.tNode .nm{
+  font-size:calc(var(--u)*1.1);font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#fff;display:flex;align-items:center;
+  gap:calc(var(--u)*.5);flex-wrap:wrap;
 }
-.gear.owned:hover{background:rgba(61,232,255,.07)}
-.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.1)}
-.gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
-.gear.broke:hover{background:rgba(255,255,255,.03)}
-.gear.broke .pr{color:var(--dim)}
+.tNode .ds{font-size:calc(var(--u)*1);line-height:1.35;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.25)}
+.tNode.owned{cursor:default;border-color:rgba(61,232,255,.45)}
+.tNode.broke{opacity:.55}
+.tNode .tag{font-size:calc(var(--u)*1.05);padding:calc(var(--u)*.24) calc(var(--u)*.55) calc(var(--u)*.24) calc(var(--u)*1.3)}
+.tNode .stamp{font-size:calc(var(--u)*.9);letter-spacing:.24em;transform:rotate(-4deg)}
+/* rank chevrons — sergeant stripes, not a progress dot row */
+.tPips{display:inline-flex;gap:3px}
+.tPips b{
+  width:calc(var(--u)*1);height:calc(var(--u)*.9);display:block;
+  background:rgba(150,175,215,.22);
+  clip-path:polygon(0 0,55% 0,100% 50%,55% 100%,0 100%,45% 50%);
+}
+.tPips b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.7)}
+
+/* --- paint shop: can lids on the rack --- */
+.gLiv{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
+.liv{
+  cursor:pointer;font-family:var(--sans);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.9) calc(var(--u)*.7) calc(var(--u)*.7);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.5);
+  text-align:center;
+  transition:background .14s,border-color .14s;
+}
+.liv:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
+.liv:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.liv .sw{
+  width:calc(var(--u)*6.2);height:calc(var(--u)*6.2);border-radius:50%;
+  border:calc(var(--u)*.32) solid #232D44;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,.4),
+    0 calc(var(--u)*.3) calc(var(--u)*1.2) rgba(0,0,0,.55);
+}
+.liv .nm{
+  font-size:calc(var(--u)*1.05);font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:#fff;
+}
+.liv .tag,.liv .stamp{align-self:center;margin-top:0}
+.liv.worn{border-color:var(--cyan)}
+.liv.worn .sw{outline:2px solid var(--cyan);outline-offset:4px}
+.liv.broke{opacity:.55}
+
+/* the Loop offer on a final-boss clear */
+.loopBtn{
+  margin-top:calc(var(--u)*.8);
+  border-color:var(--magenta);color:var(--magenta);
+  letter-spacing:.18em;
+}
+.loopBtn:hover{background:rgba(255,46,136,.12)}
 
 /* ============ simulated ad ============ */
 #ad{
@@ -991,29 +1200,48 @@ body{
 
   .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
 
-  /* Garage on a phone: the action bar wraps so Roll out stays full width and
-     thumb-sized, and the bay sits above the work order rather than beside it. */
-  #garage.screen{padding:calc(var(--u)*1.2);align-items:flex-start}
-  .gPanel{max-height:100%}
+  /* Garage on a phone. Three rules fix the portrait layout:
+     the panel owns the whole viewport (no dead black below it), the bay
+     is a compact car card instead of 40% of the screen, and ROLL OUT
+     lives in a fixed bar at the bottom — where the thumb already is —
+     instead of at the top where nothing should ask to be pressed. */
+  #garage.screen{padding:calc(var(--u)*.9);align-items:stretch}
+  .gPanel{height:100%;max-height:100%}
   .gTop{
-    flex-wrap:wrap;gap:calc(var(--u)*1.2);
-    padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
+    flex-wrap:nowrap;gap:calc(var(--u)*1.2);
+    padding:calc(var(--u)*1.2) calc(var(--u)*1.6);
   }
   .gId b{font-size:calc(var(--u)*2.2)}
   .gBal b{font-size:calc(var(--u)*2.4)}
-  .gAct{order:3;width:100%;flex-direction:row-reverse}
-  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
+  .gAct{
+    position:absolute;left:0;right:0;bottom:0;z-index:7;
+    flex-direction:row-reverse;gap:calc(var(--u)*.8);
+    padding:calc(var(--u)*2.6) calc(var(--u)*1.2)
+            calc(var(--u)*1.1 + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(180deg,rgba(8,11,18,0),rgba(8,11,18,.94) 42%);
+  }
+  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*1.2)}
   .gAct #btnBack{flex:0 0 auto}
   .gFloor{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:0}
-  .gBay{border-right:none;border-bottom:1px solid rgba(150,175,215,.14)}
-
-  .gBay{min-height:calc(var(--u)*34)}
+  .gBay{
+    border-right:none;border-bottom:1px solid rgba(150,175,215,.14);
+    min-height:0;height:clamp(150px,26vh,250px);flex:0 0 auto;
+  }
   /* The plate would sit across the car's nose at this width, and the tuning
      rows directly below already carry the same numbers. */
   .gPlate{display:none}
-  .gFitted{padding:calc(var(--u)*1) calc(var(--u)*1.4) calc(var(--u)*1.2);border-top:none}
-  .gWork{padding:calc(var(--u)*1.4) calc(var(--u)*1.6) calc(var(--u)*2)}
+  /* fitted chips float over the deck instead of spending a row of height */
+  .gFitted{
+    position:absolute;left:0;right:0;bottom:0;border-top:none;
+    padding:calc(var(--u)*.5) calc(var(--u)*1);
+    background:linear-gradient(180deg,rgba(5,8,14,0),rgba(5,8,14,.78));
+  }
+  /* room under the last card for the fixed action bar */
+  .gWork{padding:0 calc(var(--u)*1.4) calc(var(--u)*10)}
   .gGear{grid-template-columns:1fr}
+  .gear .ico canvas{width:34% !important}
+  /* three doctrine columns are 110px wide on a phone — stack them */
+  .gTree{grid-template-columns:1fr}
 }
 
 /* Short landscape (a phone turned sideways) — vertical room is the
@@ -1065,22 +1293,28 @@ body{
   position:relative;flex:1;min-height:0;overflow:hidden;
   border:1px solid var(--edge);border-radius:calc(var(--u)*1.2);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  /* a faint street plan under the routes — this is a city, not a flowchart */
+  /* a faint street plan under the routes — this is a city, not a flowchart.
+     The glow at the foot of the board takes the act's own colour. */
   background:
-    radial-gradient(120% 80% at 50% 100%,rgba(61,232,255,.07),transparent 60%),
+    radial-gradient(120% 80% at 50% 100%,color-mix(in srgb,var(--mapL,#3DE8FF) 8%,transparent),transparent 60%),
+    radial-gradient(90% 50% at 85% 0%,color-mix(in srgb,var(--mapR,#FF2E88) 5%,transparent),transparent 55%),
     repeating-linear-gradient(0deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
     repeating-linear-gradient(90deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
     rgba(6,9,18,.72);
 }
 .mapLines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .mapLines path{
-  fill:none;stroke:rgba(96,132,190,.30);
+  fill:none;stroke:rgba(96,132,190,.55);
   stroke-width:5;stroke-linecap:round;stroke-linejoin:round;
 }
 .mapLines path.open{
   stroke:var(--cyan);stroke-width:6;
   filter:drop-shadow(0 0 7px rgba(61,232,255,.75));
+  /* the line in service: marching dashes running toward the next stop */
+  stroke-dasharray:14 10;
+  animation:lineService 1.2s linear infinite;
 }
+@keyframes lineService{to{stroke-dashoffset:-24}}
 .mapLines path.taken{stroke:rgba(198,210,232,.5);stroke-width:5}
 .mapNodes{position:absolute;inset:0}
 
@@ -1090,7 +1324,7 @@ body{
   display:flex;flex-direction:column;align-items:center;
   gap:calc(var(--u)*.55);
   background:none;border:none;padding:0;
-  opacity:.5;filter:saturate(.35);
+  opacity:.62;filter:saturate(.5);
   transition:opacity .2s,transform .14s,filter .2s;
 }
 

@@ -124,6 +124,34 @@ body{
   text-shadow:0 0 calc(var(--u)*3) rgba(255,46,136,.75);
 }
 .combo.hot .cmult{color:var(--amber);text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
+/* the meter dresses up as it climbs */
+.combo.t2 .cmult{letter-spacing:.01em;transform:scale(1.08)}
+.combo.t3 .cmult{transform:scale(1.18);animation:comboBurn .5s ease-in-out infinite alternate}
+@keyframes comboBurn{
+  from{text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
+  to{text-shadow:0 0 calc(var(--u)*6) rgba(255,177,61,1),0 0 calc(var(--u)*10) rgba(255,46,136,.7)}
+}
+/* a SIREN pulse is armed and the pending bank is fat enough to die */
+.combo.threat .cpts{color:var(--red);animation:threatFlash .3s steps(2) infinite}
+@keyframes threatFlash{50%{opacity:.35}}
+/* quota met — surplus banking, XP half again */
+#obj.overtime #objLbl,#obj.overtime #objVal{color:var(--amber)}
+#obj.overtime #objFill{background:var(--amber);box-shadow:0 0 calc(var(--u)*1.4) rgba(255,177,61,.9)}
+/* the bank pop: the number flies up from the combo rail */
+.bankPop{
+  position:absolute;top:calc(var(--u)*14);left:50%;transform:translateX(-50%);
+  font-size:calc(var(--u)*3.4);font-weight:800;color:var(--amber);
+  font-variant-numeric:tabular-nums;pointer-events:none;
+  text-shadow:0 0 calc(var(--u)*3) rgba(255,177,61,.9);
+  animation:bankFly .85s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes bankFly{
+  0%{opacity:0;transform:translateX(-50%) translateY(calc(var(--u)*3)) scale(.7)}
+  18%{opacity:1;transform:translateX(-50%) scale(1.15)}
+  100%{opacity:0;transform:translateX(-50%) translateY(calc(var(--u)*-9)) scale(.9)}
+}
+#score.pop{animation:scorePop .5s cubic-bezier(.2,.9,.3,1.4)}
+@keyframes scorePop{35%{transform:scale(1.12);text-shadow:0 0 calc(var(--u)*4) rgba(255,177,61,.9)}}
 .cpts{
   font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;margin-top:calc(var(--u)*.2);
@@ -295,7 +323,10 @@ body{
 
 /* toasts */
 #toasts{
-  position:absolute;left:50%;top:calc(var(--u)*24);transform:translateX(-50%);
+  /* below the centre HUD stack — at 24u the rail sat exactly on the pile-up
+     counter and convoy badge, and a hot chain turned the screen centre into
+     word soup at precisely the moments that mattered */
+  position:absolute;left:50%;top:36%;transform:translateX(-50%);
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
@@ -617,6 +648,7 @@ body{
   box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
 }
 .ovBadge.hide{display:none}
+.btn.hide{display:none}
 .ovScore{
   font-size:calc(var(--u)*9);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;
@@ -647,8 +679,11 @@ body{
    ============================================================ */
 #garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
+  position:relative;
   width:100%;max-width:calc(var(--u)*116);
-  height:auto;max-height:100%;
+  /* pinned height: switching workshop tabs must not resize the whole bay —
+     a panel that breathes per tab reads as a web page, not a room */
+  height:min(calc(var(--u)*78),100%);
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,#0E131E,#080B12);
   border:1px solid rgba(150,175,215,.16);
@@ -765,7 +800,7 @@ body{
 /* --- the work order --- */
 .gWork{
   min-width:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:calc(var(--u)*1.6) calc(var(--u)*2) calc(var(--u)*2.2);
+  padding:0 calc(var(--u)*2) calc(var(--u)*2.2);
 }
 .gwHead{
   display:flex;align-items:baseline;justify-content:space-between;
@@ -784,17 +819,62 @@ body{
   font-variant-numeric:tabular-nums;letter-spacing:.1em;
 }
 
-/* tuning: docket rows, flat and square */
+/* ============ the workshop ============
+   Tab rail: one station on screen at a time. The old work order was four
+   sections of name+description+price cards in a single scroll — a settings
+   form wearing neon. Stations give each kind of purchase its own furniture. */
+.gTabs{
+  display:flex;gap:3px;
+  border-bottom:1px solid rgba(255,177,61,.35);
+  margin-bottom:calc(var(--u)*1.1);
+  /* the station rail rides the top of the scroll, so changing stations
+     never means scrolling back up */
+  position:sticky;top:0;z-index:5;
+  background:#0E131E;
+  box-shadow:0 calc(var(--u)*.6) calc(var(--u)*1) rgba(5,8,14,.55);
+  padding-top:calc(var(--u)*1.2);
+}
+.gTab{
+  flex:1;cursor:pointer;font-family:var(--sans);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.25);
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  border:1px solid rgba(150,175,215,.16);border-bottom:none;
+  border-radius:calc(var(--u)*.5) calc(var(--u)*.5) 0 0;
+  padding:calc(var(--u)*.7) calc(var(--u)*.4) calc(var(--u)*.55);
+  color:var(--dim);font-weight:800;letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);
+  transition:background .14s,color .14s,border-color .14s;
+}
+.gTab span{
+  font-size:calc(var(--u)*.95);letter-spacing:.08em;
+  font-variant-numeric:tabular-nums;color:var(--dim);font-weight:700;
+}
+.gTab:hover{color:var(--ice);background:rgba(255,255,255,.07)}
+.gTab:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+.gTab.on{
+  color:#fff;border-color:rgba(255,177,61,.55);
+  background:
+    repeating-linear-gradient(-45deg,rgba(255,177,61,.14) 0 calc(var(--u)*.7),transparent calc(var(--u)*.7) calc(var(--u)*1.4)),
+    linear-gradient(180deg,rgba(255,177,61,.10),rgba(255,177,61,.02));
+}
+.gTab.on span{color:var(--amber)}
+.gSec{display:none}
+.gSec.on{display:block;animation:fade .16s}
+
+/* icon slots — the drawn object every card leads with */
+.up .ico{flex:0 0 calc(var(--u)*5);width:calc(var(--u)*5)}
+.tHead .ico{width:calc(var(--u)*2.6);display:block}
+
+/* --- tuning: the dyno console --- */
 .gUps{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up{
   display:flex;align-items:center;gap:calc(var(--u)*1.2);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.28);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#131A2C,#0D1322);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.7) calc(var(--u)*1.1);
 }
-.up.maxed{border-left-color:var(--cyan);background:rgba(61,232,255,.05)}
-.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
+.up.maxed{border-color:rgba(61,232,255,.45);background:linear-gradient(180deg,#0F1F2C,#0C1420)}
+.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up .nm{
   display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
   font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
@@ -802,19 +882,31 @@ body{
 }
 .up .nm em{
   font-style:normal;letter-spacing:.04em;text-transform:none;
-  font-size:calc(var(--u)*1.2);color:var(--cyan);font-variant-numeric:tabular-nums;
+  font-size:calc(var(--u)*1.35);color:var(--cyan);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.55);
 }
-.pips{display:flex;gap:2px}
-.pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
-.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.6)}
+/* the meter reads as dyno segments, not a progress bar */
+.pips{display:flex;gap:calc(var(--u)*.35)}
+.pips i{
+  flex:1;height:calc(var(--u)*.95);
+  background:rgba(255,255,255,.10);
+  transform:skewX(-18deg);
+  border-radius:1px;
+}
+.pips i.on{
+  background:linear-gradient(180deg,#9FF3FF,var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(61,232,255,.75);
+}
+/* the buy control is a torque bolt, not a form button */
 .up button{
-  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
+  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*9.5);
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.1em;
+  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.08em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
-  border:none;border-radius:calc(var(--u)*.25);
-  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  border:none;
+  clip-path:polygon(10% 0,90% 0,100% 50%,90% 100%,10% 100%,0 50%);
+  padding:calc(var(--u)*.85) calc(var(--u)*1.4);
   transition:filter .14s,transform .08s;
 }
 .up button:hover{filter:brightness(1.12)}
@@ -823,43 +915,160 @@ body{
 .up button[disabled]{background:rgba(255,255,255,.07);color:var(--dim);cursor:not-allowed}
 .up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.10)}
 
-/* hardware: parts on a rack — the reason a lost run still moves you forward */
-.gGear{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.6)}
+/* --- price tags and stamps, shared by every station --- */
+.tag{
+  position:relative;align-self:flex-start;margin-top:auto;
+  display:inline-flex;align-items:baseline;gap:calc(var(--u)*.6);
+  background:#221905;border:1px solid var(--amber);color:var(--amber);
+  font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.06em;
+  font-size:calc(var(--u)*1.2);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7) calc(var(--u)*.3) calc(var(--u)*1.5);
+  clip-path:polygon(0 50%,calc(var(--u)*.9) 0,100% 0,100% 100%,calc(var(--u)*.9) 100%);
+}
+.tag::before{
+  content:'';position:absolute;left:calc(var(--u)*.55);top:50%;
+  width:calc(var(--u)*.4);height:calc(var(--u)*.4);
+  transform:translateY(-50%);border-radius:50%;
+  background:var(--void);box-shadow:0 0 0 1px var(--amber);
+}
+.tag em{
+  font-style:normal;font-size:calc(var(--u)*.95);color:var(--dim);
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+}
+.tag.own{border-color:rgba(150,175,215,.5);color:var(--ice);background:rgba(255,255,255,.05)}
+.tag.own::before{box-shadow:0 0 0 1px rgba(150,175,215,.5)}
+.stamp{
+  align-self:flex-start;margin-top:auto;
+  transform:rotate(-6deg);
+  border:2px solid var(--cyan);color:var(--cyan);border-radius:2px;
+  font-weight:900;letter-spacing:.3em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);
+  padding:calc(var(--u)*.22) calc(var(--u)*.55) calc(var(--u)*.22) calc(var(--u)*.85);
+  opacity:.9;
+  mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+  -webkit-mask-image:radial-gradient(140% 120% at 30% 40%,#000 55%,rgba(0,0,0,.55));
+}
+
+/* --- parts: a pegboard of drawn objects --- */
+.gGear{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.8);
+  padding:calc(var(--u)*.9);
+  background:
+    radial-gradient(rgba(150,175,215,.13) 1.2px,transparent 1.6px);
+  background-size:calc(var(--u)*1.9) calc(var(--u)*1.9);
+  border:1px solid rgba(150,175,215,.12);
+}
 .gear{
   position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
-  background:rgba(255,255,255,.03);
-  border:1px solid rgba(150,175,215,.12);
-  border-left:calc(var(--u)*.28) solid var(--amber);
-  padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  background:linear-gradient(180deg,#151C2F,#0C1120);
+  border:1px solid rgba(150,175,215,.18);
+  clip-path:polygon(0 0,calc(100% - var(--u)*1.2) 0,100% calc(var(--u)*1.2),100% 100%,calc(var(--u)*1.2) 100%,0 calc(100% - var(--u)*1.2));
+  padding:0 calc(var(--u)*1.1) calc(var(--u)*1);
   display:flex;flex-direction:column;gap:calc(var(--u)*.45);
   transition:background .14s,border-color .14s;
 }
-.gear:hover{background:rgba(255,177,61,.10)}
+.gear:hover{border-color:rgba(255,177,61,.6);background:linear-gradient(180deg,#1A2138,#0E1424)}
 .gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+/* the part itself, on a dark plate strip across the top of the card */
+.gear .ico{
+  display:grid;place-items:center;
+  margin:0 calc(var(--u)*-1.1) calc(var(--u)*.3);
+  padding:calc(var(--u)*.6) 0 calc(var(--u)*.4);
+  background:rgba(0,0,0,.32);
+  border-bottom:1px solid rgba(150,175,215,.10);
+}
+.gear .ico canvas{width:62% !important;max-width:150px}
 .gear .nm{
-  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.14em;
+  font-size:calc(var(--u)*1.25);font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
-.gear .ds{font-size:calc(var(--u)*1.15);line-height:1.4;color:var(--ice);opacity:.75}
-.gear .pr{
-  margin-top:auto;padding-top:calc(var(--u)*.4);
-  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.3);font-weight:800;
-  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
+.gear .ds{font-size:calc(var(--u)*1.05);line-height:1.4;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.4)}
+.gear.owned{border-color:rgba(61,232,255,.5);cursor:default}
+.gear.owned .ico{background:rgba(61,232,255,.06)}
+.gear.broke{opacity:.55}
+.gear.broke:hover{border-color:rgba(150,175,215,.18)}
+
+/* --- crew: doctrine badges, not settings cards --- */
+.gTree{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
+.tBranch{display:flex;flex-direction:column;gap:calc(var(--u)*.55)}
+.tHead{
+  display:flex;align-items:center;gap:calc(var(--u)*.55);
+  font-size:calc(var(--u)*1.1);font-weight:900;letter-spacing:.32em;
+  text-transform:uppercase;padding:calc(var(--u)*.3) 0 calc(var(--u)*.35);
+  border-bottom:2px solid rgba(150,175,215,.16);
 }
-/* the shortfall, so "too expensive" is a number rather than a dimmed card */
-.gear .pr em{
-  font-style:normal;font-size:calc(var(--u)*1);color:var(--dim);
-  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+.tBranch.offense .tHead{color:var(--magenta);border-color:rgba(255,46,136,.4)}
+.tBranch.defense .tHead{color:var(--cyan);border-color:rgba(61,232,255,.4)}
+.tBranch.greed   .tHead{color:var(--amber);border-color:rgba(255,177,61,.4)}
+.tNode{
+  position:relative;cursor:pointer;font-family:var(--sans);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.16);
+  clip-path:polygon(0 0,calc(100% - var(--u)*.9) 0,100% calc(var(--u)*.9),100% 100%,0 100%);
+  padding:calc(var(--u)*.7) calc(var(--u)*.8);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.35);
+  transition:background .14s,border-color .14s;
 }
-.gear.owned{
-  border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
+.tBranch.offense .tNode{border-left:calc(var(--u)*.26) solid var(--magenta)}
+.tBranch.defense .tNode{border-left:calc(var(--u)*.26) solid var(--cyan)}
+.tBranch.greed   .tNode{border-left:calc(var(--u)*.26) solid var(--amber)}
+.tNode:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
+.tNode:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.tNode .nm{
+  font-size:calc(var(--u)*1.1);font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:#fff;display:flex;align-items:center;
+  gap:calc(var(--u)*.5);flex-wrap:wrap;
 }
-.gear.owned:hover{background:rgba(61,232,255,.07)}
-.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.1)}
-.gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
-.gear.broke:hover{background:rgba(255,255,255,.03)}
-.gear.broke .pr{color:var(--dim)}
+.tNode .ds{font-size:calc(var(--u)*1);line-height:1.35;color:var(--ice);opacity:.72;margin-bottom:calc(var(--u)*.25)}
+.tNode.owned{cursor:default;border-color:rgba(61,232,255,.45)}
+.tNode.broke{opacity:.55}
+.tNode .tag{font-size:calc(var(--u)*1.05);padding:calc(var(--u)*.24) calc(var(--u)*.55) calc(var(--u)*.24) calc(var(--u)*1.3)}
+.tNode .stamp{font-size:calc(var(--u)*.9);letter-spacing:.24em;transform:rotate(-4deg)}
+/* rank chevrons — sergeant stripes, not a progress dot row */
+.tPips{display:inline-flex;gap:3px}
+.tPips b{
+  width:calc(var(--u)*1);height:calc(var(--u)*.9);display:block;
+  background:rgba(150,175,215,.22);
+  clip-path:polygon(0 0,55% 0,100% 50%,55% 100%,0 100%,45% 50%);
+}
+.tPips b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.7)}
+
+/* --- paint shop: can lids on the rack --- */
+.gLiv{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*.7)}
+.liv{
+  cursor:pointer;font-family:var(--sans);
+  background:linear-gradient(180deg,#12182A,#0C1120);
+  border:1px solid rgba(150,175,215,.14);
+  padding:calc(var(--u)*.9) calc(var(--u)*.7) calc(var(--u)*.7);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.5);
+  text-align:center;
+  transition:background .14s,border-color .14s;
+}
+.liv:hover{background:linear-gradient(180deg,#1A2138,#0E1424)}
+.liv:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.liv .sw{
+  width:calc(var(--u)*6.2);height:calc(var(--u)*6.2);border-radius:50%;
+  border:calc(var(--u)*.32) solid #232D44;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,.4),
+    0 calc(var(--u)*.3) calc(var(--u)*1.2) rgba(0,0,0,.55);
+}
+.liv .nm{
+  font-size:calc(var(--u)*1.05);font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;color:#fff;
+}
+.liv .tag,.liv .stamp{align-self:center;margin-top:0}
+.liv.worn{border-color:var(--cyan)}
+.liv.worn .sw{outline:2px solid var(--cyan);outline-offset:4px}
+.liv.broke{opacity:.55}
+
+/* the Loop offer on a final-boss clear */
+.loopBtn{
+  margin-top:calc(var(--u)*.8);
+  border-color:var(--magenta);color:var(--magenta);
+  letter-spacing:.18em;
+}
+.loopBtn:hover{background:rgba(255,46,136,.12)}
 
 /* ============ simulated ad ============ */
 #ad{
@@ -1002,29 +1211,48 @@ body{
 
   .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
 
-  /* Garage on a phone: the action bar wraps so Roll out stays full width and
-     thumb-sized, and the bay sits above the work order rather than beside it. */
-  #garage.screen{padding:calc(var(--u)*1.2);align-items:flex-start}
-  .gPanel{max-height:100%}
+  /* Garage on a phone. Three rules fix the portrait layout:
+     the panel owns the whole viewport (no dead black below it), the bay
+     is a compact car card instead of 40% of the screen, and ROLL OUT
+     lives in a fixed bar at the bottom — where the thumb already is —
+     instead of at the top where nothing should ask to be pressed. */
+  #garage.screen{padding:calc(var(--u)*.9);align-items:stretch}
+  .gPanel{height:100%;max-height:100%}
   .gTop{
-    flex-wrap:wrap;gap:calc(var(--u)*1.2);
-    padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
+    flex-wrap:nowrap;gap:calc(var(--u)*1.2);
+    padding:calc(var(--u)*1.2) calc(var(--u)*1.6);
   }
   .gId b{font-size:calc(var(--u)*2.2)}
   .gBal b{font-size:calc(var(--u)*2.4)}
-  .gAct{order:3;width:100%;flex-direction:row-reverse}
-  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
+  .gAct{
+    position:absolute;left:0;right:0;bottom:0;z-index:7;
+    flex-direction:row-reverse;gap:calc(var(--u)*.8);
+    padding:calc(var(--u)*2.6) calc(var(--u)*1.2)
+            calc(var(--u)*1.1 + env(safe-area-inset-bottom, 0px));
+    background:linear-gradient(180deg,rgba(8,11,18,0),rgba(8,11,18,.94) 42%);
+  }
+  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*1.2)}
   .gAct #btnBack{flex:0 0 auto}
   .gFloor{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:0}
-  .gBay{border-right:none;border-bottom:1px solid rgba(150,175,215,.14)}
-
-  .gBay{min-height:calc(var(--u)*34)}
+  .gBay{
+    border-right:none;border-bottom:1px solid rgba(150,175,215,.14);
+    min-height:0;height:clamp(150px,26vh,250px);flex:0 0 auto;
+  }
   /* The plate would sit across the car's nose at this width, and the tuning
      rows directly below already carry the same numbers. */
   .gPlate{display:none}
-  .gFitted{padding:calc(var(--u)*1) calc(var(--u)*1.4) calc(var(--u)*1.2);border-top:none}
-  .gWork{padding:calc(var(--u)*1.4) calc(var(--u)*1.6) calc(var(--u)*2)}
+  /* fitted chips float over the deck instead of spending a row of height */
+  .gFitted{
+    position:absolute;left:0;right:0;bottom:0;border-top:none;
+    padding:calc(var(--u)*.5) calc(var(--u)*1);
+    background:linear-gradient(180deg,rgba(5,8,14,0),rgba(5,8,14,.78));
+  }
+  /* room under the last card for the fixed action bar */
+  .gWork{padding:0 calc(var(--u)*1.4) calc(var(--u)*10)}
   .gGear{grid-template-columns:1fr}
+  .gear .ico canvas{width:34% !important}
+  /* three doctrine columns are 110px wide on a phone — stack them */
+  .gTree{grid-template-columns:1fr}
 }
 
 /* Short landscape (a phone turned sideways) — vertical room is the
@@ -1076,22 +1304,28 @@ body{
   position:relative;flex:1;min-height:0;overflow:hidden;
   border:1px solid var(--edge);border-radius:calc(var(--u)*1.2);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  /* a faint street plan under the routes — this is a city, not a flowchart */
+  /* a faint street plan under the routes — this is a city, not a flowchart.
+     The glow at the foot of the board takes the act's own colour. */
   background:
-    radial-gradient(120% 80% at 50% 100%,rgba(61,232,255,.07),transparent 60%),
+    radial-gradient(120% 80% at 50% 100%,color-mix(in srgb,var(--mapL,#3DE8FF) 8%,transparent),transparent 60%),
+    radial-gradient(90% 50% at 85% 0%,color-mix(in srgb,var(--mapR,#FF2E88) 5%,transparent),transparent 55%),
     repeating-linear-gradient(0deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
     repeating-linear-gradient(90deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
     rgba(6,9,18,.72);
 }
 .mapLines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .mapLines path{
-  fill:none;stroke:rgba(96,132,190,.30);
+  fill:none;stroke:rgba(96,132,190,.55);
   stroke-width:5;stroke-linecap:round;stroke-linejoin:round;
 }
 .mapLines path.open{
   stroke:var(--cyan);stroke-width:6;
   filter:drop-shadow(0 0 7px rgba(61,232,255,.75));
+  /* the line in service: marching dashes running toward the next stop */
+  stroke-dasharray:14 10;
+  animation:lineService 1.2s linear infinite;
 }
+@keyframes lineService{to{stroke-dashoffset:-24}}
 .mapLines path.taken{stroke:rgba(198,210,232,.5);stroke-width:5}
 .mapNodes{position:absolute;inset:0}
 
@@ -1101,7 +1335,7 @@ body{
   display:flex;flex-direction:column;align-items:center;
   gap:calc(var(--u)*.55);
   background:none;border:none;padding:0;
-  opacity:.5;filter:saturate(.35);
+  opacity:.62;filter:saturate(.5);
   transition:opacity .2s,transform .14s,filter .2s;
 }
 
@@ -1771,6 +2005,7 @@ body{
       </div>
       <div class="clLvl" id="clLvl">Level up &mdash; take a perk</div>
       <button class="btn primary" id="btnCleared">Keep going<span class="key">Enter</span></button>
+      <button class="btn loopBtn hide" id="btnLoop">Keep driving &mdash; THE LOOP</button>
     </div>
   </div>
 
@@ -1852,12 +2087,18 @@ body{
           <div class="gFitted" id="gFitted"></div>
         </div>
 
-        <!-- the work order -->
+        <!-- the workshop: one station at a time, not a settings scroll -->
         <div class="gWork" id="gWork">
-          <div class="gwHead"><h3>Tuning</h3><span id="gwUps">0 / 30</span></div>
-          <div class="gUps" id="gUps"></div>
-          <div class="gwHead"><h3>Hardware</h3><span id="gwGear">0 / 6</span></div>
-          <div class="gGear" id="gGear"></div>
+          <div class="gTabs" id="gTabs">
+            <button class="gTab on" data-sec="tune">Tuning<span id="gwUps">0 / 30</span></button>
+            <button class="gTab" data-sec="parts">Parts<span id="gwGear">0 / 6</span></button>
+            <button class="gTab" data-sec="crew">Crew<span id="gwTree">0 / 20</span></button>
+            <button class="gTab" data-sec="paint">Paint<span id="gwLiv">1 / 6</span></button>
+          </div>
+          <div class="gSec on" data-sec="tune"><div class="gUps" id="gUps"></div></div>
+          <div class="gSec" data-sec="parts"><div class="gGear" id="gGear"></div></div>
+          <div class="gSec" data-sec="crew"><div class="gTree" id="gTree"></div></div>
+          <div class="gSec" data-sec="paint"><div class="gLiv" id="gLiv"></div></div>
         </div>
       </div>
     </div>
@@ -2429,8 +2670,11 @@ function defaults(){
   return {
     bankMul: 1,        // payout multiplier when you cash in
     wreckMul: 1,       // payout multiplier on a wreck specifically
-    multRate: 0.60,    // chain links -> multiplier slope
-    multCap: 9.9,
+    /* 0.60 capped the meter at chain 15 — measured, every run including a
+       casual district 1 pegged ×9.9, so the multiplier stopped being a thing
+       you climb. At 0.40 a 15-chain reads ×7.0 and the cap needs 27 links. */
+    multRate: 0.40,    // chain links -> multiplier slope
+    multCap: 12,
     topMul: 1,
     gripMul: 1,
     chainTime: 3.2,    // seconds on the chain clock, reset by every wreck
@@ -2832,7 +3076,11 @@ function rollContracts(district, elite){
   if (!elite && district <= 2) { picks.push(CONTRACTS[0]); used.add('clear'); }
 
   while (picks.length < want && used.size < CONTRACTS.length) {
-    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1));
+    /* the opening district never deals a risk-2 wager: a learner who takes
+       Dragnet on district 1 is dead in twenty seconds and knows only that
+       the game is unfair */
+    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1)
+                                && (district > 1 || c.risk < 2));
     if (!avail.length) break;
     const c = avail[Math.floor(Math.random() * avail.length)];
     used.add(c.id);
@@ -2910,6 +3158,9 @@ const Save = {
       if (typeof this.data.lastDaily !== 'string') this.data.lastDaily = '';
       if (typeof this.data.dailyStreak !== 'number') this.data.dailyStreak = 0;
       if (!Array.isArray(this.data.board)) this.data.board = [];
+      if (!this.data.tree || typeof this.data.tree !== 'object') this.data.tree = {};
+      if (!Array.isArray(this.data.liveries)) this.data.liveries = [];
+      if (typeof this.data.livery !== 'string') this.data.livery = 'stock';
     } catch (e) { /* storage blocked — run in-memory */ }
   },
   flush(){
@@ -2933,11 +3184,11 @@ const GEAR = [
     desc:'Hull repairs itself whenever no chain is running.' },
   { id:'turbine',    name:'Turbine Intake', price:7000,
     desc:'Grabbing a Boost adds two links to a live chain.' },
-  { id:'missile',    name:'Harpoon Rack',  price:12000,
+  { id:'missile',    name:'Harpoon Rack',  price:9000,
     desc:'Auto-fires every 9s: detonates the nearest car ahead, free.' },
-  { id:'shockplate', name:'Shock Plating', price:20000,
+  { id:'shockplate', name:'Shock Plating', price:14000,
     desc:'Every fifth link in a chain detonates everything around you.' },
-  { id:'blackbox',   name:'Black Box',     price:32000,
+  { id:'blackbox',   name:'Black Box',     price:22000,
     desc:'Start every district with a Ram Plate already fitted.' }
 ];
 const Hangar = {
@@ -2957,6 +3208,98 @@ const Hangar = {
     if (!g || this.has(id) || Save.data.coins < g.price) return false;
     Save.data.coins -= g.price;
     Save.data.gear.push(id);
+    Save.flush();
+    return true;
+  }
+};
+
+/* ============================================================
+   CREW — the permanent skill tree
+   Hardware changes a verb; the crew shifts the odds. Three doctrines,
+   fifteen nodes over twenty ranks, ~160k coins to finish — the long-term
+   sink the six hardware items alone could not carry, and every rank is
+   felt in-run.
+   ============================================================ */
+const TREE = [
+  { id:'t_prow',   br:'offense', name:'Sharpened Prow',  ranks:3, cost:[1800, 4000, 9000],
+    desc:'Wrecks pay +6% per rank.' },
+  { id:'t_first',  br:'offense', name:'First Blood',     ranks:1, cost:[6000],
+    desc:'The first wreck of every district counts as three links.' },
+  { id:'t_salvo',  br:'offense', name:'Opening Salvo',   ranks:1, cost:[12000],
+    desc:'Start every district with two rockets loaded.' },
+  { id:'t_chain',  br:'offense', name:'Chain Reaction',  ranks:1, cost:[15000],
+    desc:'Explosions reach 30% further.' },
+  { id:'t_exec',   br:'offense', name:'Executioner',     ranks:1, cost:[22000],
+    desc:'Banks hit bosses 25% harder; haulers lose one armour.' },
+  { id:'t_armor',  br:'defense', name:'Scrap Armor',     ranks:3, cost:[1500, 3500, 8000],
+    desc:'+8 max hull per rank.' },
+  { id:'t_hands',  br:'defense', name:'Gentle Hands',    ranks:1, cost:[5000],
+    desc:'Walls cost 40% less hull.' },
+  { id:'t_cool',   br:'defense', name:'Cool Head',       ranks:1, cost:[10000],
+    desc:'Below 30% hull, heat drains 40% faster.' },
+  { id:'t_wind',   br:'defense', name:'Second Wind',     ranks:1, cost:[7500],
+    desc:'Banking welds on 2 extra hull.' },
+  { id:'t_cage',   br:'defense', name:'Safety Cage',     ranks:1, cost:[18000],
+    desc:'Survive one fatal crash per run.' },
+  { id:'t_change', br:'greed',   name:'Loose Change',    ranks:3, cost:[1200, 3000, 7000],
+    desc:'+8% coins per rank.' },
+  { id:'t_know',   br:'greed',   name:'Street Knowledge',ranks:1, cost:[8000],
+    desc:'+15% XP from everything.' },
+  { id:'t_int',    br:'greed',   name:'Compound Interest',ranks:1, cost:[9000],
+    desc:'The daily drop pays half again.' },
+  { id:'t_roller', br:'greed',   name:'High Roller',     ranks:1, cost:[20000],
+    desc:'Heat pays +45% per tier instead of +35%.' },
+  { id:'t_head',   br:'greed',   name:'Head Start',      ranks:1, cost:[25000],
+    desc:'Every run starts at level 2 — perk in hand.' }
+];
+const Tree = {
+  rank: id => (Save.data.tree || {})[id] || 0,
+  has:  id => Tree.rank(id) > 0,
+  buy(id){
+    const t = TREE.find(x => x.id === id);
+    if (!t) return false;
+    const r = Tree.rank(id);
+    if (r >= t.ranks || Save.data.coins < t.cost[r]) return false;
+    Save.data.coins -= t.cost[r];
+    if (!Save.data.tree) Save.data.tree = {};
+    Save.data.tree[id] = r + 1;
+    Save.flush();
+    return true;
+  },
+  /* run-modifier ranks fold into the table exactly like hardware does */
+  apply(M){
+    M.wreckMul += 0.06 * Tree.rank('t_prow');
+    if (Tree.has('t_chain') && M.cookR) M.cookR *= 1.3;
+    if (Tree.has('t_exec')) M.convoyArmour = (M.convoyArmour || 0) + 1;
+    if (Tree.has('t_wind')) M.bankHeal = (M.bankHeal || 0) + 2;
+    M.wallMul = Tree.has('t_hands') ? 0.6 : 1;
+  }
+};
+
+/* ---------------- liveries ----------------
+   Palette pairs, zero new rendering: the body, the glow and the light
+   ribbon all read their colour from the fitted livery. */
+const LIVERIES = [
+  { id:'stock', name:'Factory Cyan', price:0,     col:'#3DE8FF', col2:'#0A5A72', trail:'#3DE8FF' },
+  { id:'ember', name:'Ember',        price:2000,  col:'#FF6B4A', col2:'#5A1508', trail:'#FF8A3D' },
+  { id:'venom', name:'Venom',        price:3500,  col:'#2FE08A', col2:'#0B4A2C', trail:'#5BFFC9' },
+  { id:'royal', name:'Royalty',      price:5000,  col:'#B07CFF', col2:'#3A1B6E', trail:'#C6A8FF' },
+  { id:'ghost', name:'Ghost',        price:8000,  col:'#DCF6FF', col2:'#28536F', trail:'#FFFFFF' },
+  { id:'gold',  name:'Solid Gold',   price:15000, col:'#FFD166', col2:'#6B4A08', trail:'#FFB13D' }
+];
+const Livery = {
+  cur: () => LIVERIES.find(l => l.id === (Save.data.livery || 'stock')) || LIVERIES[0],
+  owned: id => id === 'stock' || (Save.data.liveries || []).includes(id),
+  buyOrWear(id){
+    const l = LIVERIES.find(x => x.id === id);
+    if (!l) return false;
+    if (!Livery.owned(id)) {
+      if (Save.data.coins < l.price) return false;
+      Save.data.coins -= l.price;
+      if (!Array.isArray(Save.data.liveries)) Save.data.liveries = [];
+      Save.data.liveries.push(id);
+    }
+    Save.data.livery = id;
     Save.flush();
     return true;
   }
@@ -3193,7 +3536,14 @@ const THEMES = [
     bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
     /* close, tall and constant — it should read as a tunnel, not a skyline */
     h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
-    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } }
+    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } },
+  { id:'causeway', name:'The Causeway',
+    /* the endless loop's storm front: pale lightning accents over near-black
+       water, rain streaking hard across the road */
+    ground:'#04070C', asphalt:'#0F1622', left:'#7FD4FF', right:'#FFE066',
+    bldA:'#7FD4FF', bldB:'#FFE066', face1:'#0F1826', face2:'#091018',
+    h:[70, 220], size:[90, 200], gap:0.55, lit:0.35, back:[140, 600],
+    air:{ rgb:'150,190,220', rate:1.1, size:[2, 4], life:[0.3, 0.7], drift:240 } }
 ];
 let TH = THEMES[0];
 function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
@@ -3237,17 +3587,19 @@ const UPGRADES = [
 const UP_MAX = 5;
 const upCost = (u, lvl) => Math.round(u.base * Math.pow(1.85, lvl));
 
-/* the spec the physics actually reads: car + upgrades folded together */
+/* the spec the physics actually reads: car + upgrades + crew folded together */
 function activeSpec(){
   const u = Save.data.up;
+  const liv = Livery.cur();
   return Object.assign({}, PLAYER, {
+    col: liv.col, col2: liv.col2, trail: liv.trail,
     grip:     PLAYER.grip + u.grip * 0.42,
     top:      PLAYER.top * (1 + u.engine * 0.05),
     boostMul: 1 + u.nitro * 0.24,
     wreckMul: 1 + u.impact * 0.10,
     crashV:   430,
-    hull:     u.armor * 16,
-    payout:   1 + u.payout * 0.14
+    hull:     u.armor * 16 + Tree.rank('t_armor') * 8,
+    payout:   (1 + u.payout * 0.14) * (1 + Tree.rank('t_change') * 0.08)
   });
 }
 
@@ -3618,9 +3970,10 @@ class Track {
 const P = [];      // particles
 const SKID = [];   // tyre decals
 
-function spawn(x, y, vx, vy, life, r, col, add, grow){
+function spawn(x, y, vx, vy, life, r, col, add, grow, streak){
   if (P.length > 420) P.shift();
-  P.push({ x, y, vx, vy, life, max:life, r, col, add:!!add, grow: grow || 0 });
+  P.push({ x, y, vx, vy, life, max:life, r, col, add:!!add, grow: grow || 0,
+           st: streak || 0 });
 }
 /* decal corners are baked at spawn so the draw pass is one batched path
    instead of a save/rotate/restore per mark */
@@ -3745,10 +4098,21 @@ class Vehicle {
       this.smokeT -= dt;
       if (this.smokeT <= 0) {
         this.smokeT = 0.026;
-        const rx = this.x - cs * s.len * 0.34, ry = this.y - sn * s.len * 0.34;
-        spawn(rx + rnd(-10,10), ry + rnd(-10,10),
-              -cs * 60 + rnd(-70,70), -sn * 60 + rnd(-70,70),
-              rnd(0.7, 1.25), rnd(9, 16), '190,205,235', false, 46);
+        /* off both rear tyres, not the centreline — it reads as rubber, not
+           a chimney — starting small and catching a hint of the district's
+           neon so the smoke belongs to the place */
+        const tint = TH.left || '#3DE8FF';
+        const smokeCol = Math.round(parseInt(tint.slice(1, 3), 16) * 0.1 + 171) + ',' +
+                         Math.round(parseInt(tint.slice(3, 5), 16) * 0.1 + 185) + ',' +
+                         Math.round(parseInt(tint.slice(5, 7), 16) * 0.1 + 212);
+        for (const side of [-1, 1]) {
+          const rx = this.x - cs * s.len * 0.32 - sn * s.wid * 0.42 * side;
+          const ry = this.y - sn * s.len * 0.32 + cs * s.wid * 0.42 * side;
+          spawn(rx + rnd(-4, 4), ry + rnd(-4, 4),
+                -cs * 50 + rnd(-60, 60) - sn * 40 * side,
+                -sn * 50 + rnd(-60, 60) + cs * 40 * side,
+                rnd(0.5, 0.9), rnd(5, 9), smokeCol, false, 60);
+        }
       }
     }
     if (this.boost) {
@@ -3782,11 +4146,11 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
+  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
-  stuckT:0, reverseT:0,
+  stuckT:0, reverseT:0, policeCool:0, playSinceAd:9999, trail:[],
   /* weapon fire counters. Five increments in hot paths, and the only way a
      test can assert that a weapon perk did something rather than that the
      modifier table changed — the difference the whole pool turns on. */
@@ -3837,8 +4201,13 @@ function powerIndex(){
   /* The first run is the one that decides whether there is a second, and a
      player on it is learning that traffic is ammunition rather than
      optimising a build. Three runs of grace, then the full number. */
-  const green = Math.min(1, 0.62 + (Save.data.runs || 0) * 0.13);
-  return green * (1 + lv * 0.055 + gear * 0.14 + lvl * 0.155);
+  const green = Math.min(1, 0.62 + (Save.data.runs || 0) * 0.065);
+  /* Measured head-to-head: at 0.055/0.14 a full garage raised the quota
+     ~2.35x while actually raising income ~1.9x, so buying upgrades made the
+     game *harder* — the maxed save failed districts the fresh save cleared.
+     Halved, the index tops out ~1.7x and the sub-linear promise holds. */
+  let tree = 0; const tr = Save.data.tree || {}; for (const k in tr) tree += tr[k] || 0;
+  return green * (1 + lv * 0.030 + gear * 0.08 + tree * 0.022 + lvl * 0.155);
 }
 
 function districtCfg(n, type, act){
@@ -3850,7 +4219,9 @@ function districtCfg(n, type, act){
     name: (G.run && G.run.node && G.run.node.name) ||
           (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
-    len: Math.round(400 + n * 26),
+    /* boss roads run a third longer: the fight is banking under pressure,
+       and "the unit got away" was 4 of 23 measured run-endings */
+    len: Math.round((400 + n * 26) * (boss ? 1.3 : 1)),
     /* Elites cost more and pay double XP; the route choice has to bite */
     quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
@@ -3945,7 +4316,10 @@ function makeRoute(act){
   rows.forEach((row, r) => row.forEach((n, c) => {
     n.row = r; n.col = c; n.done = false;
     const info = NODE_INFO[n.type];
-    const idx = r + 1 + (act - 1) * (ROWS - 1);
+    /* (act-1)*ROWS, not (ROWS-1): with the shorter stride the act-1 boss and
+       the act-2 opener were both "district 5", so the quota curve plateaued
+       one full step at every act seam */
+    const idx = r + 1 + (act - 1) * ROWS;
     n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
            : n.type === 'depot' ? depots[di++ % depots.length]
            : pool[pi++ % pool.length];
@@ -3965,15 +4339,18 @@ function makeRoute(act){
 }
 
 function newRun(){
-  return {
+  const r = {
     act: 1, route: makeRoute(1), row: -1, col: -1,
     xp: 0, level: 1, perks: [], hullBonus: 0,
     node: null, district: 0,
     curses: [], contract: null,
     M: NHChips.defaults(), L: NHChips.levelDefaults(),
     cfg: null, quota: 0, banked: 0, startIdx: 0, elapsed: 0,
-    cleared: 0, crumpleLeft: 0
+    cleared: 0, crumpleLeft: 0, cageLeft: Tree.has('t_cage') ? 1 : 0,
+    overtime: false, loop: 0
   };
+  if (Tree.has('t_head')) { r.level = 2; }
+  return r;
 }
 
 /* A Depot only offers a strip when there is a curse to strip, so the label
@@ -4016,13 +4393,16 @@ function newWorld(ai){
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
   G.power.magnet = 0; G.power.frenzy = 0; G.power.slowmo = 0; G.worldSlow = 1;
+  G.power.phase = 0; G.power.draft = 0;
   G.power.ball = 0; G.power.arc = 0; G.ball = null; G.wells = []; G.arcs = []; G.ballHits = 0;
   G.power.drones = 0; G.drones = []; G.scav = null; G.lastingScav = 0;
-  G.rockets = 0; G.rocketT = 0;
+  G.rockets = Tree.has('t_salvo') ? 2 : 0; G.rocketT = 0;
+  G.firstBlood = Tree.has('t_first') ? 1 : 0;
   /* the lasting pickups are exactly that — for *this* district only */
   G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
+  G.trail = []; G.trailT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
   /* perks that arm you the moment a district starts */
@@ -4059,6 +4439,12 @@ const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults
 
 const LANES = [-0.62, -0.21, 0.21, 0.62];
 
+/* One grey pill was the whole civilian population. A small muted palette
+   keeps "not neon = not a threat" while killing the clone army, and three
+   special archetypes give the road things worth *choosing*:
+   a tanker detonates where you crack it, an armored car is a coin piñata
+   behind two pips, and at Heat 2+ the kamikaze bikes hunt YOU. */
+const TRAFFIC_COLS = ['#7C8FBF', '#8FA37C', '#A38A7C', '#7C93A3', '#9C7CA3'];
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
@@ -4068,10 +4454,37 @@ function addTraffic(ahead){
      gap to thread, which are the only two things you can do with a car. */
   const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
   const c = CARS[rint(0, CARS.length)];
-  const spec = Object.assign({}, c, {
-    col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330)
-  });
+
+  const roll = Math.random();
+  let spec, arch = null;
+  if (roll < 0.06) {
+    arch = 'tanker';
+    spec = Object.assign({}, c, {
+      len:78, wid:27, nose:0.9, tail:0.95,
+      col:'#B08040', col2:'#3A2708', power:240, grip:8, top:rnd(180, 230)
+    });
+  } else if (roll < 0.13) {
+    arch = 'armored';
+    spec = Object.assign({}, c, {
+      len:56, wid:26, nose:0.85, tail:0.9,
+      col:'#5E6B85', col2:'#11141F', power:300, grip:8, top:rnd(200, 280)
+    });
+  } else if (roll < 0.18 && (G.tier >= 2 || (G.tier === 1 && roll < 0.155))) {
+    arch = 'bike';
+    spec = Object.assign({}, c, {
+      len:30, wid:13, nose:0.5, tail:0.6,
+      col:'#FF5A3C', col2:'#400C05', power:520, grip:7.5, top:520
+    });
+  } else {
+    spec = Object.assign({}, c, {
+      len: c.len * rnd(1.08, 0.92),
+      col: TRAFFIC_COLS[rint(0, TRAFFIC_COLS.length)], col2:'#181F33',
+      power:300, grip:8, top:rnd(210, 330)
+    });
+  }
   const v = new Vehicle(spec, 'traffic');
+  v.arch = arch;
+  if (arch === 'armored') v.armour = 2;
   const pos = G.track.at(idx, lat);
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx; v.lane = lat;
   v.vx = Math.cos(pos.a) * spec.top; v.vy = Math.sin(pos.a) * spec.top;
@@ -4081,10 +4494,14 @@ function addTraffic(ahead){
 function addPolice(escort){
   const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
+  /* Pursuit pace scales with the tier instead of always outrunning a stock
+     player (base top 620): tier 1 can be shaken off, tier 3 cannot. */
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660
+    col:'#14203C', col2:'#080D1A', power:600, grip:7.0,
+    top: 600 + 15 * Math.max(1, G.tier)
   });
   const v = new Vehicle(spec, 'police');
+  v.hp = 3;
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
   v.vx = Math.cos(pos.a) * 420; v.vy = Math.sin(pos.a) * 420;
   G.police.push(v);
@@ -4119,7 +4536,7 @@ function addBoss(){
 function bossDamage(amount){
   const b = G.boss;
   if (!b) return;
-  b.hp -= amount;
+  b.hp -= amount * (Tree.has('t_exec') ? 1.25 : 1);
   b.hitFlash = 1;
   G.shake = Math.max(G.shake, 12);
   NHAudio.bossHit();
@@ -4159,9 +4576,11 @@ function stepBoss(dt){
   } else if (b.def.id === 'siren') {
     if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
     if (b.atk <= 0) {
-      b.atk = 7.0; G.pulseWarn = 0;
-      /* only punishes hoarding — bank little and often and it does nothing */
-      if (G.pending > 2400) {
+      b.atk = 8.5; G.pulseWarn = 0;
+      /* only punishes hoarding — bank little and often and it does nothing.
+         The threshold scales with the fight: a fixed 2,400 was tuned for
+         act-1 numbers, and by act 2 two wrecks at mult 4 tripped it. */
+      if (G.pending > Math.max(2400, Math.round(b.maxHp * 0.2))) {
         G.pending = 0; G.chain = 0; G.mult = 1;
         toast('Bank wiped', 'red');
         NHAudio.curse();
@@ -4190,7 +4609,10 @@ function stepBoss(dt){
       G.shake = Math.max(G.shake, 22);
       car.hitFlash = 1; car.inv = 0.5;
       burnChain(1.2);
-      damage(b.charge > 0 ? 26 : 18, 'boss');
+      /* the first boss is where casual runs were ending — soften the rams
+         while the save is still learning the fight */
+      damage(Math.round((b.charge > 0 ? 26 : 18)
+           * ((Save.data.runs || 0) < 5 ? 0.6 : 1)), 'boss');
       hitstop(0.06, 24);
       NHAudio.hit(1.2);
     }
@@ -4296,6 +4718,12 @@ function hitstop(secs, shake){
 
 function damage(amount, reason){
   if (G.car.inv > 0 && reason !== 'wall') return;
+  /* Overdraft: the stake is live — any hit that is not the cost of a wreck
+     halves what you are carrying */
+  if (G.power.draft > 0 && reason !== 'traffic' && G.pending > 0) {
+    G.pending = Math.floor(G.pending / 2);
+    toast('Overdraft called', 'red');
+  }
   G.hp -= amount;
   G.hurt = 1;
   if (G.hp <= 0) { G.hp = 0; crash(reason); }
@@ -4312,16 +4740,21 @@ function smash(v, rel){
      then does the chain grow — so the first wreck is worth ×1 and every one
      after it is worth more than the last. */
   const gain = Math.round(260 * power * G.mult * M.bankMul * M.wreckMul
-             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
+             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1)
+             * (G.power.draft > 0 ? 3 : 1)
+             * (v.arch === 'bike' ? 2 : 1));
   G.pending += gain;
 
   G.chain += 1 + (car.boost ? M.boostChain : 0);
+  if (G.firstBlood) { G.firstBlood = 0; G.chain += 2; toast('First blood ×3', 'pink'); }
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
 
-  /* Ram Plate eats the hull cost outright — that is what the pickup is for */
-  if (!G.power.shield) damage(Math.round(9 * power * (M.hullCost || 1)), 'traffic');
+  /* Ram Plate eats the hull cost outright — that is what the pickup is for.
+     A kamikaze bike costs a little extra to eat head-on: it wanted this. */
+  if (!G.power.shield)
+    damage(Math.round((9 * power + (v.arch === 'bike' ? 5 : 0)) * (M.hullCost || 1)), 'traffic');
 
   /* kinetic transfer: you come out of a hit faster, not slower */
   const cs = Math.cos(car.a), sn = Math.sin(car.a);
@@ -4358,6 +4791,7 @@ function smash(v, rel){
   if (Hangar.has('shockplate') && G.chain >= G.shockAt) { G.shockAt = G.chain + 5; shockwave(); }
   if (M.punt) punt(v, M.punt);
   if (M.cook) { v.cook = M.cook; v.cookGen = 0; }
+  archWreck(v);
   arcFrom(v);
   addXP(1);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
@@ -4378,6 +4812,24 @@ function smash(v, rel){
    game and a weapon that scored on its own ledger would compete with it.
    ============================================================ */
 
+/* what a special archetype does the moment it is wrecked, however wrecked */
+function archWreck(v){
+  if (v.arch === 'tanker') {
+    /* the payload cooks off a beat after the hit — free positional AoE */
+    v.tank = 1;
+    if (!v.cook) { v.cook = 0.45; v.cookGen = 0; }
+  }
+  if (v.arch === 'armored') {
+    G.coinsRun += 40;
+    toast('Armored car +40c', 'gold');
+    for (let i = 0; i < 16; i++) {
+      const a = rnd(0, TAU), s = rnd(120, 480);
+      spawn(v.x, v.y, Math.cos(a) * s, Math.sin(a) * s,
+            rnd(0.3, 0.8), rnd(3, 7), '255,197,61', true, -4);
+    }
+  }
+}
+
 /* Every weapon ends up here: wreck a live car with something that is not the
    player's bumper, pay it into the chain, and leave the hull alone. */
 function killCar(t, vx, vy, pay){
@@ -4388,14 +4840,62 @@ function killCar(t, vx, vy, pay){
   t.wrecked = 1; t.hitFlash = 1;
   G.totalWreck++;
   G.pending += Math.round((pay || 200) * G.mult * M.wreckMul
-             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
+             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1)
+             * (G.power.draft > 0 ? 3 : 1));
   G.chain += 1;
+  if (G.firstBlood) { G.firstBlood = 0; G.chain += 2; toast('First blood ×3', 'pink'); }
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
   addXP(1);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
+  if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+  archWreck(t);
   return true;
+}
+
+/* TAKEDOWN — pursuit is ammunition too, it just takes three pips. Killing a
+   unit pays the chain, drops garage coins on the spot, and vents heat — so
+   hunting the hunters trades income (the heat payout multiplier) for room
+   to breathe, which is a real decision rather than a free lunch. */
+function killPolice(p, idx){
+  const i = idx != null ? idx : G.police.indexOf(p);
+  if (i >= 0) G.police.splice(i, 1);
+  G.totalWreck++;
+  const M = G.run.M;
+  G.pending += Math.round(500 * G.mult * M.wreckMul * (G.run.L.wreckPay || 1)
+             * (G.power.frenzy > 0 ? 2 : 1));
+  G.chain += 1;
+  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
+  G.topMult = Math.max(G.topMult, G.mult);
+  G.chainT = G.chainMax = chainTime();
+  addXP(3);
+  G.coinsRun += 120;
+  G.heat = Math.max(0, G.heat - 0.6);
+  G.policeCool = 6;
+  G.flash = Math.max(G.flash, 0.5);
+  G.shake = Math.max(G.shake, 22);
+  hitstop(0.07, 24);
+  NHAudio.smash(1.5);
+  for (let k = 0; k < 40; k++) {
+    const a = rnd(0, TAU), s = rnd(140, 680);
+    spawn(p.x, p.y, Math.cos(a) * s, Math.sin(a) * s,
+          rnd(0.3, 0.9), rnd(4, 10), k % 2 ? '255,70,90' : '120,180,255', true, -6);
+  }
+  toast('TAKEDOWN +120c', 'pink');
+}
+
+/* one armour pip off a pursuit unit, from any weapon heavy enough.
+   The cooldown stops a slick or a sweeping ball from eating all three
+   pips in three consecutive frames. */
+function damagePolice(p, vx, vy){
+  if ((p.pipCool || 0) > 0) return;
+  p.pipCool = 0.6;
+  p.hp = (p.hp || 3) - 1;
+  p.vx += vx; p.vy += vy;
+  p.a += rnd(-1.4, 1.4);
+  p.hitFlash = 1;
+  if (p.hp <= 0) killPolice(p);
 }
 
 /* KICKOFF — the car you hit does not tumble aside, it goes down the road
@@ -4448,7 +4948,9 @@ function stepCook(v, dt){
   const gen = v.cookGen || 0;
   v.cook = 0;
   G.wstat.cook++;
-  const M = G.run.M, R = M.cookR || 165;
+  /* a tanker's payload blasts half again as wide as a perk-cooked wreck */
+  const M = G.run.M, R = (M.cookR || 165) * (v.tank ? 1.5 : 1)
+          * (v.tank && Tree.has('t_chain') ? 1.3 : 1);
   G.flash = Math.max(G.flash, 0.3);
   hitstop(0.04, 14);
   NHAudio.smash(1.15);
@@ -4468,16 +4970,13 @@ function stepCook(v, dt){
        fresh cars detonate on arrival. One run measured 10,434 wrecks and hit
        the level cap on four districts. Two generations is a satisfying
        cluster; three is a chain letter. */
-    if (gen < 2) { t.cook = M.cook; t.cookGen = gen + 1; }
+    if (gen < 2 && (M.cook || v.tank)) { t.cook = M.cook || 0.4; t.cookGen = gen + 1; }
   }
-  /* pursuit is caught in it too — the same knock a Static Discharge bank
-     gives, so being spun out reads the same wherever it comes from */
-  for (const p of G.police) {
+  /* pursuit is caught in it too — a blast takes an armour pip off a unit */
+  for (const p of G.police.slice()) {
     const d = hyp(p.x - v.x, p.y - v.y);
     if (d > R) continue;
-    p.vx += (p.x - v.x) / (d || 1) * 520; p.vy += (p.y - v.y) / (d || 1) * 520;
-    p.a += rnd(-1.7, 1.7);
-    p.hitFlash = 1;
+    damagePolice(p, (p.x - v.x) / (d || 1) * 520, (p.y - v.y) / (d || 1) * 520);
   }
 }
 
@@ -4513,12 +5012,10 @@ function stepSlicks(dt){
       const d = hyp(t.x - s.x, t.y - s.y) || 1;
       killCar(t, (t.x - s.x) / d * 380, (t.y - s.y) / d * 380, 180);
     }
-    for (const p of G.police) {
+    for (const p of G.police.slice()) {
       const d = hyp(p.x - s.x, p.y - s.y);
       if (d > s.r + 16) continue;
-      p.vx += (p.x - s.x) / (d || 1) * 300; p.vy += (p.y - s.y) / (d || 1) * 300;
-      p.a += rnd(-1.3, 1.3);
-      p.hitFlash = 1;
+      damagePolice(p, (p.x - s.x) / (d || 1) * 300, (p.y - s.y) / (d || 1) * 300);
     }
   }
 }
@@ -4568,10 +5065,12 @@ function shockwave(){
     const d = hyp(t.x - car.x, t.y - car.y);
     if (d > 260) continue;
     const nx = (t.x - car.x) / (d || 1), ny = (t.y - car.y) / (d || 1);
-    t.vx += nx * 700; t.vy += ny * 700;
-    t.spin = rnd(-11, 11); t.wrecked = 1; t.hitFlash = 1;
-    G.totalWreck++;
-    G.pending += Math.round(180 * G.mult);
+    killCar(t, nx * 700, ny * 700, 180);
+  }
+  for (const p of G.police.slice()) {
+    const d = hyp(p.x - car.x, p.y - car.y);
+    if (d > 260) continue;
+    damagePolice(p, (p.x - car.x) / (d || 1) * 700, (p.y - car.y) / (d || 1) * 700);
   }
   toast('Shock plating!', 'pink');
 }
@@ -4600,6 +5099,8 @@ const POWERS = [
   { id:'arc',     name:'Arc Welder',    col:'#7FE9FF', rgb:'127,233,255', glyph:'\u21af', w:11 },
   { id:'well',    name:'Singularity',   col:'#B07CFF', rgb:'176,124,255', glyph:'\u25cc', w:9 },
   { id:'drones',  name:'Escort Drones', col:'#5BFFC9', rgb:'91,255,201',  glyph:'\u2b1f', w:12 },
+  { id:'phase',   name:'Phase Shift', col:'#9FD8FF', rgb:'159,216,255', glyph:'\u25ce', w:10 },
+  { id:'draft',   name:'Overdraft',   col:'#FF4FA0', rgb:'255,79,160',  glyph:'\u00d73', w:8 },
   { id:'plating', name:'Reinforced', col:'#7BF5B0', rgb:'123,245,176', glyph:'\u25a0', w:7,  lasting:1 },
   { id:'clock',   name:'Overclock',  col:'#C6A8FF', rgb:'198,168,255', glyph:'\u221e', w:7,  lasting:1 },
   { id:'payday',  name:'Payday',     col:'#FFC53D', rgb:'255,197,61',  glyph:'\u00a4', w:6,  lasting:1 },
@@ -4611,10 +5112,13 @@ function addPickup(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
+  /* a boss fight triples the odds of a Repair on the road: the fight is a
+     race between two health bars, and the player's needs a supply line */
+  const wOf = k => k.id === 'repair' && G.boss ? k.w * 3 : k.w;
   let total = 0;
-  for (const k of POWERS) total += k.w;
+  for (const k of POWERS) total += wOf(k);
   let r = Math.random() * total, kind = POWERS[0];
-  for (const k of POWERS) { r -= k.w; if (r <= 0) { kind = k; break; } }
+  for (const k of POWERS) { r -= wOf(k); if (r <= 0) { kind = k; break; } }
   const pos = G.track.at(idx, (LANES[rint(0, LANES.length)] + rnd(-0.05, 0.05)) * roadHalf(p));
   G.pickups.push({ kind, x:pos.x, y:pos.y, idx, spin:rnd(0, TAU), got:0 });
 }
@@ -4655,6 +5159,16 @@ function takePickup(k){
       break;
     case 'frenzy':
       G.power.frenzy = Math.max(G.power.frenzy, 8 * M.powerTime);
+      break;
+    case 'phase':
+      /* a hologram: for four seconds the greedy line is the dense lane you
+         DON'T wreck — every car you pass through pays as a thread */
+      G.power.phase = Math.max(G.power.phase, 4 * M.powerTime);
+      break;
+    case 'draft':
+      /* pending gains tripled, but any hit halves the pending on the spot —
+         a pure posture change: drive clean or lose the stake */
+      G.power.draft = Math.max(G.power.draft, 6 * M.powerTime);
       break;
     case 'plating':
       /* rest of the district: a bigger hull, filled */
@@ -4742,6 +5256,8 @@ function stepPowers(dt){
   if (G.power.magnet > 0) G.power.magnet = Math.max(0, G.power.magnet - dt);
   if (G.power.frenzy > 0) G.power.frenzy = Math.max(0, G.power.frenzy - dt);
   if (G.power.slowmo > 0) G.power.slowmo = Math.max(0, G.power.slowmo - dt);
+  if (G.power.phase  > 0) G.power.phase  = Math.max(0, G.power.phase  - dt);
+  if (G.power.draft  > 0) G.power.draft  = Math.max(0, G.power.draft  - dt);
   if (G.power.arc    > 0) G.power.arc    = Math.max(0, G.power.arc    - dt);
   if (G.power.ball   > 0) { G.power.ball = Math.max(0, G.power.ball - dt);
                             if (G.power.ball === 0) G.ball = null; }
@@ -4851,15 +5367,7 @@ function stepDrones(dt){
 
     const t = dr.target;
     const nx = (t.x - dr.x), ny = (t.y - dr.y), nd = hyp(nx, ny) || 1;
-    t.vx += nx / nd * 560; t.vy += ny / nd * 560;
-    t.spin = rnd(-12, 12); t.wrecked = 1; t.hitFlash = 1;
-    G.totalWreck++;
-    G.pending += Math.round(230 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
-    G.chain += 1;
-    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-    G.topMult = Math.max(G.topMult, G.mult);
-    G.chainT = G.chainMax = chainTime();
-    if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+    killCar(t, nx / nd * 560, ny / nd * 560, 230);
     G.flash = Math.max(G.flash, 0.24);
     NHAudio.smash(0.85);
     for (let i = 0; i < 22; i++) {
@@ -4969,15 +5477,8 @@ function stepBall(dt){
     if (hyp(t.x - (px + sx * u), t.y - (py + sy * u)) > BALL_R) continue;
     /* the ball takes the hit, so this costs no hull at all */
     const nx = (t.x - b.x), ny = (t.y - b.y), nd = hyp(nx, ny) || 1;
-    t.vx += nx / nd * 900; t.vy += ny / nd * 900;
-    t.spin = rnd(-13, 13); t.wrecked = 1; t.hitFlash = 1;
-    G.totalWreck++; G.ballHits = (G.ballHits || 0) + 1;
-    G.pending += Math.round(300 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
-    G.chain += 1;
-    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-    G.topMult = Math.max(G.topMult, G.mult);
-    G.chainT = G.chainMax = chainTime();
-    if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+    G.ballHits = (G.ballHits || 0) + 1;
+    killCar(t, nx / nd * 900, ny / nd * 900, 300);
     hitstop(0.045, 20);
     G.flash = Math.max(G.flash, 0.3);
     NHAudio.smash(clamp(swing / 900, 0.6, 1.6));
@@ -4987,6 +5488,14 @@ function stepBall(dt){
             rnd(0.25, 0.7), rnd(4, 9), i % 3 ? '255,180,110' : '255,120,80', true, -6);
     }
     arcFrom(t);
+  }
+  /* the iron does not care what livery the car it meets is wearing */
+  for (const p of G.police.slice()) {
+    let u = segLen2 > 1e-6 ? ((p.x - px) * sx + (p.y - py) * sy) / segLen2 : 0;
+    u = clamp(u, 0, 1);
+    if (hyp(p.x - (px + sx * u), p.y - (py + sy * u)) > BALL_R) continue;
+    const nx = (p.x - b.x), ny = (p.y - b.y), nd = hyp(nx, ny) || 1;
+    damagePolice(p, nx / nd * 700, ny / nd * 700);
   }
   /* sparks off the chain, so it reads as iron rather than a floating dot */
   if (Math.random() < 0.35) {
@@ -5018,15 +5527,7 @@ function arcFrom(src, depth){
   G.wstat.arc++;
   G.arcs.push({ ax:src.x, ay:src.y, bx:best.x, by:best.y, t:0.22 });
   const nx = (best.x - src.x) / (bd || 1), ny = (best.y - src.y) / (bd || 1);
-  best.vx += nx * 380; best.vy += ny * 380;
-  best.spin = rnd(-9, 9); best.wrecked = 1; best.hitFlash = 1;
-  G.totalWreck++;
-  G.pending += Math.round(190 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
-  G.chain += 1;
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
-  if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+  killCar(best, nx * 380, ny * 380, 190);
   for (let i = 0; i < 12; i++) {
     const a = rnd(0, TAU), sp = rnd(120, 420);
     spawn(best.x, best.y, Math.cos(a) * sp, Math.sin(a) * sp,
@@ -5058,14 +5559,8 @@ function stepWells(dt){
       const pull = (1 - d / R) * 1900 * (M ? M.wellPull : 1) * dt;
       t.vx += dx / d * pull; t.vy += dy / d * pull;
       if (d < 46 && M) {
-        t.wrecked = 1; t.hitFlash = 1; t.spin = rnd(-16, 16);
-        G.totalWreck++;
-        G.pending += Math.round(230 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
-        G.chain += 1;
-        G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-        G.topMult = Math.max(G.topMult, G.mult);
-        G.chainT = G.chainMax = chainTime();
-        if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
+        killCar(t, 0, 0, 230);
+        t.spin = rnd(-16, 16);
         NHAudio.smash(0.9);
         for (let k = 0; k < 18; k++) {
           const a = rnd(0, TAU), sp = rnd(60, 260);
@@ -5148,14 +5643,7 @@ function stepRockets(dt){
           i % 3 ? '255,180,110' : '255,90,60', true, -6);
   }
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
-  best.vx += nx * 760; best.vy += ny * 760;
-  best.spin = rnd(-11, 11); best.wrecked = 1; best.hitFlash = 1;
-  G.totalWreck++;
-  G.pending += Math.round(240 * G.mult * M.wreckMul * (G.power.frenzy > 0 ? 2 : 1));
-  G.chain += 1;
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
+  killCar(best, nx * 760, ny * 760, 240);
   G.flash = Math.max(G.flash, 0.35);
   hitstop(0.04, 14);
   NHAudio.smash(1.1);
@@ -5181,17 +5669,8 @@ function fireMissile(){
           i % 3 ? '255,196,120' : '255,90,70', true, -6);
   }
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
-  best.vx += nx * 820; best.vy += ny * 820;
-  best.spin = rnd(-12, 12); best.wrecked = 1; best.hitFlash = 1;
-
   /* a free link: it pays and extends, but never costs hull */
-  const M = G.run.M;
-  G.totalWreck++;
-  G.pending += Math.round(240 * G.mult * M.wreckMul);
-  G.chain += 1;
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
+  killCar(best, nx * 820, ny * 820, 240);
   G.flash = Math.max(G.flash, 0.4);
   hitstop(0.05, 16);
   NHAudio.smash(1.2);
@@ -5213,12 +5692,30 @@ const LEVEL_CAP = 15;
 /* Clearing a district pays a large XP lump on top of the wrecks, so there
    is exactly one level track rather than two counters that drift apart —
    the old clear-grants-a-free-perk path handed out 21 perks by level 12. */
-const xpFor = l => 26 + l * 9;          // ~1300 XP to cap, about eleven districts
+/* First level cheap so the first perk card lands ~20s into a first run.
+   The tail is quadratic: a flat-linear curve capped a skilled run at level
+   15 inside act 1 — measured, 3.8 level-ups per district and then ten
+   straight districts of silence, which mutes the game's own addiction
+   engine for exactly the players who are winning. Early levels are still
+   cheap (casual cadence unchanged); the cap now lands mid act 2 or later. */
+const xpFor = l => l <= 1 ? 26 : Math.round(18 + l * l * 2.2);
 
 function addXP(n){
   const run = G.run;
-  if (!run || run.level >= LEVEL_CAP) return;
-  run.xp += n * (run.L ? run.L.xpMul : 1);
+  if (!run) return;
+  if (run.level >= LEVEL_CAP) {
+    /* past the cap the meter still pays: every 300 overflow XP is a 150-coin
+       dividend, so a capped run never goes fully silent */
+    run.xpOverflow = (run.xpOverflow || 0) + n;
+    if (run.xpOverflow >= 300) {
+      run.xpOverflow -= 300;
+      G.coinsRun += 150;
+      toast('Veteran dividend +150c', 'gold');
+    }
+    return;
+  }
+  run.xp += n * (run.L ? run.L.xpMul : 1) * (run.overtime ? 1.5 : 1)
+              * (Tree.has('t_know') ? 1.15 : 1);
   while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
     run.xp -= xpFor(run.level);
     run.level++;
@@ -5285,6 +5782,9 @@ function rebuildMods(){
   run.M = built.M; run.L = built.L;
   if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
   run.M.wreckMul *= (G.spec.wreckMul || 1);
+  /* the Elite label says Double XP; make the label true (stacks with risk) */
+  if (run.cfg && run.cfg.elite) run.L.xpMul = (run.L.xpMul || 1) * 2;
+  Tree.apply(run.M);
   if (G.car) G.car.mods = run.M;
 }
 
@@ -5364,6 +5864,7 @@ function convoyHit(v, rel){
      not the individual truck. */
   const gain = Math.round(320 * G.mult * M.bankMul * M.wreckMul * (G.run.L.wreckPay || 1));
   G.pending += gain;
+  addXP(5);
   G.chain += 1;
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
@@ -5437,14 +5938,26 @@ function stepConvoy(dt){
 function bank(){
   if (G.pending < 1) { G.chain = 0; G.mult = 1; G.chainT = 0; return; }
   const M = G.run.M;
-  const heatMul = 1 + G.tier * 0.35 + (G.tier >= 2 ? M.heatBonus : 0);
+  const heatMul = 1 + G.tier * (Tree.has('t_roller') ? 0.45 : 0.35)
+                + (G.tier >= 2 ? M.heatBonus : 0);
+  /* Overtime banking pays half score. The district is already won; XP (×1.5)
+     carries the incentive to keep driving, and without the taper a casual
+     district-2 surplus banked 307k against an 8.8k quota — score stopped
+     meaning anything the leaderboard could compare. */
   const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
+              * (G.run.overtime ? 0.5 : 1)
               * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
 
   G.score += gained;
   G.run.banked += gained;
   addXP(Math.min(6, Math.round(gained / 2600)));
-  G.heat = Math.min(3.0, G.heat + gained / 14000);
+  /* Scaled to the quota AND capped per bank: chain-multiplier inflation
+     means income can outrun any fixed divisor by 10-30x, which pegged heat
+     at 3.0 by district two and turned the pursuit ladder into a constant.
+     Capped, a monster bank is still only just over half a tier — heat
+     climbs across a district in steps the decay can actually fight. */
+  G.heat = Math.min(3.0, G.heat
+         + Math.min(0.55, gained / Math.max(14000, G.run.quota * 2)));
   NHAudio.bank(G.mult);
 
   /* perks that trigger on the cash-in, not on the wreck */
@@ -5467,7 +5980,7 @@ function bank(){
   }
 
   if (G.boss) { bossDamage(gained); toast('-' + fmt(gained) + ' integrity', 'red'); }
-  else toast('Banked +' + fmt(gained), 'gold');
+  else { toast('Banked +' + fmt(gained), 'gold'); popBank(gained); }
 
   /* Cashing in welds the hull back together, and a pile-up patches more than
      a lone wreck — but never as much as it cost, so hull only ever trends
@@ -5477,26 +5990,85 @@ function bank(){
 
   G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0; G.shockAt = 5;
 
-  /* quota districts clear the moment you meet the number */
-  if (!G.boss && G.run.cfg && !G.run.cfg.boss && G.run.banked >= G.run.quota) clearDistrict();
+  /* Meeting the quota used to clear the district on the spot, which meant a
+     skilled district was one chain long — measured, cleared at 32-40% of the
+     road, with the back half never driven. The district is *won* at quota
+     but runs to the checkpoint in overtime: surplus banking keeps paying,
+     XP runs half again, and a wreck in overtime is a limp home, not a loss. */
+  if (!G.boss && G.run.cfg && !G.run.cfg.boss && !G.run.overtime
+      && G.run.banked >= G.run.quota) {
+    G.run.overtime = true;
+    G.flash = Math.max(G.flash, 0.5);
+    toast('QUOTA MET — overtime, ×1.5 XP', 'gold');
+    NHAudio.bank(3);
+  }
 }
 
 function toast(text, cls){
+  /* Merge repeats instead of stacking them: at several wrecks a second the
+     rail was three copies of "Wreck +N" fighting for the same pixels. A
+     repeat updates the last toast and bumps a counter instead. */
+  const key = text.split(' ')[0];
+  const last = UI.toasts.lastChild;
+  if (last && last.dataset.key === key) {
+    last.dataset.n = (parseInt(last.dataset.n, 10) || 1) + 1;
+    last.textContent = text + '  ×' + last.dataset.n;
+    clearTimeout(last._t);
+    last._t = setTimeout(() => last.remove(), 1150);
+    return;
+  }
   const el = document.createElement('div');
   el.className = 'toast' + (cls ? ' ' + cls : '');
+  el.dataset.key = key;
+  el.dataset.n = 1;
   el.textContent = text;
   UI.toasts.appendChild(el);
-  setTimeout(() => el.remove(), 1150);
-  while (UI.toasts.children.length > 3) UI.toasts.firstChild.remove();
+  el._t = setTimeout(() => el.remove(), 1150);
+  while (UI.toasts.children.length > 2) UI.toasts.firstChild.remove();
+}
+
+/* the payoff moment travels: a bank throws its number from the combo rail
+   and pulses the score it lands in */
+function popBank(gained){
+  const el = document.createElement('div');
+  el.className = 'bankPop';
+  el.textContent = '+' + fmt(gained);
+  UI.hud.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+  UI.score.classList.remove('pop');
+  void UI.score.offsetWidth;               // restart the animation
+  UI.score.classList.add('pop');
+  for (let i = 0; i < 10; i++) {
+    const a = rnd(0, TAU), s = rnd(150, 450);
+    spawn(G.car.x, G.car.y, Math.cos(a) * s, Math.sin(a) * s,
+          rnd(0.25, 0.5), rnd(3, 6), '61,232,255', true, -5);
+  }
 }
 
 /* -------- crash -------- */
 function crash(reason){
   if (G.state !== 'play') return;
 
-  /* Crumple Zone spends a charge instead of ending the run */
-  if (G.run && G.run.crumpleLeft > 0) {
-    G.run.crumpleLeft--;
+  /* Quota already met and the hull gives out in overtime: that is a limp to
+     the checkpoint, not a loss — the district was won when the number was. */
+  if (G.run && G.run.overtime && G.run.cfg && !G.run.cfg.boss) {
+    if (G.pending > 0) {
+      const salvage = Math.floor(G.pending * 0.4);
+      G.score += salvage; G.run.banked += salvage;
+    }
+    G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0;
+    G.hp = Math.round(G.hpMax * 0.35);
+    G.flash = 0.8; G.shake = 24;
+    NHAudio.hit(1.4);
+    toast('Limped to the checkpoint', 'gold');
+    clearDistrict();
+    return;
+  }
+
+  /* Crumple Zone (or the crew's Safety Cage) spends a charge instead of
+     ending the run */
+  if (G.run && (G.run.crumpleLeft > 0 || G.run.cageLeft > 0)) {
+    if (G.run.crumpleLeft > 0) G.run.crumpleLeft--; else G.run.cageLeft--;
     G.hp = Math.max(G.hp, Math.round(G.hpMax * 0.45));
     G.car.inv = 2.2;
     G.car.hitFlash = 1;
@@ -5509,6 +6081,16 @@ function crash(reason){
   }
 
   NHAudio.crash();
+  /* Chains run 20-30s, so at the moment of death the whole district's
+     earnings are usually still pending — measured, 9 of 20 deaths banked
+     exactly zero, which starves the garage of the coins that make the next
+     run feel worth starting. Salvage 40%: dying is still expensive, but a
+     run that ended badly always pays for *something* you keep. */
+  if (G.pending > 0 && G.run) {
+    const salvage = Math.floor(G.pending * 0.4);
+    G.score += salvage; G.run.banked += salvage;
+    toast('Salvaged +' + fmt(salvage), 'gold');
+  }
   G.state = 'crash';
   G.crashT = 0;
   G.flash = 1;
@@ -5538,6 +6120,7 @@ function step(dt){
 
   if (playing) {
     if (G.run) G.run.elapsed += dt;
+    if (!G.ai) G.playSinceAd += dt;
     readInput();
     const loc = T.locate(car.x, car.y, car.idx);
     car.idx = loc.i;
@@ -5573,12 +6156,18 @@ function step(dt){
       car.drive(dt, IN.steer, G.reverseT > 0 ? -0.75 : 1);
       const into = barrier(car, loc);
       if (into > 40) {
-        /* graze sparks; only a hard perpendicular hit ends the run */
+        /* graze sparks fan along the rail, not out of the car's centre —
+           the barrier normal is right there, so the shower hugs the wall
+           and streaks with the direction of travel */
         const n = Math.min(14, Math.floor(into / 26));
+        const wnx = -Math.sin(loc.p.a) * (Math.sign(loc.lat) || 1);
+        const wny =  Math.cos(loc.p.a) * (Math.sign(loc.lat) || 1);
+        const tx = Math.cos(loc.p.a), ty = Math.sin(loc.p.a);
         for (let i = 0; i < n; i++) {
-          const a = rnd(0, TAU), s = rnd(90, 340);
-          spawn(car.x, car.y, Math.cos(a) * s, Math.sin(a) * s,
-                rnd(0.2, 0.5), rnd(2, 5), '255,215,140', true, -4);
+          const along = rnd(60, 420), off = rnd(30, 160);
+          spawn(car.x + wnx * 10, car.y + wny * 10,
+                tx * along - wnx * off, ty * along - wny * off,
+                rnd(0.15, 0.4), rnd(1.5, 4), '255,215,140', true, -4, 1);
         }
         G.shake = Math.max(G.shake, Math.min(16, into / 22));
         if (Math.random() < 0.25) NHAudio.spark();
@@ -5586,7 +6175,7 @@ function step(dt){
           /* A hard wall is the mistake that pays nothing, but it must not be
              the main hull sink — hull is meant to read as fuel you spend on
              traffic, not as a tax on clipping a barrier while learning. */
-          damage(Math.round(6 + into * 0.015), 'wall');
+          damage(Math.round((6 + into * 0.015) * (G.run.M.wallMul || 1)), 'wall');
           hitstop(0.07, 26);
           NHAudio.hit(1.4);
           car.hitFlash = 1;
@@ -5596,7 +6185,7 @@ function step(dt){
           car.inv = 0.35;
           if (G.state !== 'play') return;
         } else {
-          G.hp -= dt * 1.0;                    // scraping bleeds you slowly
+          G.hp -= dt * 1.0 * (G.run.M.wallMul || 1);   // scraping bleeds you slowly
           if (G.hp <= 0) { crash('wall'); return; }
           if (G.run.M.brittle) { G.chainT = 0; if (G.pending > 0) bank(); }
           else burnChain(dt * 1.6);
@@ -5604,6 +6193,19 @@ function step(dt){
       }
     }
     G.dist += car.speed * dt;
+
+    /* feed the light ribbon from the rear axle */
+    G.trailT = (G.trailT || 0) - dt;
+    if (G.trailT <= 0 && car.speed > 120) {
+      G.trailT = 0.018;
+      const tcs = Math.cos(car.a), tsn = Math.sin(car.a);
+      G.trail.push({
+        x: car.x - tcs * car.spec.len * 0.5,
+        y: car.y - tsn * car.spec.len * 0.5,
+        k: Math.min(1.6, 0.35 + car.drift * 0.7 + (car.boost ? 0.65 : 0))
+      });
+      if (G.trail.length > 42) G.trail.shift();
+    }
 
     /* ---- the chain clock ----
        With no drift button there is nothing to release, so the wager moved
@@ -5619,9 +6221,11 @@ function step(dt){
     }
 
     G.ghost = Math.max(0, G.ghost - dt);
-    G.heat = Math.max(0, G.heat - dt * 0.038);
+    G.heat = Math.max(0, G.heat - dt * 0.038
+           * (Tree.has('t_cool') && G.hp < G.hpMax * 0.3 ? 1.4 : 1));
     G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
     G.tier = Math.min(3, G.tier);
+    if (G.run.grace) G.tier = 0;
 
     stepHazards(dt);
     stepAir(dt);
@@ -5666,7 +6270,15 @@ function step(dt){
       if (t.idx < car.idx - 24 && !t.punt) { G.traffic.splice(i, 1); }
       continue;
     }
-    autoDrive(t, dt * G.worldSlow, false);
+    /* kamikaze bikes hunt the player once they can see them; everything
+       else keeps its lane like a civilian */
+    if (t.arch === 'bike' && playing && !G.ai && hyp(t.x - car.x, t.y - car.y) < 760) {
+      const st = steerToward(t, car.x + car.vx * 0.2, car.y + car.vy * 0.2);
+      t.drive(dt * G.worldSlow, st, 1);
+      const bl = G.track.locate(t.x, t.y, t.idx);
+      t.idx = bl.i;
+      t.offroad = Math.abs(bl.lat) > roadHalf(bl.p) ? 1 : 0;
+    } else autoDrive(t, dt * G.worldSlow, false);
     if (t.idx < car.idx - 24 || t.idx > car.idx + 120) { G.traffic.splice(i, 1); continue; }
 
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
@@ -5675,10 +6287,42 @@ function step(dt){
        the player drove clean through traffic and the whole verb never fired. */
     const touchR = (t.spec.len + car.spec.len) * 0.52;
     if (playing && !G.ai) {
-      if (d < touchR && !t.wrecked && G.hitCool <= 0) {
-        /* Traffic is the ammunition. Hitting it pays, feeds the chain and
-           costs hull — the run ends when the hull does, not on contact. */
-        smash(t, hyp(t.vx - car.vx, t.vy - car.vy));
+      if (d < touchR && !t.wrecked && G.power.phase > 0) {
+        /* Phase Shift: the car passes clean through and every pass-through
+           pays as a thread — for four seconds the dense lane is the prize
+           you do NOT wreck */
+        if (!t.phased) {
+          t.phased = 1;
+          const M2 = G.run.M;
+          const bonus = Math.round(150 * G.mult * M2.nearMul);
+          G.pending += bonus;
+          if (G.chainT > 0) G.chainT = Math.min(chainTime(), G.chainT + 0.5);
+          toast('Phased +' + fmt(bonus), 'pink');
+          NHAudio.nearMiss();
+          for (let s = 0; s < 6; s++)
+            spawn(t.x, t.y, rnd(-160, 160), rnd(-160, 160),
+                  rnd(0.15, 0.35), rnd(2, 5), '159,216,255', true, -3);
+        }
+      } else if (d < touchR && !t.wrecked && G.hitCool <= 0) {
+        const rel = hyp(t.vx - car.vx, t.vy - car.vy);
+        /* an armored car bounces a cruising bump exactly like a hauler:
+           crack it with speed, Boost or a Ram Plate */
+        if (t.arch === 'armored' && t.armour > 0
+            && !(car.boost || G.power.shield > 0 || rel > 430)) {
+          t.armour--;
+          t.hitFlash = 1;
+          car.vx *= 0.74; car.vy *= 0.74;
+          G.hitCool = 0.12;
+          G.shake = Math.max(G.shake, 18);
+          hitstop(0.05, 16);
+          if (!G.power.shield) damage(Math.round(4 * (G.run.M.hullCost || 1)), 'traffic');
+          NHAudio.hit(1.2);
+          toast('Armoured — hit it harder', 'red');
+        } else {
+          /* Traffic is the ammunition. Hitting it pays, feeds the chain and
+             costs hull — the run ends when the hull does, not on contact. */
+          smash(t, rel);
+        }
       } else if (d < 118 && !t.nearFlag && !t.wrecked && car.speed > 260) {
         t.nearFlag = true;
         const M = G.run.M;
@@ -5708,11 +6352,14 @@ function step(dt){
 
   /* ---- police ---- */
   if (playing && !G.ai && !G.boss) {
-    while (G.police.length < G.tier) addPolice();
+    G.policeCool = Math.max(0, (G.policeCool || 0) - dt);
+    /* a takedown buys real breathing room before the tier refills */
+    while (G.police.length < G.tier && G.policeCool <= 0) addPolice();
     while (G.police.length > G.tier) G.police.pop();
   }
   for (let i = G.police.length - 1; i >= 0; i--) {
     const p = G.police[i];
+    p.pipCool = Math.max(0, (p.pipCool || 0) - dt);
     const loc = T.locate(p.x, p.y, p.idx);
     p.idx = loc.i;
     p.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
@@ -5730,17 +6377,33 @@ function step(dt){
       const dx = p.x - car.x, dy = p.y - car.y, d = hyp(dx, dy);
       if (!lost && car.inv <= 0 && d < (p.spec.len + car.spec.len) * 0.36) {
         const nx = dx / (d || 1), ny = dy / (d || 1);
-        car.vx -= nx * 240; car.vy -= ny * 240;
-        p.vx += nx * 120; p.vy += ny * 120;
-        G.shake = Math.max(G.shake, 18);
-        car.hitFlash = 1;
-        burnChain(1.0);
-        G.heat = Math.max(0, G.heat - 0.25);
-        damage(16, 'police');
-        hitstop(0.05, 20);
-        NHAudio.hit(1);
-        car.inv = 0.45;
-        toast('Rammed', 'red');
+        if (car.boost || G.power.shield > 0) {
+          /* Boosted or plated, the ram goes the other way: pursuit is
+             ammunition too. Three pips and the unit is scrap. */
+          p.hp = (p.hp || 3) - 1;
+          p.vx += nx * 520; p.vy += ny * 520;
+          p.a += rnd(-1.2, 1.2);
+          p.hitFlash = 1;
+          car.vx -= nx * 90; car.vy -= ny * 90;
+          G.shake = Math.max(G.shake, 16);
+          hitstop(0.05, 18);
+          NHAudio.hit(1.2);
+          car.inv = 0.5;
+          if (p.hp <= 0) { killPolice(p, i); }
+          else toast('Unit cracked', 'pink');
+        } else {
+          car.vx -= nx * 240; car.vy -= ny * 240;
+          p.vx += nx * 120; p.vy += ny * 120;
+          G.shake = Math.max(G.shake, 18);
+          car.hitFlash = 1;
+          burnChain(1.0);
+          G.heat = Math.max(0, G.heat - 0.25);
+          damage(10 + 3 * G.tier, 'police');
+          hitstop(0.05, 20);
+          NHAudio.hit(1);
+          car.inv = 0.8;
+          toast('Rammed', 'red');
+        }
       }
     }
     if (p.idx < car.idx - 40) G.police.splice(i, 1);
@@ -5757,6 +6420,8 @@ function step(dt){
   }
 
   stepFX(dt);
+  /* the ribbon drains from the tail whenever it is not being fed */
+  if (G.trail.length && (G.state !== 'play' || G.car.speed <= 120)) G.trail.shift();
 
   /* ---- camera ---- */
   const lead = 0.22;
@@ -5804,7 +6469,7 @@ function drawGround(){
   /* world-aligned grid: cheap, and it reads as motion at speed */
   const R = hyp(W, H) / cam.zoom * 0.62;
   const S = 240;
-  ctx.strokeStyle = 'rgba(70,120,190,0.075)';
+  ctx.strokeStyle = 'rgba(70,120,190,0.10)';
   ctx.lineWidth = 1.4 / cam.zoom;
   ctx.beginPath();
   const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
@@ -5812,6 +6477,23 @@ function drawGround(){
   const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
   for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
   ctx.stroke();
+
+  /* sparse city blocks in the void: a deterministic hash drops a dim slab in
+     roughly a third of cells, so the off-road ground reads as a city seen
+     from above rather than graph paper */
+  if (QF.city) {
+    ctx.fillStyle = 'rgba(120,150,200,0.04)';
+    ctx.beginPath();
+    for (let x = x0; x <= x1; x += S) {
+      for (let y = y0; y <= y1; y += S) {
+        const h = ((x * 92837111) ^ (y * 689287499)) % 97;
+        if (h % 3) continue;
+        const inset = 26 + (h % 5) * 8;
+        ctx.rect(x + inset, y + inset, S - inset * 2, S - inset * 2);
+      }
+    }
+    ctx.fill();
+  }
 }
 
 function visibleRange(){
@@ -5925,6 +6607,44 @@ function drawRoad(){
 }
 
 /* three alpha buckets, one path each — 600 decals in 3 draw calls */
+/* The ribbon: a neon light-trail off the rear axle, thin at cruise, wide and
+   hot in a drift, white-cored and amber-shifted under boost. Three strokes
+   over one polyline per age bucket — cheaper than the smoke it upstages —
+   and saturated enough that the bloom pass picks it up for free. */
+function drawTrail(){
+  const tr = G.trail;
+  if (!tr || tr.length < 3) return;
+  const base = (G.spec && G.spec.trail) || CL.cyan;
+  const boost = G.car && G.car.boost;
+  const col = boost ? mix(base, '#FFB13D', 0.55) : base;
+  ctx.save();
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.globalCompositeOperation = 'lighter';
+  const third = Math.ceil(tr.length / 3);
+  for (let b = 0; b < 3; b++) {
+    const from = b * third, to = Math.min(tr.length, from + third + 1);
+    if (to - from < 2) continue;
+    /* oldest bucket first and dimmest; each bucket carries its mean heat */
+    let k = 0;
+    for (let i = from; i < to; i++) k += tr[i].k;
+    k /= (to - from);
+    const age = (b + 1) / 3;
+    ctx.beginPath();
+    ctx.moveTo(tr[from].x, tr[from].y);
+    for (let i = from + 1; i < to; i++) ctx.lineTo(tr[i].x, tr[i].y);
+    ctx.strokeStyle = hexA(col, 0.10 * age * k);
+    ctx.lineWidth = 12 + k * 8;
+    ctx.stroke();
+    ctx.strokeStyle = hexA(col, 0.42 * age * k);
+    ctx.lineWidth = 3.5 + k * 2.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * age * k).toFixed(3) + ')';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawSkids(){
   for (let b = 0; b < 3; b++) {
     const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
@@ -5950,10 +6670,23 @@ function drawParticles(){
   for (const p of P) {
     const t = clamp(p.life / p.max, 0, 1);
     ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
-    ctx.fillStyle = 'rgba(' + p.col + ',' + (t * (p.add ? 0.85 : 0.30)).toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
-    ctx.fill();
+    if (p.st) {
+      /* streak: a short line along the velocity — reads as a flying spark
+         where a dot reads as confetti */
+      const sp = hyp(p.vx, p.vy) || 1;
+      const sl = Math.min(18, sp * 0.04);
+      ctx.strokeStyle = 'rgba(' + p.col + ',' + (t * 0.9).toFixed(3) + ')';
+      ctx.lineWidth = Math.max(1, p.r * 0.6);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x - p.vx / sp * sl, p.y - p.vy / sp * sl);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = 'rgba(' + p.col + ',' + (t * (p.add ? 0.85 : 0.30)).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
+      ctx.fill();
+    }
   }
   ctx.globalCompositeOperation = 'source-over';
 }
@@ -6058,10 +6791,13 @@ function drawVehicle(v, opt){
   ctx.translate(v.x, v.y);
   ctx.rotate(v.a);
 
-  /* underglow — reads as ground contact and feeds the bloom */
+  /* underglow — reads as ground contact and feeds the bloom. On the player
+     it burns brighter as the chain heats up: the car itself is the combo meter
+     you can read without looking at the HUD. */
   if (o.glow !== false) {
     ctx.globalCompositeOperation = 'lighter';
-    blitGlow(s.col, 0, 0, s.len * 0.9, s.wid * 1.4, 0.30);
+    const hot = v.kind === 'player' ? Math.min(0.35, (G.mult - 1) * 0.045) : 0;
+    blitGlow(s.col, 0, 0, s.len * (0.9 + hot), s.wid * (1.4 + hot), 0.30 + hot);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -6113,6 +6849,21 @@ function drawVehicle(v, opt){
   ctx.fillStyle = hexA(s.col, 0.22);
   ctx.fillRect(-s.len * 0.5, -s.wid * 0.055, s.len, s.wid * 0.11);
 
+  /* panel lines: a hood seam and a boot seam, so the body reads as sheet
+     metal rather than a jellybean */
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 1;
+  for (const px of [0.18, -0.32]) {
+    ctx.beginPath();
+    ctx.moveTo(s.len * px, -s.wid * 0.34);
+    ctx.lineTo(s.len * px, s.wid * 0.34);
+    ctx.stroke();
+  }
+
+  /* the hardware you bought is bolted to the car you drive, not only the
+     one in the garage — buying a part changes THIS picture too */
+  if (v.kind === 'player') drawFitted(ctx, s, 1);
+
   ctx.globalCompositeOperation = 'lighter';
 
   /* exhaust flame — a drawn plume reads solid where particles alone stipple */
@@ -6131,15 +6882,19 @@ function drawVehicle(v, opt){
     ctx.fill();
   }
 
-  /* headlights + cones */
+  /* headlights + cones — an impact kills the lights for a beat */
+  const lampA = 1 - v.hitFlash * 0.55;
   for (const sy of [-1, 1]) {
-    ctx.fillStyle = 'rgba(220,245,255,0.95)';
+    ctx.fillStyle = 'rgba(220,245,255,' + (0.95 * lampA).toFixed(2) + ')';
     ctx.fillRect(s.len * 0.44, sy * s.wid * 0.30 - s.wid * 0.05, s.len * 0.06, s.wid * 0.11);
   }
-  if (o.lights !== false) {
+  /* a charging boss telegraphs with the lights: the cone burns red */
+  const charging = v.kind === 'boss' && v.charge > 0;
+  if (o.lights !== false || charging) {
+    const lc = charging ? '255,60,70' : '190,230,255';
     const lg = ctx.createLinearGradient(s.len * 0.5, 0, s.len * 2.6, 0);
-    lg.addColorStop(0, 'rgba(190,230,255,0.20)');
-    lg.addColorStop(1, 'rgba(190,230,255,0)');
+    lg.addColorStop(0, 'rgba(' + lc + ',' + (charging ? 0.45 : 0.20) + ')');
+    lg.addColorStop(1, 'rgba(' + lc + ',0)');
     ctx.fillStyle = lg;
     ctx.beginPath();
     ctx.moveTo(s.len * 0.5, -s.wid * 0.4);
@@ -6149,11 +6904,38 @@ function drawVehicle(v, opt){
     ctx.closePath(); ctx.fill();
   }
 
-  /* tail lights, brighter while sliding */
+  /* tail lights, brighter while sliding, streaking under drift or boost */
   const tb = 0.55 + v.drift * 0.45;
   ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
   for (const sy of [-1, 1]) {
     ctx.fillRect(-s.len * 0.5, sy * s.wid * 0.28 - s.wid * 0.05, s.len * 0.05, s.wid * 0.11);
+    const streak = (v.drift * 0.6 + (v.boost ? 0.8 : 0)) * s.len * 0.4;
+    if (streak > 2) {
+      const sg = ctx.createLinearGradient(-s.len * 0.5, 0, -s.len * 0.5 - streak, 0);
+      sg.addColorStop(0, 'rgba(255,60,70,' + (tb * 0.5).toFixed(2) + ')');
+      sg.addColorStop(1, 'rgba(255,60,70,0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(-s.len * 0.5 - streak, sy * s.wid * 0.28 - s.wid * 0.04, streak, s.wid * 0.08);
+      ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
+    }
+  }
+
+  /* pursuit dress: red rim, push-bar, and armour pips over the roof */
+  if (v.kind === 'police') {
+    ctx.strokeStyle = hexA('#FF3355', 0.9);
+    ctx.lineWidth = 1.4;
+    carPath(ctx, s); ctx.stroke();
+    ctx.fillStyle = '#0A0E18';
+    ctx.strokeStyle = hexA('#FF3355', 0.7);
+    ctx.beginPath();
+    ctx.roundRect(s.len * 0.48, -s.wid * 0.45, s.len * 0.06, s.wid * 0.9, 2);
+    ctx.fill(); ctx.stroke();
+    if (v.hp != null && v.hp < 3) {
+      for (let k = 0; k < 3; k++) {
+        ctx.fillStyle = k < v.hp ? 'rgba(255,90,110,0.95)' : 'rgba(255,90,110,0.22)';
+        ctx.fillRect(-s.len * 0.12 + k * s.len * 0.11, -s.wid * 0.72, s.len * 0.08, s.wid * 0.12);
+      }
+    }
   }
 
   /* police bar */
@@ -6162,6 +6944,38 @@ function drawVehicle(v, opt){
     ctx.fillStyle = f ? 'rgba(80,140,255,0.95)' : 'rgba(255,50,70,0.95)';
     ctx.fillRect(-s.len * 0.08, -s.wid * 0.5, s.len * 0.1, s.wid);
     blitGlow(f ? '#508CFF' : '#FF3246', 0, 0, s.len * 1.5, s.len * 1.5, 0.40);
+  }
+
+  /* each pursuit unit wears its division: the WARDEN a plow blade, the
+     SIREN a rotating dish, the REAPER twin burners that never shut off */
+  if (v.kind === 'boss' && v.def) {
+    if (v.def.id === 'warden') {
+      ctx.fillStyle = '#241016';
+      ctx.strokeStyle = hexA('#FFB13D', 0.9);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(s.len * 0.46, -s.wid * 0.72);
+      ctx.lineTo(s.len * 0.66, 0);
+      ctx.lineTo(s.len * 0.46, s.wid * 0.72);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (v.def.id === 'siren') {
+      ctx.strokeStyle = hexA('#FF3355', 0.9);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0, 0, s.wid * 0.46, 0, TAU); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(v.lamp * 1.6) * s.wid * 0.46, Math.sin(v.lamp * 1.6) * s.wid * 0.46);
+      ctx.stroke();
+    } else if (v.def.id === 'reaper') {
+      for (const sy of [-1, 1]) {
+        const fl = s.len * (0.5 + Math.sin(v.lamp * 4 + sy) * 0.12);
+        const fg = ctx.createLinearGradient(-s.len * 0.5, 0, -s.len * 0.5 - fl, 0);
+        fg.addColorStop(0, 'rgba(255,120,140,0.8)');
+        fg.addColorStop(1, 'rgba(255,40,80,0)');
+        ctx.fillStyle = fg;
+        ctx.fillRect(-s.len * 0.5 - fl, sy * s.wid * 0.26 - s.wid * 0.07, fl, s.wid * 0.14);
+      }
+    }
   }
 
   if (v.hitFlash > 0) {
@@ -6184,10 +6998,14 @@ function drawCity(){
   for (let i = b; i >= a; i--) {
     const p = pts[i];
     if (!p.b) continue;
-    for (const bd of p.b) list.push(bd);
+    /* fade the last stretch in rather than popping at the range boundary */
+    const fade = clamp((b - i) / 6, 0.12, 1);
+    for (const bd of p.b) { bd.fade = fade; list.push(bd); }
   }
 
+  const flickT = performance.now() * 0.007;
   for (const bd of list) {
+    ctx.globalAlpha = bd.fade || 1;
     const ca = Math.cos(bd.a), sa = Math.sin(bd.a);
     const hw = bd.w * 0.5, hd = bd.d * 0.5;
     const corners = [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([lx, ly]) =>
@@ -6255,18 +7073,23 @@ function drawCity(){
     ctx.fillStyle = '#1A2138';
     ctx.fill();
 
-    /* neon roofline — the city's whole read comes from this one stroke */
+    /* neon roofline — the city's whole read comes from this one stroke.
+       About one sign in seven carries a buzz: real neon is never steady. */
     if (bd.lit && !LVL().blackout) {
-      ctx.strokeStyle = hexA(bd.hue, 1);
+      const buzz = (Math.floor(Math.abs(bd.seed)) % 7 === 0)
+        ? 0.65 + 0.35 * Math.max(0, Math.sin(flickT + bd.seed) * Math.sin(flickT * 2.3 + bd.seed))
+        : 1;
+      ctx.strokeStyle = hexA(bd.hue, buzz);
       ctx.lineWidth = Math.max(1.2, 2.4 * cam.zoom);
       ctx.stroke();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = hexA(bd.hue, 0.32);
+      ctx.strokeStyle = hexA(bd.hue, 0.32 * buzz);
       ctx.lineWidth = Math.max(2, 9 * cam.zoom);
       ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
   }
+  ctx.globalAlpha = 1;
 
   /* depth fog: the top of the screen is the far distance, so fade it out */
   const dark = LVL().blackout;
@@ -6346,6 +7169,28 @@ function bloom(){
 
 /* The three new toys, drawn in world space under the vehicles. */
 function drawToys(){
+  /* --- boss aura + the SIREN's pulse telegraph ---
+     The pulse wipes any fat bank, and until now the warning variable was set
+     every cycle and never drawn: a mechanic that deletes your money had no
+     visual at all. An expanding red ring closes on the boss as the pulse
+     arms — see it reach the rim, bank NOW. */
+  if (G.boss) {
+    const b = G.boss;
+    ctx.globalCompositeOperation = 'lighter';
+    blitGlow(CL.red, b.x, b.y, 190, 190, 0.22);
+    if (G.pulseWarn > 0 && b.atk > 0) {
+      const p = clamp(b.atk / 0.9, 0, 1);          // 1 → armed at 0
+      const rr = 90 + 560 * p;
+      ctx.strokeStyle = hexA(CL.red, 0.16);
+      ctx.lineWidth = 26;
+      ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, TAU); ctx.stroke();
+      ctx.strokeStyle = hexA(CL.red, 0.75);
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(b.x, b.y, rr, 0, TAU); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   /* --- singularities: a dark eye with a collapsing ring --- */
   for (const w of G.wells) {
     const fade = clamp(w.t / 1.2, 0, 1);
@@ -6508,6 +7353,22 @@ function drawPickups(){
     g.addColorStop(1, 'rgba(' + kind.rgb + ',0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0, 0, 54, 0, TAU); ctx.fill();
+    /* a column of light so the pickup reads through a wall of traffic */
+    const cg = ctx.createLinearGradient(0, 0, 0, -110);
+    cg.addColorStop(0, 'rgba(' + kind.rgb + ',0.30)');
+    cg.addColorStop(1, 'rgba(' + kind.rgb + ',0)');
+    ctx.fillStyle = cg;
+    ctx.fillRect(-3, -110, 6, 110);
+    /* the district-long rares wear a slow dashed halo — rarity you can
+       read three lanes away */
+    if (kind.lasting) {
+      ctx.strokeStyle = 'rgba(' + kind.rgb + ',0.65)';
+      ctx.lineWidth = 2.4;
+      ctx.setLineDash([10, 12]);
+      ctx.lineDashOffset = -k.spin * 18;
+      ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.globalCompositeOperation = 'source-over';
 
     ctx.rotate(k.spin);
@@ -6688,6 +7549,7 @@ function render(){
   drawGround();
   drawRoad();
   drawSkids();
+  drawTrail();
   drawLamps();
   drawSlicks();
   drawHazards();
@@ -6779,6 +7641,8 @@ function syncPowers(){
   if (G.power.magnet > 0)        list.push(['magnet', 'Magnet', G.power.magnet]);
   if (G.power.frenzy > 0)        list.push(['frenzy', 'Frenzy', G.power.frenzy]);
   if (G.power.slowmo > 0)        list.push(['slowmo', 'Adrenaline', G.power.slowmo]);
+  if (G.power.phase > 0)         list.push(['phase', 'Phase Shift', G.power.phase]);
+  if (G.power.draft > 0)         list.push(['draft', 'Overdraft', G.power.draft]);
   if (G.power.ball > 0)          list.push(['ball', 'Wrecking Ball', G.power.ball]);
   if (G.power.arc > 0)           list.push(['arc', 'Arc Welder', G.power.arc]);
   if (G.power.drones > 0)        list.push(['drones', 'Escort Drones', G.power.drones]);
@@ -6824,6 +7688,12 @@ function syncHUD(){
   const frac = G.chainMax > 0 ? clamp(G.chainT / G.chainMax, 0, 1) : 0;
   UI.cfill.style.width = (G.power.surge > 0 ? 100 : frac * 100) + '%';
   UI.combo.classList.toggle('urgent', G.chainT > 0 && frac < 0.34 && !G.power.surge);
+  /* the meter escalates in dress as it climbs, and screams when a SIREN
+     pulse is about to eat what you are holding */
+  UI.combo.classList.toggle('t2', G.mult >= 4);
+  UI.combo.classList.toggle('t3', G.mult >= 8);
+  UI.combo.classList.toggle('threat', G.pulseWarn > 0 && !!G.boss
+    && G.pending > Math.max(2400, G.boss.maxHp * 0.2));
 
   /* hull */
   const hf = clamp(G.hp / G.hpMax, 0, 1);
@@ -6840,7 +7710,7 @@ function syncHUD(){
     const maxed = run0.level >= LEVEL_CAP;
     UI.xp.classList.toggle('max', maxed);
     UI.xpLvl.textContent = run0.level;
-    UI.xpNext.textContent = maxed ? 'MAX' : run0.xp + ' / ' + xpFor(run0.level);
+    UI.xpNext.textContent = maxed ? 'MAX' : Math.floor(run0.xp) + ' / ' + xpFor(run0.level);
     UI.xpFill.style.width = (maxed ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
   }
 
@@ -6863,8 +7733,11 @@ function syncHUD(){
       UI.objVal.textContent = Math.max(0, Math.ceil(G.boss.hp / G.boss.maxHp * 100)) + '%';
       UI.objFill.style.width = clamp(G.boss.hp / G.boss.maxHp, 0, 1) * 100 + '%';
     } else {
-      UI.objLbl.textContent = 'Quota';
-      UI.objVal.textContent = fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
+      UI.obj.classList.toggle('overtime', !!run.overtime);
+      UI.objLbl.textContent = run.overtime ? 'Overtime ×1.5 XP' : 'Quota';
+      UI.objVal.textContent = run.overtime
+        ? fmt(run.banked) + ' banked'
+        : fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
       UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
       /* A ghost segment for the pending bank. Without it the bar sits dead
          still through a ten-second chain and the quota looks broken. */
@@ -6916,6 +7789,9 @@ function toMenu(){
   G.state = 'menu';
   G.run = null;
   newWorld(true);
+  /* the menu is the store screenshot: put a road's worth of traffic in the
+     attract driver's path so the backdrop shows a game, not empty asphalt */
+  for (let i = 0; i < 14; i++) addTraffic(rint(6, 70));
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.cleared);
   hide(UI.daily); hide(UI.board); hide(UI.levelup);
@@ -6957,7 +7833,7 @@ function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = 0; G.awaitingAdvance = false;
+  G.pendingLevels = Tree.has('t_head') ? 1 : 0; G.awaitingAdvance = false;
   shownScore = 0;
   showMap();
 }
@@ -6971,7 +7847,12 @@ function showMap(){
   UI.hud.classList.add('off');
   hide(UI.cleared); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
-  $('mTitle').textContent = THEMES[(run.act - 1) % THEMES.length].name;
+  const th = THEMES[(run.act - 1) % THEMES.length];
+  $('mTitle').textContent = th.name;
+  /* the board wears the act's colours, so act 2 feels like a new city
+     before you have driven a metre of it */
+  UI.map.style.setProperty('--mapL', th.left);
+  UI.map.style.setProperty('--mapR', th.right);
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
   /* Quotas move with your level now, so the board has to re-read them
@@ -7236,6 +8117,7 @@ function beginNode(skipBrief){
   rebuildMods();
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
+  run.overtime = false;
   run.crumpleLeft = run.M.crumple;
 
   newWorld(false);
@@ -7243,7 +8125,15 @@ function beginNode(skipBrief){
   run.elapsed = 0;
   G.car.topBonus = 0;
   G.heat = run.cfg.heatFloor + run.M.policeStart;
+  /* the first district a new player ever drives has no pursuit in it,
+     whatever the node or the contract says — the mugging at 9 seconds is
+     how you lose the player who was deciding whether to have a second run.
+     The flag holds for the whole district: banked heat and elite floors
+     re-created the cop mid-district when only the start was zeroed. */
+  run.grace = run.act === 1 && run.district === 1 && (Save.data.runs || 0) < 3;
+  if (run.grace) G.heat = 0;
   G.tier = Math.min(3, Math.floor(G.heat));
+  G.policeCool = 0;
   if (run.L.hazards) seedHazards();
 
   if (skipBrief) beginDistrict(); else showBrief();
@@ -7268,12 +8158,17 @@ function advance(){
 
 function nextAct(){
   const run = G.run;
-  if (run.act >= 3) { G.crashReason = 'Run complete'; endRun(true); return; }
+  /* The city ends at act 3 — unless the player armed the Loop at the boss.
+     Past there the ladder simply keeps climbing: fresh board, wrapping
+     themes, quotas still compounding. The ceiling is the player. */
+  if (run.act >= 3 && !run.loopArmed) { G.crashReason = 'Run complete'; endRun(true); return; }
+  run.loopArmed = false;
   run.act++;
   setTheme(run.act);
   run.route = makeRoute(run.act);
   run.row = -1; run.col = -1; run.node = null;
-  toast('Act ' + run.act, 'gold');
+  toast(run.act > 3 ? 'THE LOOP — lap ' + (run.act - 3) : 'Act ' + run.act,
+        run.act > 3 ? 'pink' : 'gold');
   showMap();
 }
 
@@ -7338,6 +8233,11 @@ function clearDistrict(){
   $('clLvl').classList.toggle('off', G.pendingLevels <= 0);
   $('clLvl').textContent = run.level > wasLvl
     ? 'Level ' + run.level + ' \u2014 take a perk' : '';
+  /* the act-3 boss (and every boss after it) offers the Loop: cash out a
+     finished city, or keep driving a ladder that never ends */
+  const finalBoss = run.cfg && run.cfg.boss && run.act >= 3;
+  $('btnLoop').classList.toggle('hide', !finalBoss);
+  $('btnCleared').firstChild.textContent = finalBoss ? 'Cash out' : 'Keep going';
   show(UI.cleared);
 }
 
@@ -7376,8 +8276,13 @@ function endRun(won){
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
   if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
-  /* clearing districts is the achievement, so it pays on top of raw score */
-  G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
+  /* Clearing districts is the achievement, so it pays on top of raw score —
+     and the score term is capped. Uncapped, coins tracked the superlinear
+     score curve: a god run paid 156k while a casual one paid 1.3k, so prices
+     tuned for one starved the other. Wrecks and clears carry the floor. */
+  const cleared = G.run ? G.run.cleared : 0;
+  G.coinsRun = Math.floor((G.coinsRun + cleared * 350 + G.totalWreck * 2
+             + Math.min(G.score / 80, 2500 + cleared * 900)) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
   const rank = recordRun();
@@ -7403,13 +8308,19 @@ function endRun(won){
   $('btnDouble').disabled = false;
   refreshOverOffers();
 
-  const showOver = () => { show(UI.over); };
-  /* Never a midgame ad on the transition that also offers a rewarded continue.
-     CrazyGames allows one or the other between levels, not both: "you can have
-     either a midgame ad and restart, or a 'watch rewarded to keep playing',
-     but not both". The revive is the continue, so it wins. */
-  if (!offeringRevive() && Save.data.runs % 3 === 0) Ads.midroll(showOver);
-  else showOver();
+  /* guarded so a deferred ad callback can never draw a stale over-panel
+     across a run the player has already restarted */
+  const showOver = () => { if (G.state === 'over') show(UI.over); };
+  /* Every 3rd run end, never within 4 minutes of the last ad — three
+     20-second learning deaths must not read as three ad breaks — and never on
+     a transition that is also offering a rewarded continue. CrazyGames allows
+     one or the other between levels, not both: "you can have either a midgame
+     ad and restart, or a 'watch rewarded to keep playing', but not both". The
+     revive is the continue, so it wins. */
+  if (!offeringRevive() && Save.data.runs % 3 === 0 && G.playSinceAd > 240) {
+    G.playSinceAd = 0;
+    Ads.midroll(showOver);
+  } else showOver();
 }
 
 /* one revive per run, and only when the run was worth saving */
@@ -7470,6 +8381,16 @@ $('btnCtrl').onclick = e => {
 };
 $('btnGo').onclick     = () => beginDistrict();
 $('btnCleared').onclick = () => { NHAudio.ui(true); leaveCleared(); };
+$('btnLoop').onclick = () => {
+  NHAudio.ui(true);
+  /* only a boss clear can arm the Loop — arming it from any other cleared
+     screen would make a later CASH OUT loop anyway */
+  if (G.run && G.run.cfg && G.run.cfg.boss && G.run.act >= 3) {
+    G.run.loopArmed = true;
+    toast('The Loop — no way back but through', 'pink');
+  }
+  leaveCleared();
+};
 $('btnDaily').onclick  = () => { NHAudio.ui(true); closeDaily(); };
 $('btnPlay').onclick   = () => {
   NHAudio.resume();
@@ -7628,7 +8549,8 @@ function dailyReady(){ return Save.data.lastDaily !== todayKey(); }
 function dailyAmount(streak){
   /* climbs for a week, then plateaus — an unbounded ramp only rewards the
      player who was never going to quit anyway */
-  return DAILY_BASE * Math.min(7, streak);
+  return Math.round(DAILY_BASE * Math.min(7, streak)
+       * (Tree.has('t_int') ? 1.5 : 1));
 }
 
 function claimDaily(){
@@ -7813,13 +8735,30 @@ function drawBay(){
     g.lineTo(cx + side * W * 0.02, cy + 150);
     g.closePath(); g.fill();
   }
-  /* the pool the car actually sits in */
+  /* the pool the car actually sits in — hot enough that the subject pops
+     off the deck instead of dissolving into it */
   const pool = g.createRadialGradient(cx, cy, 8, cx, cy, W * 0.46);
-  pool.addColorStop(0, 'rgba(190,230,255,' + (0.16 * flick).toFixed(3) + ')');
-  pool.addColorStop(0.55, 'rgba(120,190,255,0.05)');
+  pool.addColorStop(0, 'rgba(190,230,255,' + (0.27 * flick).toFixed(3) + ')');
+  pool.addColorStop(0.55, 'rgba(120,190,255,0.07)');
   pool.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = pool;
   g.beginPath(); g.ellipse(cx, cy, W * 0.46, H * 0.30, 0, 0, TAU); g.fill();
+  g.restore();
+
+  /* --- turntable: a rotating hazard-dash ring under the car ---
+     radii clamped against the bay height so the short, wide mobile bay
+     does not push the ring off the deck */
+  const trx = Math.min(W * 0.235, H * 0.42), try_ = Math.min(W * 0.155, H * 0.34);
+  g.save();
+  g.strokeStyle = 'rgba(150,175,215,0.16)';
+  g.lineWidth = 2;
+  g.beginPath(); g.ellipse(cx, cy, trx, try_, 0, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,177,61,0.30)';
+  g.lineWidth = 5;
+  g.setLineDash([18, 26]);
+  g.lineDashOffset = -bayT * 30;
+  g.beginPath(); g.ellipse(cx, cy, trx * 0.92, try_ * 0.9, 0, 0, TAU); g.stroke();
+  g.setLineDash([]);
   g.restore();
 
   /* tyre marks leading out of the bay */
@@ -7842,7 +8781,21 @@ function drawBay(){
   g.save();
   g.translate(cx, cy);
   g.scale(sc, sc);
-  g.rotate(-Math.PI / 2);          // nose up the screen
+  /* nose up, with a slow turntable sway so the showroom reads as alive
+     without ever fighting the top-down read */
+  g.rotate(-Math.PI / 2 + Math.sin(bayT * 0.4) * 0.10);
+
+  /* under-glow before the shadow, so the car sits in its own light */
+  g.save();
+  g.globalCompositeOperation = 'lighter';
+  g.globalAlpha = 0.5;
+  const liv = spec.col || CL.cyan;
+  const ug = g.createRadialGradient(0, 0, 4, 0, 0, spec.len * 0.9);
+  ug.addColorStop(0, hexA(liv, 0.5));
+  ug.addColorStop(1, hexA(liv, 0));
+  g.fillStyle = ug;
+  g.beginPath(); g.ellipse(0, 0, spec.len * 0.9, spec.wid * 1.6, 0, 0, TAU); g.fill();
+  g.restore();
 
   /* contact shadow */
   g.save();
@@ -7856,7 +8809,37 @@ function drawBay(){
 
   previewCar(g, { spec }, sc);
   drawFitted(g, spec, sc);
+
+  /* a just-bought part flashes over the car for a beat: the purchase is a
+     moment, not a re-rendered form */
+  if (G.bayFlash && G.bayFlash.t > 0) {
+    G.bayFlash.t -= 1 / 60;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = Math.max(0, G.bayFlash.t) * 0.9;
+    g.scale(1.06, 1.06);
+    drawFitted(g, spec, sc);
+    g.restore();
+  }
   g.restore();
+
+  /* --- showroom glint: a bright band sweeping the bay every few seconds --- */
+  const sweep = (bayT % 6) / 6;
+  if (sweep < 0.35) {
+    const sx = (sweep / 0.35) * (W + H) - H * 0.5;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const gl = g.createLinearGradient(sx - 70, 0, sx + 70, 0);
+    gl.addColorStop(0, 'rgba(200,235,255,0)');
+    gl.addColorStop(0.5, 'rgba(200,235,255,0.08)');
+    gl.addColorStop(1, 'rgba(200,235,255,0)');
+    g.fillStyle = gl;
+    g.save();
+    g.transform(1, 0, -0.35, 1, 0, 0);
+    g.fillRect(sx - 80, 0, 160, H);
+    g.restore();
+    g.restore();
+  }
 
   bayRAF = requestAnimationFrame(drawBay);
 }
@@ -7958,10 +8941,183 @@ function drawFitted(g, s, sc){
   }
 }
 
+/* ---------------- workshop icons ----------------
+   Every purchasable thing in the garage is drawn as an object, because a
+   card that is only name+description+price reads as a settings form no
+   matter how it is skinned. All vector, all cached per id. */
+const wsIconCache = new Map();
+function wsIcon(kind, id, w, h){
+  const key = kind + ':' + id;
+  let c = wsIconCache.get(key);
+  if (c) return c.cloneNode ? cloneIcon(c) : c;
+  c = document.createElement('canvas');
+  c.width = w * 2; c.height = h * 2;
+  c.style.width = '100%'; c.style.height = 'auto';
+  const g = c.getContext('2d');
+  g.scale(2, 2);
+  g.translate(w / 2, h / 2);
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  (kind === 'gear' ? drawGearIcon : kind === 'up' ? drawUpIcon : drawBranchIcon)(g, id, w, h);
+  wsIconCache.set(key, c);
+  return cloneIcon(c);
+}
+function cloneIcon(src){
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  c.style.width = '100%'; c.style.height = 'auto';
+  c.getContext('2d').drawImage(src, 0, 0);
+  return c;
+}
+
+function drawGearIcon(g, id){
+  g.lineWidth = 2.5;
+  if (id === 'prow') {                      // the ram bar, face on
+    g.strokeStyle = CL.amber; g.fillStyle = '#232C40';
+    g.beginPath(); g.roundRect(-26, -6, 52, 12, 5); g.fill(); g.stroke();
+    for (const x of [-16, 0, 16]) {
+      g.beginPath(); g.roundRect(x - 3, 6, 6, 10, 2); g.fill(); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.85);
+    for (const x of [-20, -7, 7, 20]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+  } else if (id === 'welder') {             // gas bottle + torch hose
+    g.strokeStyle = '#2FE08A'; g.fillStyle = '#183226';
+    g.beginPath(); g.roundRect(-22, -12, 18, 26, 6); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-13, -12); g.lineTo(-13, -17); g.stroke();
+    g.beginPath(); g.moveTo(-4, 0); g.quadraticCurveTo(14, -14, 20, 2); g.stroke();
+    g.fillStyle = '#2FE08A';
+    g.beginPath(); g.moveTo(20, 2); g.lineTo(27, 6); g.lineTo(19, 9); g.closePath(); g.fill();
+  } else if (id === 'turbine') {            // bonnet scoop with vanes
+    g.strokeStyle = CL.cyan; g.fillStyle = '#0E1421';
+    g.beginPath(); g.moveTo(-24, 10); g.lineTo(-14, -10); g.lineTo(24, -10);
+    g.lineTo(24, 10); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.6);
+    for (const x of [-6, 4, 14]) { g.beginPath(); g.moveTo(x, -7); g.lineTo(x - 4, 7); g.stroke(); }
+  } else if (id === 'missile') {            // twin tubes, tips hot
+    g.strokeStyle = CL.magenta; g.fillStyle = '#191F30';
+    for (const y of [-9, 5]) {
+      g.beginPath(); g.roundRect(-24, y, 40, 8, 4); g.fill(); g.stroke();
+      g.fillStyle = hexA(CL.magenta, 0.9);
+      g.beginPath(); g.arc(18, y + 4, 3.2, 0, TAU); g.fill();
+      g.fillStyle = '#191F30';
+    }
+  } else if (id === 'shockplate') {         // riveted flank plate, arcing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#1B2334';
+    g.beginPath(); g.roundRect(-26, -8, 40, 16, 4); g.fill(); g.stroke();
+    g.fillStyle = hexA(CL.cyan, 0.8);
+    for (const x of [-19, -8, 3]) { g.beginPath(); g.arc(x, 0, 1.8, 0, TAU); g.fill(); }
+    g.strokeStyle = '#EAFBFF';
+    g.beginPath(); g.moveTo(17, -10); g.lineTo(22, -2); g.lineTo(18, -2); g.lineTo(24, 8); g.stroke();
+  } else if (id === 'blackbox') {           // box + whip aerial
+    g.strokeStyle = CL.ice; g.fillStyle = '#0E1420';
+    g.beginPath(); g.roundRect(-18, -4, 24, 16, 3); g.fill(); g.stroke();
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.moveTo(12, -2); g.quadraticCurveTo(14, -14, 22, -16); g.stroke();
+    g.fillStyle = CL.cyan;
+    g.beginPath(); g.arc(22, -16, 2.2, 0, TAU); g.fill();
+  }
+}
+
+function drawUpIcon(g, id){
+  g.lineWidth = 2.4;
+  if (id === 'engine') {                    // speedo arc, needle pinned
+    g.strokeStyle = CL.cyan;
+    g.beginPath(); g.arc(0, 4, 14, Math.PI, TAU); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.5);
+    for (let i = 0; i <= 4; i++) {
+      const a = Math.PI + i / 4 * Math.PI;
+      g.beginPath(); g.moveTo(Math.cos(a) * 11, 4 + Math.sin(a) * 11);
+      g.lineTo(Math.cos(a) * 14, 4 + Math.sin(a) * 14); g.stroke();
+    }
+    g.strokeStyle = CL.amber;
+    g.beginPath(); g.moveTo(0, 4); g.lineTo(9, -6); g.stroke();
+  } else if (id === 'grip') {               // tyre, tread showing
+    g.strokeStyle = CL.cyan; g.fillStyle = '#12161F';
+    g.beginPath(); g.arc(0, 0, 13, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * TAU;
+      g.beginPath(); g.moveTo(Math.cos(a) * 7, Math.sin(a) * 7);
+      g.lineTo(Math.cos(a) * 12, Math.sin(a) * 12); g.stroke();
+    }
+  } else if (id === 'armor') {              // hull plate chevron
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -13); g.lineTo(12, -7); g.lineTo(12, 5);
+    g.lineTo(0, 13); g.lineTo(-12, 5); g.lineTo(-12, -7); g.closePath();
+    g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.cyan, 0.55);
+    g.beginPath(); g.moveTo(-6, -2); g.lineTo(0, 2); g.lineTo(6, -2); g.stroke();
+  } else if (id === 'impact') {             // burst
+    g.strokeStyle = CL.amber;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU, r1 = i % 2 ? 6 : 9;
+      g.beginPath(); g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+      g.lineTo(Math.cos(a) * (r1 + 6), Math.sin(a) * (r1 + 6)); g.stroke();
+    }
+    g.fillStyle = hexA(CL.amber, 0.9);
+    g.beginPath(); g.arc(0, 0, 3.4, 0, TAU); g.fill();
+  } else if (id === 'nitro') {              // flame
+    g.fillStyle = hexA(CL.amber, 0.9); g.strokeStyle = CL.amber;
+    g.beginPath();
+    g.moveTo(0, -13);
+    g.quadraticCurveTo(10, -2, 6, 6);
+    g.quadraticCurveTo(4, 11, 0, 13);
+    g.quadraticCurveTo(-4, 11, -6, 6);
+    g.quadraticCurveTo(-10, -2, 0, -13);
+    g.closePath(); g.stroke();
+    g.beginPath(); g.moveTo(0, -4); g.quadraticCurveTo(4, 3, 0, 8);
+    g.quadraticCurveTo(-4, 3, 0, -4); g.fill();
+  } else if (id === 'payout') {             // coin
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    g.beginPath(); g.arc(0, 0, 12, 0, TAU); g.fill(); g.stroke();
+    g.strokeStyle = hexA(CL.amber, 0.9); g.lineWidth = 2;
+    g.beginPath(); g.arc(0, 0, 7, 0, TAU); g.stroke();
+    g.beginPath(); g.moveTo(-3, -7); g.lineTo(-3, 7); g.moveTo(3, -7); g.lineTo(3, 7); g.stroke();
+  }
+}
+
+function drawBranchIcon(g, id){
+  g.lineWidth = 2.2;
+  if (id === 'offense') {                   // crosshair
+    g.strokeStyle = CL.magenta;
+    g.beginPath(); g.arc(0, 0, 9, 0, TAU); g.stroke();
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      g.beginPath(); g.moveTo(dx * 5, dy * 5); g.lineTo(dx * 13, dy * 13); g.stroke();
+    }
+  } else if (id === 'defense') {            // shield
+    g.strokeStyle = CL.cyan; g.fillStyle = '#101827';
+    g.beginPath(); g.moveTo(0, -11); g.lineTo(10, -7); g.lineTo(10, 2);
+    g.quadraticCurveTo(10, 9, 0, 12); g.quadraticCurveTo(-10, 9, -10, 2);
+    g.lineTo(-10, -7); g.closePath(); g.fill(); g.stroke();
+  } else {                                  // greed: coin stack
+    g.strokeStyle = CL.amber; g.fillStyle = '#241B08';
+    for (const y of [5, 0, -5]) {
+      g.beginPath(); g.ellipse(0, y, 10, 4.5, 0, 0, TAU); g.fill(); g.stroke();
+    }
+  }
+}
+
+/* one station on screen at a time — the tab rail kills the settings scroll */
+let gTab = 'tune';
+function syncGTabs(){
+  document.querySelectorAll('#gTabs .gTab').forEach(b =>
+    b.classList.toggle('on', b.dataset.sec === gTab));
+  document.querySelectorAll('#garage .gSec').forEach(s =>
+    s.classList.toggle('on', s.dataset.sec === gTab));
+}
+$('gTabs').addEventListener('click', e => {
+  const b = e.target.closest('.gTab');
+  if (!b) return;
+  gTab = b.dataset.sec;
+  NHAudio.ui(true);
+  syncGTabs();
+  $('gWork').scrollTop = 0;      // each station starts at its own top
+});
+
 function renderGarage(){
   const bal = Save.data.coins;
   const spec = G.spec = activeSpec();
   $('gCoins').textContent = fmt(bal);
+  syncGTabs();
 
   /* --- the spec plate: what is actually fitted, in units --- */
   $('gPlate').innerHTML = UPGRADES.map(u => {
@@ -7985,6 +9141,7 @@ function renderGarage(){
     const el = document.createElement('div');
     el.className = 'up' + (maxed ? ' maxed' : '');
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="info">' +
         '<div class="nm">' + u.name + '<em>' + u.read(lvl) + '</em></div>' +
         '<div class="pips">' + Array.from({ length:UP_MAX }, (_, i) =>
@@ -7992,6 +9149,7 @@ function renderGarage(){
       '</div>' +
       '<button ' + (maxed || !afford ? 'disabled' : '') + '>' +
         (maxed ? 'Max' : fmt(cost)) + '</button>';
+    el.querySelector('.ico').appendChild(wsIcon('up', u.id, 40, 34));
     el.querySelector('button').onclick = () => {
       if (maxed || Save.data.coins < cost) return;
       Save.data.coins -= cost;
@@ -8016,10 +9174,14 @@ function renderGarage(){
     el.setAttribute('role', 'button');
     el.tabIndex = owned ? -1 : 0;
     el.innerHTML =
+      '<span class="ico"></span>' +
       '<div class="nm">' + g.name + '</div>' +
       '<div class="ds">' + g.desc + '</div>' +
-      '<div class="pr">' + (owned ? 'Fitted' : fmt(g.price)) +
-        (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</div>';
+      (owned
+        ? '<span class="stamp">Fitted</span>'
+        : '<span class="tag">' + fmt(g.price) +
+          (broke ? '<em>short ' + fmt(g.price - bal) + '</em>' : '') + '</span>');
+    el.querySelector('.ico').appendChild(wsIcon('gear', g.id, 76, 44));
     const buy = () => {
       if (owned) return;
       if (!Hangar.buy(g.id)) {
@@ -8029,6 +9191,7 @@ function renderGarage(){
       }
       toast(g.name + ' fitted', 'gold');
       NHAudio.ui(true);
+      G.bayFlash = { t: 1 };
       renderGarage();
     };
     el.onclick = buy;
@@ -8036,6 +9199,93 @@ function renderGarage(){
     gear.appendChild(el);
   }
   $('gwGear').textContent = Save.data.gear.length + ' / ' + GEAR.length;
+
+  /* --- the crew: three doctrines, permanent, the long sink --- */
+  const treeEl = $('gTree');
+  treeEl.innerHTML = '';
+  let ranksOwned = 0, ranksTotal = 0;
+  const BR = { offense:'Offense', defense:'Defense', greed:'Greed' };
+  for (const br of ['offense', 'defense', 'greed']) {
+    const col = document.createElement('div');
+    col.className = 'tBranch ' + br;
+    col.innerHTML = '<div class="tHead"><span class="ico"></span>' + BR[br] + '</div>';
+    col.querySelector('.ico').appendChild(wsIcon('branch', br, 28, 26));
+    for (const t of TREE.filter(x => x.br === br)) {
+      const r = Tree.rank(t.id);
+      ranksOwned += r; ranksTotal += t.ranks;
+      const maxed = r >= t.ranks;
+      const cost = maxed ? 0 : t.cost[r];
+      const broke = !maxed && bal < cost;
+      const el = document.createElement('div');
+      el.className = 'tNode' + (maxed ? ' owned' : '') + (broke ? ' broke' : '');
+      el.setAttribute('role', 'button');
+      el.tabIndex = maxed ? -1 : 0;
+      el.innerHTML =
+        '<div class="nm">' + t.name +
+          (t.ranks > 1 ? '<i class="tPips">' + Array.from({ length:t.ranks }, (_, k) =>
+            '<b class="' + (k < r ? 'on' : '') + '"></b>').join('') + '</i>' : '') +
+        '</div>' +
+        '<div class="ds">' + t.desc + '</div>' +
+        (maxed
+          ? '<span class="stamp">Trained</span>'
+          : '<span class="tag">' + fmt(cost) +
+            (broke ? '<em>short ' + fmt(cost - bal) + '</em>' : '') + '</span>');
+      const buyNode = () => {
+        if (maxed) return;
+        if (!Tree.buy(t.id)) {
+          toast('Short ' + fmt(cost - Save.data.coins) + ' coins', 'red');
+          NHAudio.ui(false);
+          return;
+        }
+        toast(t.name + (t.ranks > 1 ? ' ' + (Tree.rank(t.id)) : '') + ' — trained', 'gold');
+        NHAudio.chip();
+        G.spec = activeSpec();
+        renderGarage();
+      };
+      el.onclick = buyNode;
+      el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buyNode(); } };
+      col.appendChild(el);
+    }
+    treeEl.appendChild(col);
+  }
+  $('gwTree').textContent = ranksOwned + ' / ' + ranksTotal;
+
+  /* --- paint shop: the cheapest reason to open the tab tomorrow --- */
+  const livEl = $('gLiv');
+  livEl.innerHTML = '';
+  for (const l of LIVERIES) {
+    const owned = Livery.owned(l.id);
+    const worn = (Save.data.livery || 'stock') === l.id;
+    const broke = !owned && bal < l.price;
+    const el = document.createElement('div');
+    el.className = 'liv' + (worn ? ' worn' : '') + (broke ? ' broke' : '');
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    el.innerHTML =
+      '<i class="sw" style="background:radial-gradient(circle at 34% 30%,' +
+        hexA('#FFFFFF', 0.75) + ' 0%,' + l.col + ' 38%,' + l.col2 + ' 100%)"></i>' +
+      '<div class="nm">' + l.name + '</div>' +
+      (worn ? '<span class="stamp">On car</span>'
+            : '<span class="tag' + (owned ? ' own' : '') + '">' +
+              (owned ? 'Owned' : fmt(l.price)) + '</span>');
+    const wear = () => {
+      if (worn) return;
+      if (!Livery.buyOrWear(l.id)) {
+        toast('Short ' + fmt(l.price - Save.data.coins) + ' coins', 'red');
+        NHAudio.ui(false);
+        return;
+      }
+      toast(l.name + ' — sprayed', 'gold');
+      NHAudio.ui(true);
+      G.spec = activeSpec();
+      G.bayFlash = { t: 1 };
+      renderGarage();
+    };
+    el.onclick = wear;
+    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wear(); } };
+    livEl.appendChild(el);
+  }
+  $('gwLiv').textContent = (1 + (Save.data.liveries || []).length) + ' / ' + LIVERIES.length;
 
   /* what is bolted on, listed under the car so the render has a legend */
   $('gFitted').innerHTML = GEAR.filter(g => Hangar.has(g.id)).length

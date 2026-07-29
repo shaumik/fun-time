@@ -84,11 +84,21 @@ Ram Plate (free wrecks), Surge (stops the clock), Magnet (traffic steers onto yo
 Bazooka (four auto-fired rockets) and Frenzy (double pay). Two more — Reinforced and
 Overclock — last until the end of the district rather than a few seconds, and are rare.
 
+**Pursuit is ammunition too.** Police carry three armour pips — ram them boosted or plated,
+or catch them with a weapon — and a takedown pays coins on the spot and vents heat. The
+road also deals exploding tankers, armored coin couriers, and (at high heat) kamikaze bikes
+that hunt you.
+
+**Meet the quota and the district goes into overtime** — the road runs to the checkpoint at
+×1.5 XP, and a wreck in overtime limps home instead of ending the run. Clearing act 3
+offers **THE LOOP**: keep driving an endless ladder through a fourth storm-front city.
+
 **The garage sits between runs**, and it is a bay rather than a form: a rendered deck with
-your car on it, wearing every part you have bolted on. Coins earned by a failed run buy
-tuning across six tracks and permanent hardware — a harpoon that auto-fires, plating that
-detonates every fifth link, a welder that repairs you between chains. See
-[DESIGN.md](DESIGN.md).
+your car on it, wearing every part you have bolted on — in the garage and on the road
+alike. Coins earned by a failed run buy tuning across six tracks, permanent hardware — a
+harpoon that auto-fires, plating that detonates every fifth link, a welder that repairs you
+between chains — plus a fifteen-rank **Crew** skill tree and a six-livery paint shop that
+recolors the car and its light trail. See [DESIGN.md](DESIGN.md).
 
 **Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; an event
 chosen before every district (boon + bane, stated up front). Risk on the event buys XP —
