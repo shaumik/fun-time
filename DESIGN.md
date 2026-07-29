@@ -186,10 +186,11 @@ press.
 | Escort Drones | 11s | Two drones hold station off your shoulders and burn cars down with tracking beams. |
 | Bazooka | 4 shots | Auto-fires at the nearest car ahead every 0.9s. Free wrecks. |
 | Frenzy | 8s | Every wreck pays double. |
+| Phase Shift | 4s | Traffic passes through you; every pass-through pays as a thread. |
+| Overdraft | 6s | Pending gains ×3, but any hit that is not a wreck halves the pending. |
 | **Reinforced** | **the district** | +30 max hull, filled. |
 | **Overclock** | **the district** | +1.2s on every chain clock. |
 | **Payday** | **the district** | Wrecks pay the garage as well as the score. |
-| **Scavenger** | **the district** | A courier drone fetches pickups and brings them to you. |
 | **Scavenger** | **the district** | A courier drone fetches pickups and brings them to you. |
 
 The last two run to the end of the district rather than on a timer, and they are rare on
@@ -213,18 +214,6 @@ The **Singularity** was originally dropped where you stand, which harvested almo
 you are doing 700 a second and everything behind you is already scrap, so the well spent its
 life on empty asphalt. Planted fourteen nodes up the road it catches oncoming traffic, and
 went from one kill to five.
-
-The **Escort Drones** are a beam, not a turret, and the distinction is the whole design. The
-Harpoon rack and the Bazooka are one-shot detonations on a cooldown; a beam has to *dwell*,
-so it tracks its target across the road while you drive and you can watch it working, with
-the burn mark growing as it bites. Two drones acquire independently — and a side bias alone
-was not enough to keep them apart: measured, they shared a target on every frame both were
-firing, so a car already being cut is now only chosen when there is genuinely nothing else in
-range, which took overlap from 40% of frames to 11%.
-
-The **Scavenger** is the only pickup that changes your *route* rather than your firepower.
-With it aboard you stop swerving three lanes for a Boost, because the drone fetches it and
-carries it back.
 
 The **Escort Drones** are a beam, not a turret, and the distinction is the whole design. The
 Harpoon rack and the Bazooka are one-shot detonations on a cooldown; a beam has to *dwell*,
@@ -364,13 +353,16 @@ Banner ads are deliberately not wired. See [SUBMISSION.md](SUBMISSION.md).
 
 The addictive part of a roguelite is not the perk, it is the *cadence* of being handed a
 choice. So there is a levelling track inside every run: **fifteen levels, three offers each,
-drawn from a pool of forty-five.** No run sees the same board twice and two runs diverge
+drawn from a pool of fifty-eight.** No run sees the same board twice and two runs diverge
 inside the first district.
 
-XP comes off the things you were already doing — one per wreck, five per hauler, fourteen a
-district cleared, and a slice of every bank — so a level-up always reads as the reward for
-the last thirty seconds rather than for a menu you walked through. The curve totals 462 XP,
-which is roughly a full three-act run: capping is an achievement, not a formality.
+XP comes off the things you were already doing — one per wreck (through *every* kill path,
+weapons included), five per hauler, a lump per district cleared, and a slice of every bank —
+so a level-up always reads as the reward for the last thirty seconds rather than for a menu
+you walked through. The first level costs 26 XP so the first perk card lands ~20 seconds
+into a first run; the curve totals ~1,180, which is roughly a full three-act run: capping is
+an achievement, not a formality. Elites genuinely pay double XP, and **overtime** (below)
+pays half again.
 
 Perks are weighted deliberately toward the *toys* rather than the base numbers. "+9% top
 speed" is a stat line; "your wrecking ball lasts two and a half times as long", "arc
@@ -383,38 +375,46 @@ car, so a hull perk pays out the instant you take it rather than at the next bri
 
 | Layer | Lives for | Chosen |
 |---|---|---|
-| Perk | the run | On level-up, three at a time, forty-five in the pool |
-| Chip | the run | After a district clears |
+| Perk | the run | On level-up, three at a time, fifty-eight in the pool |
 | Contract | one district | Before you drive it |
 | Hardware | forever | Bought in the garage |
+| Crew rank | forever | Trained in the garage, fifteen ranks over three doctrines |
 
-## Levels
+## Overtime
 
-The addictive part of a roguelite is not the perk, it is the *cadence* of being handed a
-choice. So there is a levelling track inside every run: **fifteen levels, three offers each,
-drawn from a pool of forty-five.** No run sees the same board twice, and two runs diverge
-inside the first district.
+Meeting the quota used to clear the district on the spot — measured with a steering bot, a
+skilled district was over at 32–40% of the road, so the better you played the less game you
+got. The district is now *won* at the quota and *runs to the checkpoint* in overtime:
+banking keeps paying, XP runs ×1.5, and a wreck in overtime is a limp to the checkpoint at
+35% hull rather than a lost run. The back half of the road, which the best players never
+used to see, is now exactly where the level-ups come from.
 
-XP comes off the things you were already doing — one per wreck, five per hauler, fourteen a
-district cleared, a slice of every bank — so a level-up always reads as the reward for the
-last thirty seconds rather than for a menu you walked through. The curve totals 462 XP,
-roughly a full three-act run: capping is an achievement, not a formality.
+Dying mid-chain also salvages 40% of the pending bank. Chains run twenty seconds or more,
+so at the moment of death an entire district's earnings used to be pending — measured,
+nine of twenty deaths banked exactly zero, which starved the garage of the coins that make
+the next run feel worth starting.
 
-Perks are weighted deliberately toward the *toys* rather than the base numbers. "+9% top
-speed" is a stat line; "your wrecking ball lasts two and a half times as long", "arc
-lightning jumps two extra cars", "every district starts with escort drones" change what the
-run *is*. Rarity odds shift with level so late choices feel earned — commons dominate before
-level 6, and rares are 38% of the table past level 11.
+## Takedowns, and a road worth reading
 
-They stack live: taking a perk rebuilds the modifier table mid-district and relinks it to the
-car, so a hull perk pays out the instant you take it rather than at the next brief.
+Pursuit used to be the one thing on the road that was pure downside — invulnerable, in a
+game whose thesis is that everything on the road is ammunition. Units now carry three
+armour pips: ram them while boosted or plated, or catch them with the ball, a shockwave, a
+blast or a slick. A takedown pays a chain link, 120 garage coins on the spot, and vents
+0.6 heat — hunting the hunters trades income (the heat payout multiplier) for breathing
+room, which is a real decision rather than a free lunch.
 
-| Layer | Lives for | Chosen |
-|---|---|---|
-| Perk | the run | On level-up, three at a time, forty-five in the pool |
-| Chip | the run | After a district clears |
-| Contract | one district | Before you drive it |
-| Hardware | forever | Bought in the garage |
+Traffic itself now has three special archetypes worth *choosing*: **tankers** whose payload
+cooks off a beat after you crack them — free positional AoE; **armored cars** that bounce a
+cruising bump exactly like a hauler and burst with coins when cracked properly; and at Heat
+2+, **kamikaze bikes** that hunt the player and pay double if wrecked first.
+
+## The Loop
+
+Every act-3-or-later boss clear offers a choice: cash out a finished city, or arm **THE
+LOOP** and keep driving. Acts keep climbing — a fourth storm-front theme (The Causeway)
+enters the rotation, quotas keep compounding, bosses keep cycling with fatter integrity —
+until the hull gives out. The ceiling is the player, and the board records how deep the
+loop went.
 
 ## The garage
 
@@ -450,9 +450,29 @@ reach states the shortfall as a number rather than just dimming.
 | Ram Prow | 2,400 | Wrecks pay +25% and cost a fifth less hull. |
 | Scrap Welder | 4,200 | Hull repairs itself whenever no chain is running. |
 | Turbine Intake | 7,000 | Grabbing a Boost adds two links to a live chain. |
-| Harpoon Rack | 12,000 | Auto-fires every 9s: detonates the nearest car ahead, free. |
-| Shock Plating | 20,000 | Every fifth link in a chain detonates everything around you. |
-| Black Box | 32,000 | Start every district with a Ram Plate already fitted. |
+| Harpoon Rack | 9,000 | Auto-fires every 9s: detonates the nearest car ahead, free. |
+| Shock Plating | 14,000 | Every fifth link in a chain detonates everything around you. |
+| Black Box | 22,000 | Start every district with a Ram Plate already fitted. |
+
+Prices were re-laddered against a *capped* coin economy. Coins used to track raw score,
+which is superlinear in skill: a god run paid 156,000 while a casual one paid 1,300, so any
+price tuned for one starved the other. The score term is now capped and the floor comes
+from wrecks and districts cleared — a casual run pays much what it always did, a god run
+pays an eighth, and the worst-case grind for any single item is four to six runs with the
+daily drop closing the gap.
+
+**The Crew** is the garage's third tier and its long sink: fifteen permanent ranks across
+three doctrines — Offense (wreck pay, First Blood, Opening Salvo, wider blasts, boss
+damage), Defense (hull, cheaper walls, faster heat decay under pressure, one survived
+crash per run) and Greed (coins, XP, the daily drop, heat payout, starting at level 2).
+~150,000 coins to finish. Every rank is felt in-run, and the quota index counts crew ranks
+so training never makes the road free. **The Paint shop** sells six liveries; body, glow
+and light-ribbon all read their colour from the fitted livery.
+
+**Meta-progression must never be a tax.** Measured head-to-head with an identical bot, the
+old quota index made a fully-tuned save *fail* districts a fresh save cleared — the index
+grew 2.35× against income growth of ~1.9×. The per-level and per-gear coefficients were
+halved; the index now tops out ~1.7× and an upgrade is always a net gain.
 
 The Harpoon deliberately has no fire button. An active weapon would put back exactly the
 kind of control the rest of this pass took out, and a top-down auto-cannon reads as
