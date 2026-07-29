@@ -163,8 +163,23 @@ const Ads = {
   /* used sparingly, per their guidance: a boss down or a new personal best */
   celebrate(){ this.call(() => this.sdk.game.happytime()); },
 
+  /* The submitted build carries the SDK script tag; the shareable page has it
+     stripped, because its CSP blocks external scripts. So the tag is a
+     reliable "am I the CrazyGames build" test that costs no network. */
+  onPlatform(){ return !!document.querySelector('script[src*="sdk.crazygames.com"]'); },
+
   request(type, msg, simSecs, done){
-    if (!this.ready) { simAd(msg, simSecs, () => done(true)); return; }
+    if (!this.ready) {
+      /* On-platform with no working SDK means an ad blocker ate the script or
+         init failed. There is no ad to show, so do not mime one: a player
+         watching a fake progress bar is being charged time for nothing, and
+         CrazyGames requires the game to work under AdBlock. Grant and drive
+         on. Off-platform the simulated placement is the whole point of the
+         demo, so it still runs there. */
+      if (this.onPlatform()) { done(true); return; }
+      simAd(msg, simSecs, () => done(true));
+      return;
+    }
 
     let settled = false;
     const finish = ok => {
@@ -459,7 +474,11 @@ addEventListener('keydown', e => {
   }
   if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
-  if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
+  /* Escape is deliberately not bound. On the web it already means "leave
+     fullscreen", and CrazyGames lists it as a restricted key for exactly
+     that reason: a player who hits it to un-fullscreen would have had the
+     run abandoned underneath them at the same time. Quitting is a button. */
+  if (steerCode(e.code)) dismissHint();
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
@@ -498,13 +517,36 @@ const GS = {
 const gsMaxX = () => clamp(W * 0.26, 78, 190);
 
 function gsReset(){ GS.on = false; GS.id = -1; GS.steer = 0; GS.raw = 0; }
+
+/* ---- onboarding hint ----
+   CrazyGames asks that onboarding happen inside gameplay, stay visual, and
+   be skippable. This is the whole of it: one overlay naming the one control
+   the game has, shown over a district that is already running, and gone the
+   moment the player steers — which is the only thing it was asking for. */
+function dismissHint(){
+  const el = $('gsHint');
+  if (!el) return;
+  clearTimeout(el._t);
+  el.classList.remove('on');
+}
+function showControlHint(){
+  const el = $('gsHint');
+  if (!el) return;
+  el.innerHTML =
+    '<b>' + (swipeMode() ? 'Drag anywhere to steer'
+                         : hasTouch ? 'Hold either arrow to steer'
+                         : '&#8592; &#8594; to steer') + '</b>' +
+    '<span>Ram traffic to build the chain &middot; grab power-ups &middot; it banks itself</span>';
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 5200);
+}
 function gsDown(e){
   /* Touch contacts only. A laptop with a touchscreen reports maxTouchPoints
      but is still driven with the keyboard — a mouse click there should not
      become a steering input. */
   if (e.pointerType === 'mouse' || !swipeMode()) return;
-  const hint = $('gsHint');
-  if (hint) hint.classList.remove('on');   // it has served its purpose
+  dismissHint();                           // it has served its purpose
   if (!GS.on) {
     GS.on = true; GS.id = e.pointerId;
     GS.ax = GS.x = e.clientX; GS.ay = GS.y = e.clientY;
@@ -538,8 +580,16 @@ function gsUp(e){
 }
 function swipeMode(){ return hasTouch && Save.data.ctrl !== 'pads'; }
 
+/* Steering codes. `e.code` is the physical key, so the QWERTY A/D positions
+   already land under an AZERTY player's Q/D without a remap — but somebody on
+   AZERTY may equally reach for the key *printed* A, which is code KeyQ. Both
+   are accepted; the two layouts don't collide. */
+const STEER_L = ['ArrowLeft','KeyA','KeyQ'];
+const STEER_R = ['ArrowRight','KeyD'];
+const steerCode = c => STEER_L.includes(c) || STEER_R.includes(c);
+
 function readInput(){
-  const l = keys.ArrowLeft  || keys.KeyA || touch.left;
+  const l = keys.ArrowLeft  || keys.KeyA || keys.KeyQ || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
   if (swipeMode() && GS.on && !steer) steer = GS.steer;  // analogue, unlike the keyboard
@@ -3938,6 +3988,35 @@ function toMenu(){
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
 }
 
+/* ---- cold boot ----
+   CrazyGames requires a game to land directly in gameplay, and their Basic
+   Launch conversion metric counts players who reach one minute of play. This
+   game was asking for five screens first — menu, garage, route map, contract
+   wager, district brief — none of which mean anything to somebody who has not
+   yet seen the car move.
+
+   A fresh session now takes the opening district on the house: the first
+   standard node on the board, no wager, driving within a second of load.
+   Every one of those screens still exists and still gets used — they sit
+   between runs, from the second run on, where the vocabulary to read them
+   has been earned. */
+function bootIntoPlay(){
+  hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
+  Hangar.grantStarter();
+  G.run = newRun();
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  G.pendingLevels = 0; G.awaitingAdvance = false;
+  shownScore = 0;
+
+  const run = G.run;
+  /* row 0 is a safe/greedy fork — open on the safe one */
+  const col = Math.max(0, run.route[0].findIndex(n => n.type === 'run'));
+  run.row = 0; run.col = col;
+  run.node = run.route[0][col];
+  run.contract = 'clear';           // the opening district is never a wager
+  beginNode(true);
+}
+
 function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
   G.run = newRun();
@@ -4212,7 +4291,7 @@ function showDepot(){
 }
 
 /* ---- start the district described by the current node + contract ---- */
-function beginNode(){
+function beginNode(skipBrief){
   const run = G.run;
   /* the node's own number, not a counter — see makeRoute */
   run.district = run.node.district;
@@ -4231,7 +4310,7 @@ function beginNode(){
   G.tier = Math.min(3, Math.floor(G.heat));
   if (run.L.hazards) seedHazards();
 
-  showBrief();
+  if (skipBrief) beginDistrict(); else showBrief();
 }
 
 /* Roadworks scatters strips across the district up front, so the bane is
@@ -4285,12 +4364,10 @@ function beginDistrict(){
   G.state = 'play';
   UI.hud.classList.remove('off');
   if (G.run.cfg.boss) addBoss();
-  if (swipeMode() && G.run.district === 1) {
-    const el = $('gsHint');
-    el.classList.add('on');
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('on'), 5200);
-  }
+  /* The hint used to be touch-only, on the assumption that a keyboard player
+     would have read the menu. Landing straight in gameplay removes that menu,
+     so desktop needs it too. */
+  if (G.run.district === 1) showControlHint();
 }
 
 function clearDistrict(){
@@ -5088,7 +5165,7 @@ setCtrlLabel();
 setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
-toMenu();
+bootIntoPlay();
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */

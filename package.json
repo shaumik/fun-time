@@ -5,6 +5,7 @@
   "description": "A drift roguelite for web distribution",
   "scripts": {
     "build": "node build.mjs",
-    "serve": "npx --yes serve -l 3000 ."
+    "serve": "npx --yes serve -l 3000 .",
+    "test": "node test/smoke.mjs && node test/sdk.mjs && node test/flow.mjs"
   }
 }
