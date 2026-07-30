@@ -510,6 +510,48 @@ body{
   font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
 }
 .bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
+
+/* The three stretches, as a run of gates rather than a paragraph. A district
+   is a route now, so the brief has to be shaped like one. */
+.legs{
+  display:flex;gap:calc(var(--u)*.9);margin:calc(var(--u)*2) 0 calc(var(--u)*1.2);
+  font-size:calc(var(--u)*1.25);text-align:left;
+}
+.leg{
+  flex:1;display:flex;flex-direction:column;gap:calc(var(--u)*.25);
+  position:relative;padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  border:1px solid rgba(140,170,220,.18);border-radius:calc(var(--u)*.6);
+  background:rgba(10,16,30,.5);
+}
+/* the gate itself: a hairline down the leading edge, lit like the road paint */
+.leg::before{
+  content:'';position:absolute;left:0;top:12%;bottom:12%;width:2px;
+  background:rgba(255,214,110,.55);border-radius:2px;
+}
+.leg b{
+  font-size:calc(var(--u)*1);letter-spacing:.3em;color:var(--dim);font-weight:800;
+}
+.leg .lname{font-weight:800;color:#fff;font-size:calc(var(--u)*1.5);line-height:1.15}
+.leg .lgate{
+  color:var(--amber);font-variant-numeric:tabular-nums;font-weight:700;
+  font-size:calc(var(--u)*1.2);
+}
+.leg .lpay{color:var(--cyan);font-weight:800;font-size:calc(var(--u)*1.15)}
+.brules{
+  display:flex;flex-wrap:wrap;gap:calc(var(--u)*.6);justify-content:center;
+  margin-top:calc(var(--u)*1.2);font-size:calc(var(--u)*1.25);
+}
+.brules span{
+  padding:calc(var(--u)*.4) calc(var(--u)*1);border-radius:calc(var(--u)*.5);
+  background:rgba(176,124,255,.10);border:1px solid rgba(176,124,255,.28);
+  color:var(--ice);font-weight:600;
+}
+.brules b{color:#C9A7FF;font-weight:800;margin-right:calc(var(--u)*.5)}
+@media (max-width:640px){
+  .legs{flex-direction:column;gap:calc(var(--u)*.6)}
+  .leg{flex-direction:row;align-items:baseline;gap:calc(var(--u)*.8)}
+  .leg .lname{flex:1}
+}
 /* boss briefs commit to red so the shift in stakes is instant */
 #brief.bossBrief .bkicker{color:var(--red)}
 #brief.bossBrief .bname{color:var(--red);text-shadow:0 0 calc(var(--u)*4) rgba(255,51,85,.6)}
@@ -1367,6 +1409,13 @@ body{
   font-style:normal;color:var(--dim);font-weight:700;
   font-variant-numeric:tabular-nums;letter-spacing:.04em;
 }
+/* the three stretches, quiet enough that the reward and the quota still win
+   the glance but present enough to tell two same-priced nodes apart */
+.mnode .pzones{
+  font-size:calc(var(--u)*.92);font-weight:700;letter-spacing:.07em;
+  color:rgba(140,160,200,.66);white-space:nowrap;text-transform:uppercase;
+}
+.mnode.open .pzones{color:rgba(190,210,245,.82)}
 
 /* kind reads from the ring and the icon together */
 .mnode.run .pin{border-color:var(--cyan)}
@@ -3731,6 +3780,196 @@ const THEMES = [
 let TH = THEMES[0];
 function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
 
+/* ---------------- zones ----------------
+   The act picks the palette. The zone picks the *place*.
+
+   Three acts meant three looks across a thirteen-district run, so by the
+   fourth district the road was the same road repainted and the honest
+   complaint — every level looks the same — was correct. A colour ramp is
+   not a location. A zone owns the ground under the car, what stands beside
+   it, what passes over it, how the barriers are built, how the road itself
+   bends, and one rule the district plays by that is stated on the brief.
+
+   Zones are overrides on top of the act theme rather than whole palettes, so
+   an act still reads as one city: the docks stay amber and green whichever
+   zone you are standing in. Four per act, and a district draws three of
+   them — the road changes under you twice on the way to the checkpoint
+   instead of being one texture from the line to the finish. */
+const ZONES = [
+  /* ---------------- act 1 — The Grid ---------------- */
+  { id:'blocks', act:1, name:'Neon Blocks',
+    blurb:'Tower blocks, clean lanes, nothing overhead.',
+    floor:'grid', rail:'neon',
+    bld:{ mode:'tower', h:[110, 480], size:[48, 118], gap:0.34, lit:0.80, back:[80, 400] },
+    road:{ curve:0.062, straight:0.22, width:[245, 345] } },
+
+  { id:'sodium', act:1, name:'Sodium Row',
+    blurb:'Market arcade. Signage the whole way, and the crates are worth opening.',
+    ground:'#0A0710', asphalt:'#1A1526', left:'#FFC24D', right:'#FF2E88',
+    bldA:'#FFC24D', bldB:'#FF6EC7', face1:'#1D1626', face2:'#120D1B',
+    floor:'slab', rail:'posts',
+    bld:{ mode:'shed', h:[70, 190], size:[86, 176], gap:0.14, lit:0.92, back:[46, 140] },
+    span:{ every:6, kind:'sign', h:150 },
+    props:[{ kind:'mast', rate:0.16, back:[24, 60] }],
+    road:{ curve:0.030, straight:0.42, width:[230, 300] },
+    air:{ rgb:'255,190,120', rate:0.09, size:[3, 7], life:[1.2, 2.4], drift:-40 },
+    rule:{ name:'Arcade', desc:'Twice as many power-ups on the road.',
+           apply(M, L){ M.pickupRate += 1; } } },
+
+  { id:'skyway', act:1, name:'The Skyway',
+    blurb:'Elevated deck. Nothing either side of you but air.',
+    ground:'#02030A', asphalt:'#151B2E', left:'#3DE8FF', right:'#FFC24D',
+    floor:'void', rail:'posts',
+    bld:{ mode:'none' },
+    span:{ every:8, kind:'gantry', h:230 },
+    road:{ curve:0.048, straight:0.30, width:[205, 262] },
+    /* The deck is narrow because it is *generated* narrow — a rule that
+       multiplied road width would snap the barriers sideways the frame you
+       crossed the gate, so width belongs to the generator and never to a
+       rule that switches on mid-district. */
+    rule:{ name:'Open deck', desc:'Top speed +12%, and there is nowhere to put a wheel wrong.',
+           apply(M, L){ M.topMul += 0.12; } } },
+
+  { id:'glass', act:1, name:'Glasshouse',
+    blurb:'Mirror plaza. Wide, bright, and it throws everything back at you.',
+    ground:'#070B14', asphalt:'#101828', left:'#8FF0FF', right:'#C9A7FF',
+    bldA:'#8FF0FF', bldB:'#C9A7FF', face1:'#101A2E', face2:'#0A1120',
+    floor:'mirror', rail:'neon',
+    bld:{ mode:'tower', h:[260, 720], size:[70, 150], gap:0.20, lit:0.96, back:[66, 300] },
+    road:{ curve:0.026, straight:0.46, width:[300, 400] },
+    rule:{ name:'Mirror plaza', desc:'The street runs wide, and threading a gap pays double.',
+           apply(M, L){ M.nearMul += 1; } } },
+
+  /* ---------------- act 2 — Sunken Docks ---------------- */
+  { id:'wharf', act:2, name:'The Wharf',
+    blurb:'Black water on both sides and a crane every hundred metres.',
+    ground:'#04080C', asphalt:'#1B1A18',
+    floor:'water', rail:'edge',
+    bld:{ mode:'shed', h:[90, 240], size:[110, 240], gap:0.52, lit:0.40, back:[150, 560] },
+    span:{ every:10, kind:'gantry', h:260 },
+    props:[{ kind:'crane', rate:0.14, back:[60, 130] }],
+    road:{ curve:0.040, straight:0.30, width:[240, 320] } },
+
+  { id:'spillway', act:2, name:'The Spillway',
+    blurb:'A drained flood channel. Concrete walls, standing water, no way off.',
+    ground:'#080B0C', asphalt:'#22211E', left:'#2FE08A', right:'#2FE08A',
+    floor:'wet', rail:'wall',
+    bld:{ mode:'none' },
+    span:{ every:12, kind:'rib', h:190 },
+    road:{ curve:0.070, straight:0.14, width:[265, 360] },
+    rule:{ name:'Standing water', desc:'Grip down 15%, and every bank pays +30%.',
+           apply(M, L){ M.gripMul *= 0.85; M.bankMul += 0.30; L.wet = 1; } } },
+
+  { id:'railyard', act:2, name:'Rail Yard',
+    blurb:'Container stacks and live rails. The traffic here runs thick.',
+    ground:'#0A0A09', asphalt:'#1D1C19', left:'#FFB13D', right:'#FF6B4A',
+    bldA:'#FF6B4A', bldB:'#2FE08A', face1:'#241F17', face2:'#16130E',
+    floor:'rail', rail:'chain',
+    bld:{ mode:'stack', h:[60, 150], size:[70, 190], gap:0.10, lit:0.55, back:[40, 210] },
+    props:[{ kind:'silo', rate:0.10, back:[70, 170] }],
+    road:{ curve:0.026, straight:0.44, width:[235, 305] },
+    rule:{ name:'Shunting yard', desc:'Half again the traffic — and it all pays.',
+           apply(M, L){ M.trafficMul += 0.5; } } },
+
+  { id:'cannery', act:2, name:'Cannery Row',
+    blurb:'Tank farm under a service gantry. Sodium light and rust.',
+    ground:'#0A0907', asphalt:'#1E1B16', left:'#FFB13D', right:'#9FE86C',
+    bldA:'#FFB13D', bldB:'#9FE86C', face1:'#211D16', face2:'#14110C',
+    floor:'dust', rail:'posts',
+    bld:{ mode:'shed', h:[80, 210], size:[100, 210], gap:0.30, lit:0.55, back:[90, 380] },
+    span:{ every:7, kind:'rib', h:170 },
+    props:[{ kind:'tank', rate:0.18, back:[46, 150] }],
+    road:{ curve:0.034, straight:0.36, width:[240, 320] },
+    air:{ rgb:'170,160,140', rate:0.12, size:[10, 26], life:[1.6, 2.8], drift:34 } },
+
+  /* ---------------- act 3 — The Undercity ---------------- */
+  { id:'undercity', act:3, name:'The Undercity',
+    blurb:'Stacked levels overhead. The sky here is somebody else’s floor.',
+    floor:'slab', rail:'neon',
+    bld:{ mode:'tower', h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190] },
+    road:{ curve:0.056, straight:0.22, width:[240, 320] } },
+
+  { id:'underpass', act:3, name:'Underpass 9',
+    blurb:'Sealed tube. Ribs overhead, no windows, and only your lights.',
+    ground:'#03030A', asphalt:'#151228', left:'#B07CFF', right:'#B07CFF',
+    floor:'concrete', rail:'wall',
+    bld:{ mode:'none' },
+    span:{ every:4, kind:'rib', h:150 },
+    road:{ curve:0.050, straight:0.26, width:[215, 268] },
+    air:{ rgb:'190,160,255', rate:0.5, size:[2, 5], life:[0.5, 1.1], drift:-190 },
+    rule:{ name:'Sealed tube', desc:'You drive on headlights — and threading pays double.',
+           apply(M, L){ L.blackout = 1; M.nearMul += 1; } } },
+
+  { id:'foundry', act:3, name:'Foundry Line',
+    blurb:'Pour floor. Everything here is already on fire.',
+    ground:'#0A0504', asphalt:'#1F1310', left:'#FF6B2A', right:'#FFD34A',
+    bldA:'#FF6B2A', bldB:'#FFD34A', face1:'#231310', face2:'#150A08',
+    floor:'dust', rail:'wall',
+    bld:{ mode:'stack', h:[120, 340], size:[80, 200], gap:0.20, lit:0.80, back:[60, 260] },
+    span:{ every:8, kind:'gantry', h:200 },
+    props:[{ kind:'silo', rate:0.16, back:[54, 160] }],
+    road:{ curve:0.038, straight:0.34, width:[230, 300] },
+    air:{ rgb:'255,140,60', rate:0.6, size:[2, 6], life:[0.7, 1.5], drift:-120 },
+    rule:{ name:'Pour floor', desc:'Wrecks cook off a beat after they land.',
+           apply(M, L){ M.cook = M.cook || 0.8; M.cookR = Math.max(M.cookR, 150); } } },
+
+  { id:'catacomb', act:3, name:'The Catacombs',
+    blurb:'Support pylons in the dark. Miss one and you will know.',
+    ground:'#030209', asphalt:'#121026', left:'#F2F6FF', right:'#B07CFF',
+    bldA:'#F2F6FF', bldB:'#7FA6FF', face1:'#141031', face2:'#0A0819',
+    floor:'void', rail:'posts',
+    bld:{ mode:'pylon', h:[500, 1100], size:[26, 54], gap:0.06, lit:0.70, back:[30, 120] },
+    road:{ curve:0.078, straight:0.10, width:[205, 262] },
+    rule:{ name:'Pylon field', desc:'Barely two lanes of it — but the multiplier ceiling comes off.',
+           apply(M, L){ M.multCap = Math.max(M.multCap, 18); } } }
+];
+
+const zoneById = id => ZONES.find(z => z.id === id) || ZONES[0];
+
+/* A zone resolved against its act theme. Everything a generator or a draw
+   pass reads about the world comes from one of these, never from TH directly
+   — TH is only the act's fallback layer now. */
+const envCache = new Map();
+function zoneEnv(id){
+  let e = envCache.get(id);
+  if (e) return e;
+  const z = zoneById(id);
+  const base = THEMES[(Math.max(1, z.act) - 1) % THEMES.length];
+  e = Object.assign({}, base, z);
+  e.bld = Object.assign({ mode:'tower', h:base.h, size:base.size, gap:base.gap,
+                          lit:base.lit, back:base.back }, z.bld || {});
+  e.span = z.span || null;
+  e.props = z.props || null;
+  e.road = Object.assign({ curve:0.062, straight:0.22, width:[245, 345] }, z.road || {});
+  e.air = ('air' in z) ? z.air : base.air;
+  envCache.set(id, e);
+  return e;
+}
+
+/* Three zones for a district, in the order you drive through them. Drawn
+   without replacement so a district never doubles back on a look it has
+   already shown you, and seeded off the act so acts stay distinct. */
+function pickZones(act, count){
+  const pool = ZONES.filter(z => z.act === ((act - 1) % 3) + 1).map(z => z.id);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const out = [];
+  for (let i = 0; i < count; i++) out.push(pool[i % pool.length]);
+  return out;
+}
+
+/* The env under the camera, crossfaded so passing a gate does not snap the
+   ground colour a frame after the arch clears the windscreen. */
+function envNow(){ return G.env || zoneEnv('blocks'); }
+function envCol(key){
+  const a = G.envPrev || G.env, b = G.env;
+  if (!b) return TH[key];
+  if (!a || a === b || G.envT >= 1) return b[key] || TH[key];
+  return mix(a[key] || TH[key], b[key] || TH[key], G.envT);
+}
+
 /* ---------------- cars ----------------
    One player car. Four selectable chassis were four stat rolls that said the
    same thing the tuning tracks already say, so the choice was between numbers
@@ -4077,7 +4316,12 @@ const SEG = 56;
 const REVERSE_TOP = 190;   // how fast the car will back itself off a rail
 
 class Track {
-  constructor(){
+  /* `plan` is the district's stretches in order: [{ end, env }, ...]. The
+     generator reads the env for the segment it is about to lay down, so the
+     world genuinely changes as the road crosses a gate rather than being
+     recoloured around the player. */
+  constructor(plan){
+    this.plan = (plan && plan.length) ? plan : [{ end:Infinity, env:zoneEnv('blocks') }];
     this.pts = [];
     this.ang = -Math.PI / 2;
     this.curv = 0; this.tCurv = 0;
@@ -4085,38 +4329,76 @@ class Track {
     this.x = 0; this.y = 0; this.n = 0;
     for (let i = 0; i < 260; i++) this.extend();
   }
+  envAt(n){
+    const pl = this.plan;
+    for (let i = 0; i < pl.length; i++) if (n < pl[i].end) return pl[i].env;
+    return pl[pl.length - 1].env;
+  }
+  /* the segment index each stretch begins at, used to place the gates */
+  gates(){
+    return this.plan.slice(0, -1).map(s => s.end);
+  }
   extend(){
+    const E = this.envAt(this.n);
+    const R = E.road;
     if (this.n % 24 === 0) {
-      this.tCurv = Math.random() < 0.22 ? 0 : rnd(-0.062, 0.062);
+      this.tCurv = Math.random() < R.straight ? 0 : rnd(-R.curve, R.curve);
     }
-    if (this.n % 46 === 0) this.tHw = rnd(245, 345);
+    if (this.n % 46 === 0) this.tHw = rnd(R.width[0], R.width[1]);
     this.curv = lerp(this.curv, this.tCurv, 0.07);
     this.hw   = lerp(this.hw, this.tHw, 0.05);
     this.ang += this.curv;
     this.x += Math.cos(this.ang) * SEG;
     this.y += Math.sin(this.ang) * SEG;
 
-    const p = { x:this.x, y:this.y, a:this.ang, w:this.hw, i:this.n, b:null, lamp:this.n % 4 === 0 };
+    const p = { x:this.x, y:this.y, a:this.ang, w:this.hw, i:this.n, b:null,
+                lamp:this.n % 4 === 0, z:E, span:null, gate:0 };
+    const nx = -Math.sin(this.ang), ny = Math.cos(this.ang);
 
     /* city blocks, both sides, set well back so they never crowd the road */
-    if (this.n % 2 === 0) {
+    const B = E.bld;
+    if (this.n % 2 === 0 && B.mode !== 'none') {
       p.b = [];
       for (const side of [-1, 1]) {
-        if (Math.random() < TH.gap) continue;
-        const off = this.hw + rnd(TH.back[0], TH.back[1]);
-        const nx = -Math.sin(this.ang), ny = Math.cos(this.ang);
+        if (Math.random() < B.gap) continue;
+        const off = this.hw + rnd(B.back[0], B.back[1]);
+        const wide = B.mode === 'shed' || B.mode === 'stack';
         p.b.push({
+          kind:'block', mode:B.mode,
           x: this.x + nx * off * side,
           y: this.y + ny * off * side,
-          w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
-          h: rnd(TH.h[0], TH.h[1]),
-          a: this.ang + rnd(-0.25, 0.25),
-          hue: Math.random() < 0.5 ? TH.bldA : TH.bldB,
-          face1: TH.face1, face2: TH.face2,
-          lit: Math.random() < TH.lit,
+          w: rnd(B.size[0], B.size[1]),
+          d: rnd(B.size[0], B.size[1]) * (wide ? 0.62 : 1),
+          h: rnd(B.h[0], B.h[1]),
+          a: this.ang + rnd(-0.25, 0.25) * (B.mode === 'stack' ? 0.2 : 1),
+          hue: Math.random() < 0.5 ? E.bldA : E.bldB,
+          face1: E.face1, face2: E.face2,
+          lit: Math.random() < B.lit,
           seed: Math.random() * 1000
         });
       }
+    }
+
+    /* roadside structures — the silhouettes that say which yard this is */
+    if (E.props) {
+      for (const pr of E.props) {
+        if (Math.random() >= pr.rate) continue;
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const off = this.hw + rnd(pr.back[0], pr.back[1]);
+        (p.b || (p.b = [])).push({
+          kind: pr.kind, side,
+          x: this.x + nx * off * side,
+          y: this.y + ny * off * side,
+          a: this.ang, hue: Math.random() < 0.5 ? E.bldA : E.bldB,
+          h: 0, seed: Math.random() * 1000
+        });
+      }
+    }
+
+    /* something passing overhead is the single cheapest read of speed the
+       scene has, and the one thing a flat top-down road never gives you */
+    if (E.span && E.span.every && this.n % E.span.every === 0 && this.n > 6) {
+      p.span = { kind:E.span.kind, h:E.span.h || 180, seed:Math.random() * 1000 };
     }
     this.pts.push(p);
     this.n++;
@@ -4328,6 +4610,7 @@ const G = {
   crashT:0, slow:1, flash:0, revived:false, pendingLevels:0, awaitingAdvance:false,
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
+  env:null, envPrev:null, envT:1, stage:0,
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
@@ -4345,10 +4628,14 @@ const cam = { x:0, y:0, rot:-Math.PI/2, zoom:1, sx:0, sy:0 };
 /* ---------------- the ladder ----------------
    Districts get longer, hungrier and hotter. Every third is a boss, where
    the quota is replaced by a pursuit unit you damage by banking into it. */
+/* Place names for the board. Kept clear of the zone names on purpose: the
+   node is the district you are taking, the zones are the three stretches
+   inside it, and a node called "Underpass 9" whose first stretch is also
+   called "Underpass 9" reads as a bug. */
 const DISTRICTS = [
-  'Dockside', 'Sodium Row', 'The Spillway', 'Glasshouse', 'Nine Mile',
+  'Dockside', 'Marrow Street', 'Halston Reach', 'Bellrock', 'Nine Mile',
   'Cathedral Hill', 'Ashfield', 'The Verge', 'Kiln Street', 'Low Basin',
-  'Radial', 'Saltgate', 'Underpass 9', 'The Shallows', 'Foundry Line'
+  'Radial', 'Saltgate', 'Old Cutting', 'The Shallows', 'Tannery Bend'
 ];
 const DEPOT_NAMES = ['Lockup', 'Chop Shop', 'The Yard', 'Back Alley', 'Cold Store'];
 const BOSSES = [
@@ -4393,18 +4680,38 @@ function powerIndex(){
   return green * (1 + lv * 0.030 + gear * 0.08 + tree * 0.022 + lvl * 0.155);
 }
 
+/* ---------------- the shape of a district ----------------
+   A district used to be one road with one number at the end of it, and it
+   ended the instant the number was met — against a built-up garage that was
+   somewhere around a third of the way in, so most of the road that had been
+   generated was never driven and every district was the same short sprint.
+
+   It is three stretches now. Each has its own zone, its own share of the
+   quota to have banked by the time you reach its gate, and its own
+   escalation on the far side. Missing a gate ends the district there, so
+   the fail state fires earlier and more often than the old single
+   checkpoint did; clearing one pays and turns the pressure up. */
+const STAGE_AT   = [0.34, 0.68, 1.00];   // fraction of the road at each gate
+const STAGE_CUT  = [0.30, 0.64, 1.00];   // fraction of the quota owed at each
+const STAGE_PAY  = [1.00, 1.14, 1.32];   // what banking in each stretch is worth
+const STAGE_TAG  = ['Approach', 'Deep', 'Run-out'];
+
 function districtCfg(n, type, act){
   const boss = type === 'boss';
   const bi = act - 1;
   const elite = type === 'elite';
-  return {
-    n, boss, elite, type,
-    name: (G.run && G.run.node && G.run.node.name) ||
+  const node = G.run && G.run.node;
+  const zones = (node && node.zones) || pickZones(act, boss ? 1 : 3);
+  const cfg = {
+    n, boss, elite, type, zones,
+    name: (node && node.name) ||
           (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
     bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
-    /* boss roads run a third longer: the fight is banking under pressure,
-       and "the unit got away" was 4 of 23 measured run-endings */
-    len: Math.round((400 + n * 26) * (boss ? 1.3 : 1)),
+    /* Boss roads run a third longer: the fight is banking under pressure and
+       "the unit got away" was 4 of 23 measured run-endings — a fight that now
+       runs three phases needs more of that road, not less. A quota district
+       is long enough that its three stretches get roughly twenty seconds each. */
+    len: boss ? Math.round((400 + n * 26) * 1.3) : Math.round(600 + n * 30),
     /* Elites cost more and pay double XP; the route choice has to bite */
     quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
@@ -4412,6 +4719,35 @@ function districtCfg(n, type, act){
     bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
+  cfg.stages = boss
+    ? [{ zone:zones[0], end:cfg.len, cut:0, pay:1, tag:'Pursuit' }]
+    : STAGE_AT.map((f, i) => ({
+        zone: zones[i % zones.length],
+        end: Math.round(cfg.len * f),
+        cut: STAGE_CUT[i],
+        pay: STAGE_PAY[i],
+        tag: STAGE_TAG[i]
+      }));
+  return cfg;
+}
+
+/* A zone's rule applies while you are *in* it, not for the whole district —
+   the lights are out in the sealed tube, not in the glass plaza two
+   stretches later. Stated on the brief either way, because an unannounced
+   rule is not an identity, it is a bug the player learns to live with. */
+function stageRule(cfg, i){
+  const st = cfg && cfg.stages && cfg.stages[Math.min(i, cfg.stages.length - 1)];
+  return st ? zoneById(st.zone).rule : null;
+}
+function zoneRules(cfg){
+  const seen = new Set(), out = [];
+  for (let i = 0; i < ((cfg && cfg.stages) || []).length; i++) {
+    const r = stageRule(cfg, i);
+    if (!r || seen.has(r.name)) continue;
+    seen.add(r.name);
+    out.push(r);
+  }
+  return out;
 }
 
 /* ============================================================
@@ -4506,6 +4842,10 @@ function makeRoute(act){
     n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
            : n.type === 'depot' ? depots[di++ % depots.length]
            : pool[pi++ % pool.length];
+    /* The stretches are drawn on the board, not at the start line: which
+       three places a district is made of is part of what you are choosing
+       between when you pick a node. */
+    n.zones = n.type === 'depot' ? [] : pickZones(act, n.type === 'boss' ? 1 : 3);
     n.reward = info.reward;
     n.rare = info.rare;
     n.heat = info.heat;
@@ -4558,7 +4898,21 @@ function newWorld(ai){
   /* the theme has to be chosen before the generator runs — the skyline is
      baked per node at generation time, not at draw time */
   setTheme(G.run ? G.run.act : 1);
-  G.track = new Track();
+  /* The road is laid out stretch by stretch before a wheel turns — the
+     skyline is baked per node at generation time, not at draw time, so the
+     generator has to know where each zone starts and stops up front. */
+  const cfg = G.run && G.run.cfg;
+  const stages = (cfg && cfg.stages) ||
+                 [{ zone: pickZones(G.run ? G.run.act : 1, 1)[0], end:Infinity }];
+  const plan = stages.map((s, i) => ({
+    /* the last stretch runs on past the checkpoint: the road has to keep
+       existing behind the finish for the camera to have anything to see */
+    end: i === stages.length - 1 ? Infinity : 6 + s.end,
+    env: zoneEnv(s.zone)
+  }));
+  G.track = new Track(plan);
+  G.env = plan[0].env; G.envPrev = plan[0].env; G.envT = 1;
+  G.stage = 0;
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
   G.slicks = []; G.slickT = 0;
@@ -4709,6 +5063,7 @@ function addBoss(){
   v.vx = Math.cos(pos.a) * 460; v.vy = Math.sin(pos.a) * 460;
   v.hp = cfg.bossHp; v.maxHp = cfg.bossHp;
   v.def = def; v.atk = 3.2; v.charge = 0;
+  v.phase = 0; v.breakT = 0;
   G.boss = v;
 
   if (def.id === 'reaper') { addPolice(true); addPolice(true); }
@@ -4716,18 +5071,57 @@ function addBoss(){
   toast(def.name + ' — ' + def.sub, 'red');
 }
 
+/* ---- how much of a pursuit unit one cash-in is allowed to take ----
+   Banking is the only weapon, so the fight was exactly as long as one
+   chain: a level-fifteen build could hold twenty thousand pending and put
+   the whole thing through a twelve-thousand-point unit on the first bank,
+   and the act boss died before it had finished announcing itself. Capping
+   the bite at a fifth of its integrity makes the fight five cash-ins deep
+   no matter what you are driving — a weak build gets there in five small
+   banks, a monster build in five capped ones — so the encounter has a
+   shape instead of a number that either clears it or does not. The
+   overflow is not thrown away; it pays out as score. */
+const BOSS_BITE = 0.20;
+const BOSS_PHASES = 3;
+
 function bossDamage(amount){
   const b = G.boss;
   if (!b) return;
-  b.hp -= amount * (Tree.has('t_exec') ? 1.25 : 1);
+
+  /* Executioner raises the ceiling as well as the blow. Applied to the blow
+     alone it would be a dead node on exactly the builds it is sold to — any
+     build big enough to reach the cap already does. It buys a fight four
+     cash-ins deep instead of five. */
+  const exec = Tree.has('t_exec') ? 1.25 : 1;
+  const swung = amount * exec;
+  const cap = Math.round(b.maxHp * BOSS_BITE * exec);
+  /* Between phases it breaks off and runs. Banking still hurts it then,
+     but far less — the window is for building the next chain, not for
+     ending the fight while it is out of reach. */
+  const soft = b.breakT > 0 ? 0.35 : 1;
+  const dealt = Math.min(swung, cap) * soft;
+  const spare = swung - Math.min(swung, cap);
+  b.hp -= dealt;
   b.hitFlash = 1;
   G.shake = Math.max(G.shake, 12);
   NHAudio.bossHit();
+  if (spare > 0) {
+    /* the part of the bank the plating shrugged off still banks */
+    G.score += Math.round(spare);
+    G.run.banked += Math.round(spare);
+    toast('Plating held — +' + fmt(spare) + ' banked', 'pink');
+  }
   for (let i = 0; i < 22; i++) {
     const a = rnd(0, TAU), s = rnd(120, 460);
     spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
           rnd(0.25, 0.6), rnd(3, 8), '255,90,110', true, -6);
   }
+
+  /* phase breaks at two thirds and one third of integrity */
+  const want = Math.min(BOSS_PHASES - 1,
+                        Math.floor((1 - b.hp / b.maxHp) * BOSS_PHASES));
+  if (b.hp > 0 && want > b.phase) bossPhase(b, want);
+
   if (b.hp <= 0) {
     for (let i = 0; i < 70; i++) {
       const a = rnd(0, TAU), s = rnd(140, 700);
@@ -4742,6 +5136,36 @@ function bossDamage(amount){
   }
 }
 
+/* A phase break: the unit pulls off, does the one thing it is for, and
+   comes back on a shorter fuse. Three of these turn a health bar into a
+   fight with an arc — you learn the pattern, it changes, you learn it
+   again — and the window between them is where the next chain gets built. */
+function bossPhase(b, phase){
+  b.phase = phase;
+  b.breakT = 4.2;
+  b.atk = 1.2;
+  b.charge = 0;
+  G.flash = Math.max(G.flash, 0.7);
+  G.shake = Math.max(G.shake, 26);
+  NHAudio.boss();
+  for (let i = 0; i < 46; i++) {
+    const a = rnd(0, TAU), s = rnd(180, 620);
+    spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
+          rnd(0.3, 0.8), rnd(4, 10), '255,150,90', true, -6);
+  }
+  if (b.def.id === 'warden') {
+    /* it salts the road on the way out, and does it again harder */
+    for (let i = 0; i < 4 + phase * 3; i++) dropHazard(b);
+    toast('WARDEN breaks off — the road behind it is not clean', 'red');
+  } else if (b.def.id === 'siren') {
+    G.pulseWarn = 0;
+    toast('SIREN re-tunes — the pulse comes faster now', 'red');
+  } else {
+    for (let i = 0; i < 1 + phase; i++) addPolice(true);
+    toast('REAPER calls it in — more units on you', 'red');
+  }
+}
+
 function stepBoss(dt){
   const b = G.boss, car = G.car;
   if (!b) return;
@@ -4750,32 +5174,60 @@ function stepBoss(dt){
   b.offroad = Math.abs(loc.lat) > roadHalf(loc.p) ? 1 : 0;
 
   b.atk -= dt;
-  const st = steerToward(b, car.x + car.vx * 0.3, car.y + car.vy * 0.3);
+  /* Each phase shortens the fuse. The numbers are the only difficulty
+     curve inside a single fight, so they are steep. */
+  const fuse = 1 - b.phase * 0.26;
+  let st;
 
-  if (b.def.id === 'warden') {
-    /* telegraphed charge, then a hazard dropped in its wake */
-    if (b.atk <= 0) { b.charge = 1.5; b.atk = 5.4; dropHazard(b); }
-    if (b.charge > 0) b.charge -= dt;
-  } else if (b.def.id === 'siren') {
-    if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
-    if (b.atk <= 0) {
-      b.atk = 8.5; G.pulseWarn = 0;
-      /* only punishes hoarding — bank little and often and it does nothing.
-         The threshold scales with the fight: a fixed 2,400 was tuned for
-         act-1 numbers, and by act 2 two wrecks at mult 4 tripped it. */
-      if (G.pending > Math.max(2400, Math.round(b.maxHp * 0.2))) {
-        G.pending = 0; G.chain = 0; G.mult = 1;
-        toast('Bank wiped', 'red');
-        NHAudio.curse();
-        G.flash = 0.6;
-      } else {
-        toast('Pulse — bank held', 'pink');
-      }
-      G.shake = Math.max(G.shake, 14);
+  if (b.breakT > 0) {
+    /* disengaged: it runs ahead, out of ramming reach, and leans on the
+       road rather than on you */
+    b.breakT -= dt;
+    const ahead = G.track.at(car.idx + 26, Math.sin(G.dist * 0.004) * 120);
+    st = steerToward(b, ahead.x, ahead.y);
+    b.boostT = Math.max(b.boostT, 0.2);
+    if (b.def.id === 'warden' && b.atk <= 0) { b.atk = 0.7; dropHazard(b); }
+    if (b.breakT <= 0) {
+      b.atk = 1.4;
+      toast(b.def.name + ' re-engages', 'red');
     }
-  } else if (b.def.id === 'reaper') {
-    if (b.atk <= 0) { b.atk = 4.4; b.charge = 1.1; }
-    if (b.charge > 0) b.charge -= dt;
+  } else {
+    st = steerToward(b, car.x + car.vx * 0.3, car.y + car.vy * 0.3);
+
+    if (b.def.id === 'warden') {
+      /* telegraphed charge, then a hazard dropped in its wake */
+      if (b.atk <= 0) {
+        b.charge = 1.5; b.atk = 5.4 * fuse;
+        for (let i = 0; i <= b.phase; i++) dropHazard(b);
+      }
+      if (b.charge > 0) b.charge -= dt;
+    } else if (b.def.id === 'siren') {
+      if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
+      if (b.atk <= 0) {
+        b.atk = 8.5 * fuse; G.pulseWarn = 0;
+        /* Only punishes hoarding — bank little and often and it does
+           nothing. The ceiling scales with the unit rather than sitting at
+           act-1 money, where two wrecks at mult 4 tripped it by act 2, and
+           it drops each phase, so "little and often" gets stricter about
+           what little means. */
+        const ceiling = Math.max(2400, Math.round(b.maxHp * 0.2))
+                      * (1 - b.phase * 0.28);
+        if (G.pending > ceiling) {
+          G.pending = 0; G.chain = 0; G.mult = 1;
+          toast('Bank wiped', 'red');
+          NHAudio.curse();
+          G.flash = 0.6;
+        } else {
+          toast('Pulse — bank held', 'pink');
+        }
+        G.shake = Math.max(G.shake, 14);
+      }
+    } else if (b.def.id === 'reaper') {
+      if (b.atk <= 0) { b.atk = 4.4 * fuse; b.charge = 1.1; }
+      if (b.charge > 0) b.charge -= dt;
+      if (!b.baseTop) b.baseTop = b.spec.top;
+      b.spec.top = b.baseTop * (1 + b.phase * 0.07);
+    }
   }
 
   if (b.charge > 0) b.boostT = Math.max(b.boostT, 0.2);
@@ -4814,7 +5266,7 @@ function dropHazard(b){
    before. Fog banks drift across the docks, embers fall through the
    undercity, and the downtown has neither. */
 function stepAir(dt){
-  const air = TH.air;
+  const air = envNow().air;
   if (!air || !QF.grain) return;
   const car = G.car;
   G.airT = (G.airT || 0) - dt;
@@ -5963,6 +6415,10 @@ function rebuildMods(){
   const run = G.run;
   const built = NHChips.build(run.curses, run.contract, run.perks);
   run.M = built.M; run.L = built.L;
+  /* the stretch you are standing in gets a say too — a zone whose only
+     difference is its colour is a skin, not a place */
+  const zr = stageRule(run.cfg, G.stage);
+  if (zr) zr.apply(run.M, run.L);
   if (Hangar.has('prow')) { run.M.wreckMul += 0.25; run.M.hullCost *= 0.80; }
   run.M.wreckMul *= (G.spec.wreckMul || 1);
   /* the Elite label says Double XP; make the label true (stacks with risk) */
@@ -6123,11 +6579,15 @@ function bank(){
   const M = G.run.M;
   const heatMul = 1 + G.tier * (Tree.has('t_roller') ? 0.45 : 0.35)
                 + (G.tier >= 2 ? M.heatBonus : 0);
-  /* Overtime banking pays half score. The district is already won; XP (×1.5)
-     carries the incentive to keep driving, and without the taper a casual
+  /* Two independent multipliers pulling opposite ways, on purpose. Deeper
+     into the district pays more, so the back two stretches are a reason to
+     be there rather than road to sit through. Overtime banking pays half,
+     because the district is already won and without the taper a casual
      district-2 surplus banked 307k against an 8.8k quota — score stopped
      meaning anything the leaderboard could compare. */
+  const stage = G.run.cfg && G.run.cfg.stages[G.stage];
   const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
+              * (stage ? stage.pay : 1)
               * (G.run.overtime ? 0.5 : 1)
               * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
 
@@ -6185,6 +6645,11 @@ function bank(){
     toast('QUOTA MET — overtime, ×1.5 XP', 'gold');
     NHAudio.bank(3);
   }
+  /* The gates are the floor and overtime is the ceiling: a gate says what
+     you must have banked by a given point, overtime says the district is
+     already won and you are milking it. Meeting the quota early therefore
+     passes every remaining gate on the way to the line, which is correct —
+     you have already paid for them. */
 }
 
 function toast(text, cls){
@@ -6416,19 +6881,23 @@ function step(dt){
     maybeLevelUp();
     if (G.boss) stepBoss(dt);
 
-    /* reaching the checkpoint decides the district */
+    /* the env under the camera, and the crossfade that hides the seam */
+    const zp = G.track.pts[Math.min(car.idx, G.track.pts.length - 1)];
+    if (zp && zp.z !== G.env) { G.envPrev = G.env; G.env = zp.z; G.envT = 0; }
+    G.envT = Math.min(1, G.envT + dt * 1.1);
+
+    /* reaching a gate decides the stretch */
     if (G.run.cfg) {
       const travelled = car.idx - G.run.startIdx;
-      if (travelled >= G.run.cfg.len) {
-        /* Cash the chain before judging. Arriving at the checkpoint holding
-           8,000 pending and being failed at 2,000/10,000 reads as the quota
-           not counting your wrecks — you earned it, the clock just had not
-           run out yet. */
+      const st = G.run.cfg.stages[G.stage];
+      if (st && travelled >= st.end) {
+        /* Cash the chain before judging. Arriving at a gate holding 8,000
+           pending and being failed at 2,000/10,000 reads as the quota not
+           counting your wrecks — you earned it, the clock just had not run
+           out yet. */
         if (G.pending > 0) bank();
         if (G.state !== 'play') return;          // banking may have cleared it
-        if (G.run.cfg.boss) failDistrict('The unit got away');
-        else if (G.run.banked >= G.run.quota) clearDistrict();
-        else failDistrict('Quota missed');
+        passGate();
         return;
       }
     }
@@ -6530,7 +6999,11 @@ function step(dt){
      opposite of what a pile-up should do to the supply. */
   let liveCount = 0;
   for (const t of G.traffic) if (!t.wrecked) liveCount++;
-  const want = Math.max(4, Math.round(26 * (G.run ? G.run.M.trafficMul : 1)));
+  /* Each stretch cleared puts more cars on the road. The escalation has to
+     land on the supply rather than only on the pursuit, because traffic is
+     what you score with — a later stretch that is merely more dangerous is
+     a punishment, and one that is denser is an opportunity that bites. */
+  const want = Math.max(4, Math.round((26 + G.stage * 5) * (G.run ? G.run.M.trafficMul : 1)));
   while (liveCount < want) { addTraffic(rint(20, 96)); liveCount++; }
 
   /* ---- police ---- */
@@ -6645,30 +7118,44 @@ function applyCam(){
   ctx.translate(-cam.x, -cam.y);
 }
 
+/* ---- the ground the road sits on ----
+   One world-aligned grid under every district was the largest single reason
+   they all read the same: whatever the barriers were painted, the floor was
+   the same floor. Each treatment is a handful of lines in world space, which
+   is what the grid already cost. */
 function drawGround(){
-  ctx.fillStyle = TH.ground;
+  const E = envNow();
+  ctx.fillStyle = envCol('ground');
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
-  /* world-aligned grid: cheap, and it reads as motion at speed */
   const R = hyp(W, H) / cam.zoom * 0.62;
-  const S = 240;
-  ctx.strokeStyle = 'rgba(70,120,190,0.10)';
-  ctx.lineWidth = 1.4 / cam.zoom;
-  ctx.beginPath();
-  const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
-  for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
-  const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
-  for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
-  ctx.stroke();
+  const floor = E.floor || 'grid';
+  const lw = 1.4 / cam.zoom;
 
-  /* sparse city blocks in the void: a deterministic hash drops a dim slab in
-     roughly a third of cells, so the off-road ground reads as a city seen
-     from above rather than graph paper */
-  if (QF.city) {
-    ctx.fillStyle = 'rgba(120,150,200,0.04)';
+  /* a lattice on both world axes — the original, and still the downtown */
+  const lattice = (S, col, wid) => {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = wid;
     ctx.beginPath();
-    for (let x = x0; x <= x1; x += S) {
-      for (let y = y0; y <= y1; y += S) {
+    const x0 = Math.floor((cam.x - R) / S) * S;
+    for (let x = x0; x <= cam.x + R; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
+    const y0 = Math.floor((cam.y - R) / S) * S;
+    for (let y = y0; y <= cam.y + R; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+    ctx.stroke();
+  };
+
+  /* Sparse city blocks in the void: a deterministic hash drops a dim slab in
+     roughly a third of the cells, so the off-road ground reads as a city seen
+     from above rather than as graph paper. Only the treatments that *are* a
+     city from above call it — a slab in the middle of the harbour, or under
+     an elevated deck, would be reading the ground wrong. */
+  const slabs = (S, col) => {
+    if (!QF.city) return;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    const x0 = Math.floor((cam.x - R) / S) * S, y0 = Math.floor((cam.y - R) / S) * S;
+    for (let x = x0; x <= cam.x + R; x += S) {
+      for (let y = y0; y <= cam.y + R; y += S) {
         const h = ((x * 92837111) ^ (y * 689287499)) % 97;
         if (h % 3) continue;
         const inset = 26 + (h % 5) * 8;
@@ -6676,6 +7163,101 @@ function drawGround(){
       }
     }
     ctx.fill();
+  };
+
+  if (floor === 'grid') {
+    lattice(240, 'rgba(70,120,190,0.10)', lw);
+    slabs(240, 'rgba(120,150,200,0.04)');
+  } else if (floor === 'mirror') {
+    lattice(300, hexA(E.left, 0.07), lw);
+    lattice(75,  hexA(E.right, 0.028), lw * 0.7);
+    slabs(300, hexA(E.left, 0.035));
+  } else if (floor === 'slab') {
+    lattice(420, 'rgba(150,170,220,0.055)', lw * 1.6);
+    slabs(420, 'rgba(120,150,200,0.045)');
+  } else if (floor === 'concrete') {
+    lattice(200, 'rgba(150,150,180,0.05)', lw);
+  } else if (floor === 'water' || floor === 'wet') {
+    /* long shallow swells crossing the world, scrolling against the car so
+       the surface is never still even when the road is straight */
+    const S = floor === 'water' ? 108 : 168;
+    const drift = (G.dist * (floor === 'water' ? 0.10 : 0.045)) % S;
+    ctx.strokeStyle = hexA(E.left, floor === 'water' ? 0.16 : 0.06);
+    ctx.lineWidth = lw * (floor === 'water' ? 3.2 : 1.6);
+    ctx.beginPath();
+    const y0 = Math.floor((cam.y - R) / S) * S - drift;
+    for (let y = y0; y <= cam.y + R; y += S) {
+      ctx.moveTo(cam.x - R, y);
+      /* three segments with a little vertical wander reads as a swell for
+         the price of two extra points */
+      ctx.lineTo(cam.x - R * 0.33, y + Math.sin(y * 0.011) * 12);
+      ctx.lineTo(cam.x + R * 0.33, y - Math.sin(y * 0.013) * 12);
+      ctx.lineTo(cam.x + R, y);
+    }
+    ctx.stroke();
+    if (floor === 'water') {
+      ctx.strokeStyle = hexA(E.right, 0.10);
+      ctx.lineWidth = lw * 1.4;
+      ctx.beginPath();
+      const y1 = Math.floor((cam.y - R) / S) * S - drift + S * 0.5;
+      for (let y = y1; y <= cam.y + R; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+      ctx.stroke();
+    }
+  } else if (floor === 'rail') {
+    /* pairs of rails with sleepers between them, laid on the world axis */
+    const S = 260, gauge = 34;
+    ctx.strokeStyle = 'rgba(190,200,215,0.11)';
+    ctx.lineWidth = lw * 2;
+    ctx.beginPath();
+    const x0 = Math.floor((cam.x - R) / S) * S;
+    for (let x = x0; x <= cam.x + R; x += S) {
+      ctx.moveTo(x - gauge, cam.y - R); ctx.lineTo(x - gauge, cam.y + R);
+      ctx.moveTo(x + gauge, cam.y - R); ctx.lineTo(x + gauge, cam.y + R);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,110,95,0.16)';
+    ctx.lineWidth = lw * 5;
+    ctx.beginPath();
+    const yy0 = Math.floor((cam.y - R) / 46) * 46;
+    for (let x = x0; x <= cam.x + R; x += S)
+      for (let y = yy0; y <= cam.y + R; y += 46) {
+        ctx.moveTo(x - gauge - 12, y); ctx.lineTo(x + gauge + 12, y);
+      }
+    ctx.stroke();
+  } else if (floor === 'dust') {
+    /* windblown grit: sparse dashes, no lattice, so the eye finds no order */
+    ctx.strokeStyle = 'rgba(190,170,130,0.06)';
+    ctx.lineWidth = lw * 2.2;
+    ctx.setLineDash([10, 190]);
+    ctx.lineDashOffset = -(G.dist * 0.5) % 200;
+    ctx.beginPath();
+    const y0 = Math.floor((cam.y - R) / 64) * 64;
+    for (let y = y0; y <= cam.y + R; y += 64) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (floor === 'void') {
+    /* A deck over a hole. Nothing under it would be honest and would also
+       read as an unpainted canvas, so there is a city a very long way down:
+       a hashed scatter of dim points on a coarse lattice, parallaxed to a
+       third of the camera's motion so the drop has depth in it. */
+    const S = 300, px = cam.x * 0.66, py = cam.y * 0.66;
+    ctx.globalCompositeOperation = 'lighter';
+    const x0 = Math.floor((px - R) / S) * S, y0 = Math.floor((py - R) / S) * S;
+    for (let x = x0; x <= px + R; x += S) {
+      for (let y = y0; y <= py + R; y += S) {
+        /* one cheap integer hash gives both the jitter and which points
+           exist at all — no allocation, and stable as the camera moves */
+        const h = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+        if ((h & 3) !== 0) continue;
+        const jx = x + (h % 211) - 105, jy = y + ((h >> 8) % 211) - 105;
+        const a = 0.05 + ((h >> 16) & 15) / 15 * 0.09;
+        ctx.fillStyle = hexA((h & 4) ? E.left : E.right, a);
+        const r = (2 + ((h >> 20) & 3)) / cam.zoom;
+        ctx.fillRect(jx - cam.x * 0.34 - r, jy - cam.y * 0.34 - r, r * 2, r * 2);
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
   }
 }
 
@@ -6703,7 +7285,7 @@ function drawRoad(){
     ctx.lineTo(p.x - nx, p.y - ny);
   }
   ctx.closePath();
-  ctx.fillStyle = TH.asphalt;
+  ctx.fillStyle = envCol('asphalt');
   ctx.fill();
 
   /* the barriers spill light onto the surface they enclose */
@@ -6719,7 +7301,7 @@ function drawRoad(){
       const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
-    ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.10);
+    ctx.strokeStyle = hexA(side < 0 ? envCol('left') : envCol('right'), 0.10);
     ctx.lineWidth = 90;
     ctx.stroke();
   }
@@ -6739,7 +7321,7 @@ function drawRoad(){
         if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
         else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
       }
-      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.13);
+      ctx.strokeStyle = hexA(side < 0 ? envCol('left') : envCol('right'), 0.13);
       ctx.lineWidth = 46;
       ctx.setLineDash([70, 34]);
       ctx.lineDashOffset = -(G.dist * 0.35) % 104;
@@ -6772,20 +7354,89 @@ function drawRoad(){
   }
   ctx.stroke();
 
-  /* neon barriers — the emissive layer the bloom pass feeds on */
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    for (let i = a; i <= b; i++) {
-      const p = pts[i];
-      const hw = roadHalf(p) * side;
-      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-      if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+  /* gate lines: a painted band across the road where one stretch hands over
+     to the next, so the checkpoint is a place and not just a toast */
+  if (G.run && G.run.cfg && !G.run.cfg.boss) {
+    for (const st of G.run.cfg.stages) {
+      const gi = G.run.startIdx + st.end;
+      if (gi < a || gi > b) continue;
+      const p = pts[gi];
+      if (!p) continue;
+      const hw = roadHalf(p);
+      const nx = -Math.sin(p.a), ny = Math.cos(p.a);
+      ctx.strokeStyle = 'rgba(255,214,110,0.55)';
+      ctx.lineWidth = 9;
+      ctx.setLineDash([26, 20]);
+      ctx.beginPath();
+      ctx.moveTo(p.x - nx * hw, p.y - ny * hw);
+      ctx.lineTo(p.x + nx * hw, p.y + ny * hw);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
-    const col = side < 0 ? TH.left : TH.right;
+  }
+
+  /* ---- the barriers ----
+     Five ways of edging a road, because the neon rail was the one thing
+     every district had in common and the eye reads edges before it reads
+     anything else. `neon` is the original strip; the rest are what the
+     places that are not downtown would actually be fenced with. */
+  const style = (envNow().rail) || 'neon';
+  const dark = LVL().blackout;
+  for (const side of [-1, 1]) {
+    const edge = (off) => {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = (roadHalf(p) + (off || 0)) * side;
+        const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+        if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+      }
+    };
+    const col = side < 0 ? envCol('left') : envCol('right');
     ctx.lineCap = 'round';
-    ctx.strokeStyle = hexA(col, 0.30); ctx.lineWidth = 16; ctx.stroke();
-    ctx.strokeStyle = col;             ctx.lineWidth = 5;  ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    if (style === 'posts') {
+      /* bollards: the same line, chopped. Reads as discrete lamps rather
+         than a continuous tube, which is what a deck edge actually is. */
+      edge();
+      ctx.setLineDash([13, 30]);
+      ctx.strokeStyle = hexA(col, 0.26); ctx.lineWidth = 20; ctx.stroke();
+      ctx.strokeStyle = col;             ctx.lineWidth = 7;  ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = hexA(col, 0.20); ctx.lineWidth = 1.5; ctx.stroke();
+    } else if (style === 'chain') {
+      /* chain-link: a dim mesh with a lit top rail — no glow to speak of */
+      edge();
+      ctx.strokeStyle = 'rgba(150,165,185,0.16)'; ctx.lineWidth = 13; ctx.stroke();
+      ctx.setLineDash([4, 7]);
+      ctx.strokeStyle = 'rgba(190,205,225,0.30)'; ctx.lineWidth = 11; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = hexA(col, 0.85); ctx.lineWidth = 2.4; ctx.stroke();
+    } else if (style === 'wall') {
+      /* poured concrete with a service strip along the top */
+      edge(9);
+      ctx.strokeStyle = 'rgba(28,30,36,0.95)'; ctx.lineWidth = 30; ctx.stroke();
+      edge();
+      ctx.strokeStyle = 'rgba(120,130,150,0.26)'; ctx.lineWidth = 6; ctx.stroke();
+      ctx.strokeStyle = hexA(col, dark ? 1 : 0.7); ctx.lineWidth = 3.4; ctx.stroke();
+      ctx.strokeStyle = hexA(col, 0.18); ctx.lineWidth = 12; ctx.stroke();
+    } else if (style === 'edge') {
+      /* a quay: there is no barrier, there is a drop into the water */
+      edge(16);
+      ctx.strokeStyle = 'rgba(4,8,12,0.9)'; ctx.lineWidth = 40; ctx.stroke();
+      edge();
+      /* the quay still has to be findable at 400 km/h — a drop you cannot
+         see the lip of is not a hazard, it is a cheat */
+      ctx.strokeStyle = 'rgba(210,220,235,0.30)'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.setLineDash([16, 40]);
+      ctx.strokeStyle = hexA(col, 1); ctx.lineWidth = 7; ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      edge();
+      ctx.strokeStyle = hexA(col, 0.30); ctx.lineWidth = 16; ctx.stroke();
+      ctx.strokeStyle = col;             ctx.lineWidth = 5;  ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
   }
 }
 
@@ -7177,6 +7828,15 @@ function drawCity(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const cx = W / 2 + cam.sx, cy = camY() + cam.sy;
 
+  /* Everything with height shares one projection: push the footprint away
+     from the screen centre in proportion to how tall it is. Props and spans
+     ride the same maths as the blocks do, which is why they cost almost
+     nothing to add. */
+  const rise = (pt, h) => {
+    const k = h * 0.00058 * cam.zoom;
+    return [pt[0] + (pt[0] - cx) * k, pt[1] + (pt[1] - cy) * k];
+  };
+
   const list = [];
   for (let i = b; i >= a; i--) {
     const p = pts[i];
@@ -7189,6 +7849,7 @@ function drawCity(){
   const flickT = performance.now() * 0.007;
   for (const bd of list) {
     ctx.globalAlpha = bd.fade || 1;
+    if (bd.kind && bd.kind !== 'block') { drawProp(bd, rise, cx, cy); continue; }
     const ca = Math.cos(bd.a), sa = Math.sin(bd.a);
     const hw = bd.w * 0.5, hd = bd.d * 0.5;
     const corners = [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([lx, ly]) =>
@@ -7224,19 +7885,25 @@ function drawCity(){
       ctx.moveTo(b0[0], b0[1]); ctx.lineTo(b1[0], b1[1]);
       ctx.lineTo(t1[0], t1[1]); ctx.lineTo(t0[0], t0[1]);
       ctx.closePath();
-      ctx.fillStyle = i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424');
+      /* A container is a painted steel box, not a facade: it takes its own
+         colour rather than the district's dark glass, which is the whole
+         difference between a rail yard and a skyline. */
+      const crate = bd.mode === 'stack';
+      ctx.fillStyle = crate ? mix(bd.hue, '#0A0A0E', i % 2 ? 0.70 : 0.80)
+                            : (i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424'));
       ctx.fill();
 
-      if (bd.lit && QF.windows && !LVL().blackout) {
+      if ((bd.lit || crate) && QF.windows && !LVL().blackout) {
         ctx.save();
         ctx.clip();
-        /* dashed rows read as lit windows; solid rows read as wireframe */
-        ctx.strokeStyle = hexA(bd.hue, 0.34);
+        /* dashed rows read as lit windows; solid rows read as corrugation */
+        ctx.strokeStyle = hexA(bd.hue, crate ? 0.16 : 0.34);
         ctx.lineWidth = Math.max(0.8, 1.6 * cam.zoom);
-        ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
+        if (crate) ctx.setLineDash([]);
+        else ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
         ctx.lineDashOffset = bd.seed;
         ctx.beginPath();
-        const floors = 3 + Math.floor(bd.h / 120);
+        const floors = crate ? 8 : 3 + Math.floor(bd.h / 120);
         for (let f = 1; f < floors; f++) {
           const t = f / floors;
           ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
@@ -7253,7 +7920,7 @@ function drawCity(){
     ctx.moveTo(top[0][0], top[0][1]);
     for (let i = 1; i < 4; i++) ctx.lineTo(top[i][0], top[i][1]);
     ctx.closePath();
-    ctx.fillStyle = '#1A2138';
+    ctx.fillStyle = bd.mode === 'stack' ? mix(bd.hue, '#0A0A0E', 0.52) : '#1A2138';
     ctx.fill();
 
     /* neon roofline — the city's whole read comes from this one stroke.
@@ -7274,6 +7941,12 @@ function drawCity(){
   }
   ctx.globalAlpha = 1;
 
+  /* Overhead. A top-down road can only say "fast" with the ground, and the
+     ground is behind you the moment you look at it. Something passing over
+     the car is the one read of speed the camera angle gives away for free —
+     and a gantry is a place, where a coloured barrier is only a colour. */
+  drawSpans(a, b, rise, cx, cy);
+
   /* depth fog: the top of the screen is the far distance, so fade it out */
   const dark = LVL().blackout;
   const fog = ctx.createLinearGradient(0, 0, 0, camY() * 0.84);
@@ -7282,6 +7955,176 @@ function drawCity(){
   fog.addColorStop(1,    'rgba(5,6,14,0)');
   ctx.fillStyle = fog;
   ctx.fillRect(0, 0, W, camY() * 0.84);
+}
+
+/* ---- roadside structures ----
+   Four silhouettes, each a handful of quads in the same projection the
+   blocks use. They are what tells you a yard from a wharf from a pour floor
+   before you have read a single word of the brief. */
+function drawProp(bd, rise, cx, cy){
+  const base = w2s(bd.x, bd.y);
+  if (base[0] < -400 || base[0] > W + 400 || base[1] < -600 || base[1] > H + 400) return;
+  const dark = LVL().blackout;
+  const beam = (p0, p1, wide, col) => {
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, wide * cam.zoom);
+    ctx.strokeStyle = col;
+    ctx.stroke();
+  };
+  const nx = -Math.sin(bd.a), ny = Math.cos(bd.a);
+
+  if (bd.kind === 'crane') {
+    /* dockside gantry crane: a mast, a jib out over the water, a hanging
+       cable. Three strokes, and the wharf stops being a road with lights. */
+    const mastTop = rise(base, 460);
+    beam(base, mastTop, 9, '#141821');
+    const jibEnd = w2s(bd.x + nx * 150 * -bd.side, bd.y + ny * 150 * -bd.side);
+    const jibTip = rise(jibEnd, 430);
+    beam(mastTop, jibTip, 6, '#141821');
+    beam(mastTop, rise(w2s(bd.x + nx * 60 * bd.side, bd.y + ny * 60 * bd.side), 300), 5, '#141821');
+    if (!dark) {
+      beam(jibTip, rise(jibEnd, 250), 1.6, hexA(bd.hue, 0.35));
+      blitGlowScreen(bd.hue, jibTip[0], jibTip[1], 26, 26, 0.5);
+      blitGlowScreen(bd.hue, mastTop[0], mastTop[1], 20, 20, 0.4);
+    }
+  } else if (bd.kind === 'silo' || bd.kind === 'tank') {
+    /* a fat cylinder read as a quad with a banded top; tanks sit lower and
+       squatter than silos, which is the whole difference */
+    const tall = bd.kind === 'silo' ? 340 : 150;
+    const rad = bd.kind === 'silo' ? 46 : 78;
+    const l = w2s(bd.x + nx * rad, bd.y + ny * rad);
+    const r = w2s(bd.x - nx * rad, bd.y - ny * rad);
+    const lt = rise(l, tall), rt = rise(r, tall);
+    ctx.beginPath();
+    ctx.moveTo(l[0], l[1]); ctx.lineTo(r[0], r[1]);
+    ctx.lineTo(rt[0], rt[1]); ctx.lineTo(lt[0], lt[1]);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(l[0], l[1], r[0], r[1]);
+    g.addColorStop(0, '#0C0E13'); g.addColorStop(0.4, '#1C2029'); g.addColorStop(1, '#0A0C11');
+    ctx.fillStyle = g; ctx.fill();
+    if (!dark) {
+      beam(lt, rt, 3, hexA(bd.hue, 0.7));
+      beam([lerp(l[0], lt[0], 0.45), lerp(l[1], lt[1], 0.45)],
+           [lerp(r[0], rt[0], 0.45), lerp(r[1], rt[1], 0.45)], 1.5, hexA(bd.hue, 0.22));
+    }
+  } else if (bd.kind === 'mast') {
+    /* a signage mast: a pole and a lit panel, the vertical the market row
+       is built out of */
+    const top = rise(base, 240);
+    beam(base, top, 4, '#12151C');
+    const panelL = rise(w2s(bd.x + nx * 26, bd.y + ny * 26), 250);
+    const panelR = rise(w2s(bd.x - nx * 26, bd.y - ny * 26), 160);
+    if (!dark) {
+      ctx.beginPath();
+      ctx.moveTo(panelL[0], panelL[1]); ctx.lineTo(panelR[0], panelR[1]);
+      ctx.lineTo(panelR[0], panelR[1] + 22 * cam.zoom);
+      ctx.lineTo(panelL[0], panelL[1] + 22 * cam.zoom);
+      ctx.closePath();
+      ctx.fillStyle = hexA(bd.hue, 0.55 + Math.sin(bd.seed + G.dist * 0.004) * 0.2);
+      ctx.fill();
+      blitGlowScreen(bd.hue, (panelL[0] + panelR[0]) * 0.5, (panelL[1] + panelR[1]) * 0.5,
+                     30, 18, 0.55);
+    }
+  }
+}
+
+/* Glow blits are written for world space inside the camera transform; the
+   city pass runs in screen space, so it needs its own. */
+function blitGlowScreen(col, x, y, rx, ry, alpha){
+  if (!QF.glow) return;
+  const s = glowSprite(col);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(s, x - rx, y - ry, rx * 2, ry * 2);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ---- what passes over the road ----
+   A gantry spans it on two legs, a rib is a tunnel hoop, a sign hangs a lit
+   panel across the lanes. All three are the road's own cross-section pushed
+   up by the block projection, so they follow the corner the road is taking. */
+function drawSpans(a, b, rise, cx, cy){
+  const pts = G.track.pts;
+  const dark = LVL().blackout;
+  for (let i = b; i >= a; i--) {
+    const p = pts[i];
+    if (!p || !p.span) continue;
+    const E = p.z;
+    const hw = roadHalf(p) + 26;
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+    const lb = w2s(p.x + nx, p.y + ny), rb = w2s(p.x - nx, p.y - ny);
+    if (lb[1] < -400 && rb[1] < -400) continue;
+    const lt = rise(lb, p.span.h), rt = rise(rb, p.span.h);
+    const kind = p.span.kind;
+
+    if (kind === 'rib') {
+      /* a hoop: one thick dark band with a lit inner edge. Repeated every
+         few segments it becomes a tunnel without a tunnel ever being built. */
+      ctx.beginPath();
+      ctx.moveTo(lb[0], lb[1]);
+      ctx.quadraticCurveTo((lt[0] + rt[0]) * 0.5, (lt[1] + rt[1]) * 0.5 - 26 * cam.zoom,
+                           rb[0], rb[1]);
+      ctx.lineWidth = Math.max(2, 16 * cam.zoom);
+      ctx.strokeStyle = 'rgba(12,13,20,0.92)';
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1, 3 * cam.zoom);
+      ctx.strokeStyle = hexA(E.left, dark ? 0.75 : 0.38);
+      ctx.stroke();
+      continue;
+    }
+
+    /* legs */
+    for (const [base, top] of [[lb, lt], [rb, rt]]) {
+      ctx.beginPath();
+      ctx.moveTo(base[0], base[1]); ctx.lineTo(top[0], top[1]);
+      ctx.lineWidth = Math.max(1.5, 8 * cam.zoom);
+      ctx.strokeStyle = '#10131B';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+    /* the beam across. A gantry gets a second chord and cross members, so
+       it reads as built structure rather than a bar laid on the sky. */
+    ctx.beginPath();
+    ctx.moveTo(lt[0], lt[1]); ctx.lineTo(rt[0], rt[1]);
+    ctx.lineWidth = Math.max(2, (kind === 'sign' ? 18 : 11) * cam.zoom);
+    ctx.strokeStyle = '#0F1219';
+    ctx.stroke();
+    if (kind === 'gantry') {
+      const ml = rise(lb, p.span.h * 0.74), mr = rise(rb, p.span.h * 0.74);
+      ctx.beginPath();
+      ctx.moveTo(ml[0], ml[1]); ctx.lineTo(mr[0], mr[1]);
+      for (let k = 1; k < 6; k++) {
+        const t = k / 6;
+        ctx.moveTo(lerp(ml[0], mr[0], t), lerp(ml[1], mr[1], t));
+        ctx.lineTo(lerp(lt[0], rt[0], t + (k % 2 ? 0.08 : -0.08)),
+                   lerp(lt[1], rt[1], t + (k % 2 ? 0.08 : -0.08)));
+      }
+      ctx.lineWidth = Math.max(1, 3 * cam.zoom);
+      ctx.strokeStyle = '#141822';
+      ctx.stroke();
+    }
+    if (!dark) {
+      ctx.lineWidth = Math.max(1, 2.6 * cam.zoom);
+      ctx.strokeStyle = hexA(kind === 'sign' ? E.bldA : E.right, 0.75);
+      ctx.stroke();
+      if (kind === 'sign') {
+        /* the lit face of the panel, hung under the beam */
+        const drop = 13 * cam.zoom;
+        ctx.beginPath();
+        ctx.moveTo(lt[0], lt[1] + drop * 0.4); ctx.lineTo(rt[0], rt[1] + drop * 0.4);
+        ctx.lineWidth = Math.max(1.5, 9 * cam.zoom);
+        ctx.strokeStyle = hexA(E.bldB, 0.30 + Math.sin(p.span.seed + G.dist * 0.006) * 0.12);
+        ctx.stroke();
+      }
+      blitGlowScreen(kind === 'sign' ? E.bldA : E.right,
+                     (lt[0] + rt[0]) * 0.5, (lt[1] + rt[1]) * 0.5,
+                     Math.abs(rt[0] - lt[0]) * 0.5 + 20, 26, 0.28);
+    }
+  }
 }
 
 function drawLamps(){
@@ -7294,7 +8137,7 @@ function drawLamps(){
     for (const side of [-1, 1]) {
       const x = p.x - Math.sin(p.a) * (roadHalf(p) + 16) * side;
       const y = p.y + Math.cos(p.a) * (roadHalf(p) + 16) * side;
-      blitGlow(side < 0 ? TH.left : TH.right, x, y, 46, 46, 0.30);
+      blitGlow(side < 0 ? envCol('left') : envCol('right'), x, y, 46, 46, 0.30);
     }
   }
   ctx.globalCompositeOperation = 'source-over';
@@ -7725,7 +8568,7 @@ function post(){
 function render(){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = TH.ground;
+  ctx.fillStyle = envCol('ground');
   ctx.fillRect(0, 0, cv.width, cv.height);
 
   applyCam();
@@ -7908,23 +8751,40 @@ function syncHUD(){
   /* objective rail: quota progress, or the boss's remaining integrity */
   const run = G.run, cfg = run && run.cfg;
   if (cfg) {
-    UI.dchip.textContent = 'District ' + cfg.n;
+    const stage = cfg.stages[Math.min(G.stage, cfg.stages.length - 1)];
+    /* the chip names the place you are actually in, not the district index —
+       three stretches mean the district label alone stopped being true */
+    UI.dchip.textContent = cfg.boss ? 'Pursuit'
+      : zoneById(stage.zone).name + '  ·  ' + (G.stage + 1) + '/' + cfg.stages.length;
     const bossing = !!G.boss;
     UI.obj.classList.toggle('boss', bossing);
     if (bossing) {
-      UI.objLbl.textContent = G.boss.def.name;
+      const bk = G.boss.breakT > 0;
+      UI.objLbl.textContent = G.boss.def.name +
+        (bk ? ' — breaking off' : ' — phase ' + (G.boss.phase + 1) + '/' + BOSS_PHASES);
       UI.objVal.textContent = Math.max(0, Math.ceil(G.boss.hp / G.boss.maxHp * 100)) + '%';
       UI.objFill.style.width = clamp(G.boss.hp / G.boss.maxHp, 0, 1) * 100 + '%';
+      /* the ghost shows how far the bank in hand would actually take it —
+         capped, so the bar stops promising a kill it cannot deliver */
+      const bite = Math.min(G.pending, Math.round(G.boss.maxHp * BOSS_BITE)) * (bk ? 0.35 : 1);
+      UI.objPend.style.width = clamp((G.boss.hp - bite) / G.boss.maxHp, 0, 1) * 100 + '%';
+      UI.obj.classList.toggle('pending', G.pending > 0);
     } else {
+      /* Until the quota is met the number that matters is the one owed at
+         the *next* gate. Once it is met the gates are all paid for, so the
+         rail switches to what overtime is actually paying. */
       UI.obj.classList.toggle('overtime', !!run.overtime);
-      UI.objLbl.textContent = run.overtime ? 'Overtime ×1.5 XP' : 'Quota';
+      const owed = Math.max(1, Math.round(run.quota * stage.cut));
+      UI.objLbl.textContent = run.overtime ? 'Overtime \u00d71.5 XP'
+        : G.stage >= cfg.stages.length - 1 ? 'Quota' : 'Checkpoint ' + (G.stage + 1);
       UI.objVal.textContent = run.overtime
         ? fmt(run.banked) + ' banked'
-        : fmt(Math.min(run.banked, run.quota)) + ' / ' + fmt(run.quota);
-      UI.objFill.style.width = clamp(run.banked / run.quota, 0, 1) * 100 + '%';
+        : fmt(Math.min(run.banked, owed)) + ' / ' + fmt(owed);
+      UI.objFill.style.width =
+        clamp(run.banked / (run.overtime ? run.quota : owed), 0, 1) * 100 + '%';
       /* A ghost segment for the pending bank. Without it the bar sits dead
          still through a ten-second chain and the quota looks broken. */
-      const ghost = clamp((run.banked + G.pending) / run.quota, 0, 1) * 100;
+      const ghost = clamp((run.banked + G.pending) / owed, 0, 1) * 100;
       UI.objPend.style.width = ghost + '%';
       UI.obj.classList.toggle('pending', G.pending > 0);
     }
@@ -8096,6 +8956,12 @@ function drawRoute(){
         `<span class="pmeta"><b>${nodeReward(node)}</b>` +
         `${node.quota ? '<em>' + fmt(node.quota) + (node.heat ? ' · H+' + node.heat : '') + '</em>'
                       : '<em>no driving</em>'}</span>` +
+        /* Which three places a district is made of is half of what you are
+           choosing between, so the board states it rather than saving it
+           for the brief you see after committing. */
+        `${(node.zones || []).length > 1
+            ? '<span class="pzones">' +
+              node.zones.map(z => zoneById(z).name).join(' \u00b7 ') + '</span>' : ''}` +
       `</span>`;
     if (can) el.onclick = () => enterNode(r, c);
     wrap.appendChild(el);
@@ -8297,6 +9163,9 @@ function beginNode(skipBrief){
   run.district = run.node.district;
   run.cfg = districtCfg(run.district, run.node.type, run.act);
 
+  /* the stretch index has to be zero before the mods are built: rebuildMods
+     folds in the rule of the stretch you are standing in */
+  G.stage = 0;
   rebuildMods();
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
@@ -8348,8 +9217,10 @@ function nextAct(){
   run.loopArmed = false;
   run.act++;
   setTheme(run.act);
-  run.route = makeRoute(run.act);
+  /* clear the marker before the board is drawn: districtCfg reads the
+     current node while it is costing out the new act's quotas */
   run.row = -1; run.col = -1; run.node = null;
+  run.route = makeRoute(run.act);
   toast(run.act > 3 ? 'THE LOOP — lap ' + (run.act - 3) : 'Act ' + run.act,
         run.act > 3 ? 'pink' : 'gold');
   showMap();
@@ -8361,12 +9232,39 @@ function showBrief(){
   UI.hud.classList.add('off');
   $('bkicker').textContent = cfg.boss ? 'Pursuit unit' : 'District ' + cfg.n;
   $('bname').textContent = cfg.name;
+  /* The route is the strategic layer and the brief is the tactical one, so
+     the brief has to state what the road is actually made of: three named
+     stretches, what each is worth, and the rule each one plays by. A
+     district that does not announce its own shape reads as the last one. */
+  const legs = cfg.boss ? '' :
+    '<div class="legs">' + cfg.stages.map((s, i) => {
+      const z = zoneById(s.zone);
+      return '<div class="leg"><b>' + (i + 1) + '</b>' +
+             '<span class="lname">' + z.name + '</span>' +
+             '<span class="lgate">bank ' + fmt(Math.round(G.run.quota * s.cut)) + '</span>' +
+             (s.pay > 1 ? '<span class="lpay">&times;' + s.pay.toFixed(2) + '</span>' : '') +
+             '</div>';
+    }).join('') + '</div>';
+  const rules = zoneRules(cfg);
+  const ruleLine = rules.length
+    ? '<div class="brules">' + rules.map(r =>
+        '<span><b>' + r.name + '</b> ' + r.desc + '</span>').join('') + '</div>'
+    : '';
   $('bobj').innerHTML = cfg.boss
-    ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks.</b>'
-    : 'Wreck traffic and bank <b>' + fmt(G.run.quota) + '</b> before the checkpoint.';
+    ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks — ' +
+      'no single cash-in takes more than a fifth of it.</b>' + ruleLine
+    : 'Three stretches. Miss a checkpoint and the district ends there.' +
+      legs + ruleLine;
   const k = NHChips.contractById(G.run.contract);
   $('bsub').textContent = (cfg.boss ? cfg.bossDef.sub : cfg.elite ? 'Elite run' : 'Standard run') +
     (k && k.id !== 'clear' ? '  ·  ' + k.name : '');
+  /* gate ticks on the travel bar, placed where the gates actually are */
+  UI.objDist.parentNode.style.backgroundImage = cfg.boss ? 'none' :
+    cfg.stages.slice(0, -1).map(s =>
+      'linear-gradient(90deg,transparent ' + (s.end / cfg.len * 100).toFixed(1) +
+      '%,rgba(255,214,110,.75) ' + (s.end / cfg.len * 100).toFixed(1) +
+      '%,rgba(255,214,110,.75) ' + (s.end / cfg.len * 100 + 0.7).toFixed(1) +
+      '%,transparent ' + (s.end / cfg.len * 100 + 0.7).toFixed(1) + '%)').join(',');
   UI.brief.classList.toggle('bossBrief', !!cfg.boss);
   renderBuild();
   show(UI.brief);
@@ -8384,6 +9282,46 @@ function beginDistrict(){
   if (G.run.district === 1) showControlHint();
 }
 
+/* ---- a gate: the end of one stretch and the terms of the next ----
+   Three of these per district. Each is a real fail state, so the district
+   asks its question three times instead of once at the very end, and each
+   one you clear turns the road up: hotter pursuit, thicker traffic, and a
+   larger share of every bank. Depth has to pay, or the extra road is just
+   more road. */
+function passGate(){
+  const run = G.run, cfg = run.cfg;
+  if (cfg.boss) { failDistrict('The unit got away'); return; }
+
+  const st = cfg.stages[G.stage];
+  const last = G.stage >= cfg.stages.length - 1;
+  const owed = Math.round(run.quota * st.cut);
+
+  if (run.banked < owed) {
+    failDistrict(last ? 'Quota missed' : 'Checkpoint missed — ' +
+                 fmt(run.banked) + ' of ' + fmt(owed));
+    return;
+  }
+  if (last) { clearDistrict(); return; }
+
+  G.stage++;
+  const next = cfg.stages[G.stage];
+  const zone = zoneById(next.zone);
+  /* the new stretch's rule takes over from the old one's */
+  rebuildMods();
+  /* clearing a gate welds a little hull back on — the reward for depth is
+     the ability to survive more of it */
+  G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.14));
+  G.heat = Math.min(3.0, G.heat + 0.9);
+  addXP(8);
+  G.flash = Math.max(G.flash, 0.35);
+  NHAudio.bank(2);
+  toast('Checkpoint ' + G.stage + ' cleared — ' + zone.name, 'gold');
+  /* the next stretch is already generated ahead of the car; what changes is
+     the pressure inside it — the density target climbs with the stretch
+     index, and the top-up in step() fills to it over the next few seconds */
+  if (G.stage >= 2 && G.police.length < 4) addPolice(true);
+}
+
 function clearDistrict(){
   /* Beating a pursuit unit is the milestone of an act, so it is also the
      one guaranteed full rebuild — otherwise a run that limps through a boss
@@ -8398,6 +9336,10 @@ function clearDistrict(){
      into the one track that exists. */
   const run = G.run;
   run.cleared++;
+  /* No separate depth bonus here. Overtime already pays for the extra road
+     twice — surplus banking keeps scoring at half, and every point of XP
+     earned in overtime runs at 1.5 — and a third payout stacked on the clear
+     screen would be the same reward counted again. */
   G.coinsRun += 140 + run.district * 30;
   const wasLvl = run.level;
   const xpPaid = Math.round((20 + run.district * 4) * (run.L ? run.L.xpMul : 1));
@@ -9595,6 +10537,10 @@ window.__NH = {
   takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
+  ZONES, zoneById, zoneEnv, pickZones, zoneRules, passGate,
+  env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
+  get stage(){ return G.stage; },
+  addBoss, bossDamage, BOSS_BITE,
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })

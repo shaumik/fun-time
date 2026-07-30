@@ -508,6 +508,48 @@ body{
   font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
 }
 .bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
+
+/* The three stretches, as a run of gates rather than a paragraph. A district
+   is a route now, so the brief has to be shaped like one. */
+.legs{
+  display:flex;gap:calc(var(--u)*.9);margin:calc(var(--u)*2) 0 calc(var(--u)*1.2);
+  font-size:calc(var(--u)*1.25);text-align:left;
+}
+.leg{
+  flex:1;display:flex;flex-direction:column;gap:calc(var(--u)*.25);
+  position:relative;padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  border:1px solid rgba(140,170,220,.18);border-radius:calc(var(--u)*.6);
+  background:rgba(10,16,30,.5);
+}
+/* the gate itself: a hairline down the leading edge, lit like the road paint */
+.leg::before{
+  content:'';position:absolute;left:0;top:12%;bottom:12%;width:2px;
+  background:rgba(255,214,110,.55);border-radius:2px;
+}
+.leg b{
+  font-size:calc(var(--u)*1);letter-spacing:.3em;color:var(--dim);font-weight:800;
+}
+.leg .lname{font-weight:800;color:#fff;font-size:calc(var(--u)*1.5);line-height:1.15}
+.leg .lgate{
+  color:var(--amber);font-variant-numeric:tabular-nums;font-weight:700;
+  font-size:calc(var(--u)*1.2);
+}
+.leg .lpay{color:var(--cyan);font-weight:800;font-size:calc(var(--u)*1.15)}
+.brules{
+  display:flex;flex-wrap:wrap;gap:calc(var(--u)*.6);justify-content:center;
+  margin-top:calc(var(--u)*1.2);font-size:calc(var(--u)*1.25);
+}
+.brules span{
+  padding:calc(var(--u)*.4) calc(var(--u)*1);border-radius:calc(var(--u)*.5);
+  background:rgba(176,124,255,.10);border:1px solid rgba(176,124,255,.28);
+  color:var(--ice);font-weight:600;
+}
+.brules b{color:#C9A7FF;font-weight:800;margin-right:calc(var(--u)*.5)}
+@media (max-width:640px){
+  .legs{flex-direction:column;gap:calc(var(--u)*.6)}
+  .leg{flex-direction:row;align-items:baseline;gap:calc(var(--u)*.8)}
+  .leg .lname{flex:1}
+}
 /* boss briefs commit to red so the shift in stakes is instant */
 #brief.bossBrief .bkicker{color:var(--red)}
 #brief.bossBrief .bname{color:var(--red);text-shadow:0 0 calc(var(--u)*4) rgba(255,51,85,.6)}
@@ -1365,6 +1407,13 @@ body{
   font-style:normal;color:var(--dim);font-weight:700;
   font-variant-numeric:tabular-nums;letter-spacing:.04em;
 }
+/* the three stretches, quiet enough that the reward and the quota still win
+   the glance but present enough to tell two same-priced nodes apart */
+.mnode .pzones{
+  font-size:calc(var(--u)*.92);font-weight:700;letter-spacing:.07em;
+  color:rgba(140,160,200,.66);white-space:nowrap;text-transform:uppercase;
+}
+.mnode.open .pzones{color:rgba(190,210,245,.82)}
 
 /* kind reads from the ring and the icon together */
 .mnode.run .pin{border-color:var(--cyan)}

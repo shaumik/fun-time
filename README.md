@@ -6,8 +6,11 @@ route through a branching board of city districts, pick an event that pairs a bo
 bane before each one, and bank a quota under those terms. Wrecks and clears pay XP; every
 level hands you a perk from three, fifteen levels deep out of a pool of fifty-eight — nine
 of which are weapons that fire on their own rather than multiplying a number.
-Three acts — The Grid, the Sunken Docks and the Undercity, each with its own palette,
-skyline and air — every one ending in a named pursuit unit.
+Three acts — The Grid, the Sunken Docks and the Undercity — built out of twelve **zones**,
+four per act. A zone owns the ground under the car, what stands beside it, what passes over
+it and one rule the road plays by, and a district is three of them in a row with a
+checkpoint between each. Every act ends in a named pursuit unit that fights in three
+phases.
 
 **128 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
 generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
@@ -100,11 +103,38 @@ harpoon that auto-fires, plating that detonates every fifth link, a welder that 
 between chains — plus a fifteen-rank **Crew** skill tree and a six-livery paint shop that
 recolors the car and its light trail. See [DESIGN.md](DESIGN.md).
 
-**Run structure.** A route map per act with Run, Elite, Depot and Boss nodes; an event
-chosen before every district (boon + bane, stated up front). Risk on the event buys XP —
-half again at risk 1, double at risk 2 — and XP is the only progression track inside a run.
-Quotas scale with how strong you actually are (garage tuning, hardware, run level), so an
-upgrade always makes the road easier without ever making it free. See [DESIGN.md](DESIGN.md).
+**Districts are three stretches, not one road.** Each district draws three zones and runs
+you through them in order, with a gate between each: a share of the quota you must have
+banked by the time you reach it, or the district ends there. Clearing a gate welds hull
+back on, puts more traffic on the road, raises the heat and raises what the next stretch
+pays — a third of the quota by the first gate is worth ×1.00, the last stretch ×1.32. The
+district no longer ends the instant the number is met; banking past it buys overtime, and
+overtime pays coins and XP at the line.
+
+**Zones are places, not palettes.** Neon Blocks, Sodium Row, The Skyway, Glasshouse, The
+Wharf, The Spillway, Rail Yard, Cannery Row, The Undercity, Underpass 9, Foundry Line and
+The Catacombs. Each one changes the floor treatment (lattice, standing water, live rails,
+blown dust, or nothing at all under an elevated deck), how the road is edged (neon rail,
+bollards, chain-link, poured concrete, an unfenced quay), what is built beside it (towers,
+sheds, container stacks, support pylons), what crosses overhead (signage, service gantries,
+tunnel ribs), and how hard the road bends. Most carry a rule as well — the sealed tube kills
+the lights and doubles what threading pays, the pour floor cooks every wreck — and it
+applies while you are in that stretch, not for the whole district.
+
+**Run structure.** A route map per act with Run, Elite, Depot and Boss nodes, each node
+naming the three zones it is made of; an event chosen before every district (boon + bane,
+stated up front). Risk on the event buys XP — half again at risk 1, double at risk 2 — and
+XP is the only progression track inside a run. Quotas scale with how strong you actually
+are (garage tuning, hardware, run level), so an upgrade always makes the road easier
+without ever making it free.
+
+**Pursuit units fight in phases.** Banking is still the only weapon, but no single cash-in
+can take more than a fifth of a unit's integrity — a level-fifteen build used to hold
+twenty thousand pending and end an act boss on the first bank. Five cash-ins is the floor
+whatever you are driving, and the overflow is not thrown away, it banks as score. At two
+thirds and one third it breaks off, does the one thing it is for — the WARDEN salts the
+road behind it, the SIREN re-tunes to a lower hoarding ceiling, the REAPER calls in more
+units — and comes back on a shorter fuse. See [DESIGN.md](DESIGN.md).
 
 ## Layout
 

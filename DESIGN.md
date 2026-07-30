@@ -91,9 +91,44 @@ ground, asphalt, barrier colours, skyline and air:
 | 2 | Sunken Docks | Amber and green rails, warm dark asphalt, long low warehouses, fog banks drifting across. |
 | 3 | The Undercity | Violet and white, near-black ground, tall blocks crowding both sides, embers falling past. |
 
-The generator is untouched; only what it is dressed in changes. That is the cheapest large
-change available — the road you drive is identical, and the place you are driving through
-is not.
+That got three looks out of a thirteen-district run, which is not enough: by the fourth
+district the road was the act's road repainted, and "every level looks the same" was a fair
+description rather than a complaint. A colour ramp is not a location. So the act now only
+sets the *palette family*, and the place is set by a **zone**.
+
+**Twelve zones, four per act.** A zone owns the floor treatment under the car, how the road
+is edged, what is built beside it, what crosses over it, how hard the road bends, what
+hangs in the air, and one rule the road plays by:
+
+| | Zone | Floor | Edge | Overhead | Rule |
+|---|---|---|---|---|---|
+| 1 | Neon Blocks | lattice | neon rail | — | — |
+| 1 | Sodium Row | slab | bollards | signage every 6 | Arcade: twice the power-ups |
+| 1 | The Skyway | nothing — a deck over a drop | bollards | service gantries | Open deck: +12% top speed |
+| 1 | Glasshouse | mirrored lattice | neon rail | — | Mirror plaza: threading pays double |
+| 2 | The Wharf | black water, drifting swells | unfenced quay | dock gantries | — |
+| 2 | The Spillway | standing water | poured concrete | ribs | Standing water: −15% grip, +30% a bank |
+| 2 | Rail Yard | live rails and sleepers | chain-link | — | Shunting yard: half again the traffic |
+| 2 | Cannery Row | blown dust | bollards | service ribs | — |
+| 3 | The Undercity | slab | neon rail | — | — |
+| 3 | Underpass 9 | concrete | poured concrete | ribs every 4 | Sealed tube: lights out, threading pays double |
+| 3 | Foundry Line | blown dust | poured concrete | gantries | Pour floor: wrecks cook off |
+| 3 | The Catacombs | nothing | bollards | — | Pylon field: the multiplier ceiling comes off |
+
+The generator is still the same generator — it reads the zone for the segment it is about
+to lay down rather than a global theme, so nothing in the physics or the camera changed.
+The buildings, props and spans are baked per node at generation time exactly as the skyline
+always was, which is what makes twelve places cost about what one cost.
+
+**A district is three zones, not one.** It draws three without replacement and runs you
+through them in order, so the road changes under you twice on the way to the checkpoint,
+and each stretch's rule applies only while you are in it — the lights are out in the sealed
+tube, not in the glass plaza two stretches later. The board states which three a node is
+made of, because that is half of what you are choosing between.
+
+Spacing is set by what is actually on screen, not by what is generated: the camera sees
+about eight and a half segments of road ahead of the car, so an overhead span every
+twenty-two segments is one you almost never see. They sit at four to twelve.
 
 **The convoy** is the thing in a district worth *wanting*. A district used to have exactly
 one objective and it was a number — hit the quota, move on — with nothing in it you would go
@@ -116,6 +151,18 @@ Ghost Town removed traffic *entirely*, which was a boon when the game was about 
 a loss condition once traffic became the thing you score on: zero cars is zero points, so
 the contract was not hard, it was unwinnable. It now leaves a third of the traffic and pays
 triple per wreck — the same flavour, inverted into a real wager.
+
+**A district is three stretches with a gate between each.** It used to be one road with one
+number at the end, and it ended the instant the number was met — which against a built-up
+garage was roughly a third of the way in, so most of the road that had been generated was
+never driven and every district was the same short sprint. The quota is split across three
+gates at 30%, 64% and 100%, placed at 34%, 68% and 100% of the road. Miss one and the
+district ends *there*, so the fail state fires earlier and more often than the single
+checkpoint did. Clear one and the road turns up: hull welded back on, another five cars in
+the traffic budget, heat up almost a full tier, and a larger share of every bank — ×1.00,
+×1.14, ×1.32 by stretch. Meeting the quota early no longer ends anything; it buys overtime,
+and overtime pays coins and XP at the line. Depth has to pay, or the extra road is just
+more road.
 
 **Districts** get longer, hungrier and hotter. Quota grows 1.32× per district (×1.45 on an
 Elite) *and* scales with a power index read from the save — total tuning levels, hardware
@@ -279,16 +326,31 @@ heavier traffic, a hotter start, brittle chains, a dry nitro tank, a tighter cam
 one per offer, never below level 4 and never on a common, and the cost is always stated on
 the card. A hidden cost is not a choice.
 
-**Bosses** every third district, damaged only by *banking* into them — the fight runs on the
-game's own verb rather than bolting on a new one. Their integrity was raised with the
-switch to wreck income; at the old numbers a boss died to two chains, and it now takes a
-sustained fight where the hull bar and the integrity bar race each other down.
+**Bosses** at the top of every act, damaged only by *banking* into them — the fight runs on
+the game's own verb rather than bolting on a new one. Their integrity was raised with the
+switch to wreck income, and that still was not enough: banking is uncapped, so the fight
+was exactly as long as one chain. A level-fifteen build holding twenty thousand pending put
+the whole thing through a twelve-thousand-point unit on the first cash-in, and the act boss
+died before it had finished announcing itself.
 
-| Unit | Division | Mechanic |
-|---|---|---|
-| WARDEN | Heavy Interdiction | Telegraphed charges; salts the road behind it with spike strips. |
-| SIREN | Signals | Pulses every 7s, wiping any bank over 2,400. Punishes hoarding, not playing. |
-| REAPER | Pursuit Special | Faster than you, and it brings two escorts. |
+**No single cash-in takes more than a fifth of a unit's integrity.** That is the whole fix,
+and it is deliberately a cap rather than a bigger health bar: a bigger bar punishes the weak
+build and does nothing to the strong one, where a cap makes the fight five cash-ins deep
+whatever you are driving — five small banks or five capped ones. The overflow is not thrown
+away, because a bank that vanishes reads as a bug: it pays out as score.
+
+**Three phases, with a break between them.** At two thirds and one third of integrity the
+unit disengages: it runs ahead out of ramming reach for four seconds, does the one thing it
+is for, and comes back with its attack fuse cut by a quarter. Banking during the break still
+lands, at 35%, so the window is for building the next chain rather than for ending the fight
+while it is out of reach. Three phases is what turns a health bar into an encounter with an
+arc — you learn the pattern, it changes, you learn it again.
+
+| Unit | Division | Mechanic | Per phase |
+|---|---|---|---|
+| WARDEN | Heavy Interdiction | Telegraphed charges; salts the road behind it with spike strips. | Charges more often, and salts the road on its way out — four strips, then seven. |
+| SIREN | Signals | Pulses every 7s, wiping any bank over 2,400. Punishes hoarding, not playing. | Pulses faster and drops the hoarding ceiling to 1,730, then 1,060. |
+| REAPER | Pursuit Special | Faster than you, and it brings two escorts. | Calls in one more escort, then two, and gains 7% top speed a phase. |
 
 ## Handling
 
