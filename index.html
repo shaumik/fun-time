@@ -73,15 +73,20 @@
       <div class="powers" id="powers"></div>
     </div>
 
-    <!-- the level-up lands on the road before it lands as a card screen -->
+    <!-- The level-up lands on the road before it lands as a card screen.
+         The two ghosts are the chromatic split: same words, cyan and
+         magenta, thrown apart on entry and pulled into register. -->
     <div id="lvlUp" class="lvlUp">
-      <i></i>
-      <div class="luBody">
-        <span class="luWord">Level up</span>
-        <b id="lvlUpNum">2</b>
-        <span class="luNext">Take a perk</span>
+      <span class="luRip"></span>
+      <span class="luWave"></span>
+      <span class="luStreaks"><i></i><i></i><i></i><i></i></span>
+      <div class="luWords">
+        <span class="luGhost c" aria-hidden="true"><i>Level</i><b>Up</b></span>
+        <span class="luGhost m" aria-hidden="true"><i>Level</i><b>Up</b></span>
+        <span class="luWord"><i>Level</i><b>Up</b></span>
       </div>
-      <i></i>
+      <div class="luRule"><s></s><em>Level <b id="lvlUpNum">2</b></em><s></s></div>
+      <div class="luNext">Take a perk</div>
     </div>
 
     <div id="toasts"></div>

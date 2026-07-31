@@ -3031,7 +3031,9 @@ function addXP(n){
    instantly, and you are interrupted politely, which are two different
    problems and were both broken by the same missing beat.
    ============================================================ */
-const FLARE_HOLD = 1.25;   // how long the banner holds before the cards
+/* matches the banner's own animation length — the cards are not allowed to
+   interrupt the strike partway through */
+const FLARE_HOLD = 1.5;
 
 function armLevelFlare(){
   /* The clear screen already says "Level 4 — take a perk" on its own face,

@@ -1818,44 +1818,187 @@ body{
 
 /* ---- the level-up banner ----
    Sits across the road above the car rather than in a corner: the player's
-   eyes are on the lane ahead, and a HUD rail that lights up in the
-   periphery is exactly what they did not notice the first time. Struck
-   through with two rules so it reads as a marker being passed. */
+   eyes are on the lane ahead, and a HUD rail lighting up in the periphery is
+   exactly what they did not notice the first time.
+
+   It speaks the menu title's language on purpose — LEVEL hollow-stroked in
+   cyan, UP filled white-to-magenta — because that is already the game's most
+   confident piece of type and a reward should look like it belongs to the
+   same machine. What it adds is the one trick the title cannot do while it
+   is sitting still: the words arrive as three separated colour plates and
+   pull into register, which is what a neon sign does when it strikes.
+
+   Sequence, once through, 1.5s: a scan rips across, the plates slam in from
+   oversize and converge, a shockwave and four streaks push out behind them,
+   one chroma kick at the midpoint, then the whole thing lifts and splits
+   apart again on the way out. One glitch, not a stutter — repeated glitching
+   reads as a broken screen rather than a struck sign. */
 .lvlUp{
-  position:absolute;left:50%;top:50%;
+  position:absolute;left:50%;top:44%;
   transform:translate(-50%,-50%);
-  display:flex;align-items:center;gap:calc(var(--u)*1.6);
+  display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--u)*.9);
   opacity:0;pointer-events:none;
+  /* the word is capped by width as well as height: 11u of a tall phone is
+     wider than the phone */
+  --lu:min(calc(var(--u)*16),13.5vw);
 }
-.lvlUp.on{animation:lvlUp 1.25s cubic-bezier(.2,.9,.25,1) both}
-.lvlUp i{
-  display:block;height:1px;width:calc(var(--u)*9);
-  background:linear-gradient(90deg,transparent,#7BF5B0);
+.lvlUp.on{animation:luHold 1.5s linear both}
+@keyframes luHold{0%,99%{opacity:1}100%{opacity:0}}
+
+/* --- the words --- */
+.luWords{position:relative;display:flex;justify-content:center}
+/* the crisp plate rides on top of the two colour ghosts */
+.luWord{position:relative;z-index:2}
+.lvlUp.on .luWords{animation:luIn 1.5s cubic-bezier(.16,1,.3,1) both}
+.luWord,.luGhost{
+  display:flex;gap:calc(var(--u)*.9);align-items:baseline;
+  font-family:var(--sans);font-size:var(--lu);font-weight:800;line-height:.9;
+  text-transform:uppercase;letter-spacing:-.03em;white-space:nowrap;
 }
-.lvlUp i:last-child{background:linear-gradient(90deg,#7BF5B0,transparent)}
-.luBody{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.2)}
-.luWord{
-  font-size:calc(var(--u)*1.25);letter-spacing:.46em;text-transform:uppercase;
-  font-weight:800;color:#7BF5B0;text-indent:.46em;
+.luWord i{
+  font-style:normal;letter-spacing:.06em;
+  color:transparent;-webkit-text-stroke:calc(var(--u)*.16) var(--cyan);
+  filter:drop-shadow(0 0 calc(var(--u)*1.4) rgba(61,232,255,.75));
 }
-.luBody b{
-  font-size:calc(var(--u)*6.4);font-weight:800;line-height:.92;color:#fff;
-  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
-  text-shadow:0 0 calc(var(--u)*3.4) rgba(123,245,176,.85);
+.luWord b{
+  background:linear-gradient(180deg,#fff 8%,var(--magenta) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 calc(var(--u)*2) rgba(255,46,136,.7));
+}
+/* the colour plates, flattened to one hue each so the split is legible */
+.luGhost{position:absolute;left:0;top:0;opacity:0;mix-blend-mode:screen}
+.luGhost i,.luGhost b{
+  font-style:normal;letter-spacing:.06em;
+  background:none;color:inherit;-webkit-text-stroke:0;filter:none;
+}
+.luGhost.c{color:var(--cyan)}
+.luGhost.m{color:var(--magenta)}
+.lvlUp.on .luGhost.c{animation:luPlateC 1.5s cubic-bezier(.16,1,.3,1) both}
+.lvlUp.on .luGhost.m{animation:luPlateM 1.5s cubic-bezier(.16,1,.3,1) both}
+
+@keyframes luIn{
+  0%  {opacity:0;transform:scale(1.5);filter:blur(calc(var(--u)*.75))}
+  8%  {opacity:1}
+  17% {transform:scale(.962);filter:blur(0)}
+  24% {transform:scale(1)}
+  76% {opacity:1;transform:scale(1)}
+  100%{opacity:0;transform:scale(1.07) translateY(calc(var(--u)*-2.6))}
+}
+/* both plates run the same shape mirrored: thrown wide, pulled to a hairline
+   of misregistration, kicked once at the midpoint, thrown wide again */
+@keyframes luPlateC{
+  0%  {opacity:0;transform:translate(calc(var(--u)*-2.6),calc(var(--u)*.4))}
+  9%  {opacity:.95}
+  22% {opacity:.5}
+  26% {transform:translate(calc(var(--u)*-.26),0)}
+  47% {transform:translate(calc(var(--u)*-.26),0)}
+  50% {transform:translate(calc(var(--u)*1.7),calc(var(--u)*-.22))}
+  54% {transform:translate(calc(var(--u)*-.26),0)}
+  76% {opacity:.5;transform:translate(calc(var(--u)*-.26),0)}
+  100%{opacity:0;transform:translate(calc(var(--u)*-3),calc(var(--u)*-2.6))}
+}
+@keyframes luPlateM{
+  0%  {opacity:0;transform:translate(calc(var(--u)*2.6),calc(var(--u)*-.4))}
+  9%  {opacity:.95}
+  22% {opacity:.5}
+  26% {transform:translate(calc(var(--u)*.26),0)}
+  47% {transform:translate(calc(var(--u)*.26),0)}
+  50% {transform:translate(calc(var(--u)*-1.7),calc(var(--u)*.22))}
+  54% {transform:translate(calc(var(--u)*.26),0)}
+  76% {opacity:.5;transform:translate(calc(var(--u)*.26),0)}
+  100%{opacity:0;transform:translate(calc(var(--u)*3),calc(var(--u)*-2.6))}
+}
+
+/* --- the strike: a scan rip, a shockwave, and four streaks --- */
+.luRip,.luWave,.luStreaks{position:absolute;left:50%;top:calc(50% - var(--u)*2);pointer-events:none}
+.luRip{
+  width:150vw;height:calc(var(--u)*.55);transform:translate(-50%,-50%);
+  background:linear-gradient(90deg,transparent 0%,rgba(61,232,255,.9) 22%,#fff 50%,rgba(255,46,136,.9) 78%,transparent 100%);
+  opacity:0;
+}
+.lvlUp.on .luRip{animation:luRip .62s cubic-bezier(.1,.9,.2,1) both}
+@keyframes luRip{
+  0%  {opacity:0;transform:translate(-50%,-50%) scaleX(.04) scaleY(2.2)}
+  16% {opacity:1;transform:translate(-50%,-50%) scaleX(1) scaleY(2.2)}
+  46% {opacity:.85;transform:translate(-50%,-50%) scaleX(1) scaleY(.3)}
+  100%{opacity:0;transform:translate(-50%,-50%) scaleX(1) scaleY(.12)}
+}
+.luWave{
+  width:calc(var(--u)*22);height:calc(var(--u)*13);
+  transform:translate(-50%,-50%);border-radius:50%;
+  border:calc(var(--u)*.2) solid rgba(61,232,255,.55);opacity:0;
+}
+.lvlUp.on .luWave{animation:luWave .85s cubic-bezier(.15,.85,.3,1) .05s both}
+@keyframes luWave{
+  0%  {opacity:0;transform:translate(-50%,-50%) scale(.25)}
+  14% {opacity:.85}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(3.6)}
+}
+.luStreaks{width:0;height:0}
+.luStreaks i{
+  position:absolute;height:calc(var(--u)*.18);width:calc(var(--u)*16);
+  border-radius:99px;opacity:0;
+}
+.luStreaks i:nth-child(1){top:calc(var(--u)*-3.2);background:linear-gradient(90deg,transparent,var(--cyan))}
+.luStreaks i:nth-child(2){top:calc(var(--u)*2.6);background:linear-gradient(90deg,transparent,var(--cyan))}
+.luStreaks i:nth-child(3){top:calc(var(--u)*-1.6);background:linear-gradient(270deg,transparent,var(--magenta))}
+.luStreaks i:nth-child(4){top:calc(var(--u)*3.6);background:linear-gradient(270deg,transparent,var(--magenta))}
+.lvlUp.on .luStreaks i:nth-child(1){animation:luStreakL .7s cubic-bezier(.1,.9,.2,1) .04s both}
+.lvlUp.on .luStreaks i:nth-child(2){animation:luStreakL .7s cubic-bezier(.1,.9,.2,1) .12s both}
+.lvlUp.on .luStreaks i:nth-child(3){animation:luStreakR .7s cubic-bezier(.1,.9,.2,1) .08s both}
+.lvlUp.on .luStreaks i:nth-child(4){animation:luStreakR .7s cubic-bezier(.1,.9,.2,1) .16s both}
+@keyframes luStreakL{
+  0%  {opacity:0;transform:translateX(calc(var(--u)*-8)) scaleX(.2)}
+  22% {opacity:.9}
+  100%{opacity:0;transform:translateX(calc(var(--u)*-34)) scaleX(1)}
+}
+@keyframes luStreakR{
+  0%  {opacity:0;transform:translateX(calc(var(--u)*8)) scaleX(.2)}
+  22% {opacity:.9}
+  100%{opacity:0;transform:translateX(calc(var(--u)*34)) scaleX(1)}
+}
+
+/* --- the level itself, on a struck rule under the words --- */
+.luRule{
+  display:flex;align-items:center;gap:calc(var(--u)*1.2);
+  font-size:calc(var(--u)*1.5);font-weight:800;
+  letter-spacing:.34em;text-transform:uppercase;color:var(--amber);
+}
+.lvlUp.on .luRule{animation:luUnder 1.5s cubic-bezier(.16,1,.3,1) .14s both}
+.luRule s{
+  display:block;height:1px;width:calc(var(--u)*7);text-decoration:none;
+  background:linear-gradient(90deg,transparent,var(--amber));
+}
+.luRule s:last-child{background:linear-gradient(270deg,transparent,var(--amber))}
+.luRule em{font-style:normal;text-indent:.34em;display:flex;gap:calc(var(--u)*.7);align-items:baseline}
+.luRule b{
+  font-size:calc(var(--u)*2.6);color:#fff;letter-spacing:0;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.8) rgba(255,177,61,.9);
 }
 .luNext{
-  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
-  font-weight:700;color:var(--dim);text-indent:.3em;
+  font-size:calc(var(--u)*1.1);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);text-indent:.42em;
 }
-@keyframes lvlUp{
-  0%{opacity:0;transform:translate(-50%,-50%) scale(.86)}
-  14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}
-  24%{transform:translate(-50%,-50%) scale(1)}
-  78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
-  100%{opacity:0;transform:translate(-50%,calc(-50% - var(--u)*1.6)) scale(1)}
+.lvlUp.on .luNext{animation:luUnder 1.5s cubic-bezier(.16,1,.3,1) .22s both}
+@keyframes luUnder{
+  0%  {opacity:0;transform:translateY(calc(var(--u)*1.4))}
+  20% {opacity:1;transform:none}
+  76% {opacity:1;transform:none}
+  100%{opacity:0;transform:translateY(calc(var(--u)*-1.6))}
 }
+
+/* Reduced motion still gets the announcement — it is load-bearing — but as a
+   cut rather than a strike: no split, no sweep, no travel. */
 @media (prefers-reduced-motion:reduce){
-  .lvlUp.on{animation:fade .2s ease both;opacity:1}
+  .lvlUp.on,
+  .lvlUp.on .luWords,.lvlUp.on .luRule,.lvlUp.on .luNext{
+    animation:fade .2s ease both;opacity:1;transform:none;filter:none;
+  }
+  .lvlUp.on .luGhost,.lvlUp.on .luRip,.lvlUp.on .luWave,.lvlUp.on .luStreaks i{
+    animation:none;opacity:0;
+  }
   .xp.up .xpBar i{animation:none}
   .xp.up .xpHead b{animation:none}
 }
@@ -2072,15 +2215,20 @@ body{display:block}
       <div class="powers" id="powers"></div>
     </div>
 
-    <!-- the level-up lands on the road before it lands as a card screen -->
+    <!-- The level-up lands on the road before it lands as a card screen.
+         The two ghosts are the chromatic split: same words, cyan and
+         magenta, thrown apart on entry and pulled into register. -->
     <div id="lvlUp" class="lvlUp">
-      <i></i>
-      <div class="luBody">
-        <span class="luWord">Level up</span>
-        <b id="lvlUpNum">2</b>
-        <span class="luNext">Take a perk</span>
+      <span class="luRip"></span>
+      <span class="luWave"></span>
+      <span class="luStreaks"><i></i><i></i><i></i><i></i></span>
+      <div class="luWords">
+        <span class="luGhost c" aria-hidden="true"><i>Level</i><b>Up</b></span>
+        <span class="luGhost m" aria-hidden="true"><i>Level</i><b>Up</b></span>
+        <span class="luWord"><i>Level</i><b>Up</b></span>
       </div>
-      <i></i>
+      <div class="luRule"><s></s><em>Level <b id="lvlUpNum">2</b></em><s></s></div>
+      <div class="luNext">Take a perk</div>
     </div>
 
     <div id="toasts"></div>
@@ -6440,7 +6588,9 @@ function addXP(n){
    instantly, and you are interrupted politely, which are two different
    problems and were both broken by the same missing beat.
    ============================================================ */
-const FLARE_HOLD = 1.25;   // how long the banner holds before the cards
+/* matches the banner's own animation length — the cards are not allowed to
+   interrupt the strike partway through */
+const FLARE_HOLD = 1.5;
 
 function armLevelFlare(){
   /* The clear screen already says "Level 4 — take a perk" on its own face,
