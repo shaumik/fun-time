@@ -4545,7 +4545,7 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   env:null, envPrev:null, envT:1, stage:0,
-  levelFlare:0, flareWaited:0,
+  levelFlare:0,
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
@@ -4874,7 +4874,7 @@ function newWorld(ai){
   G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
-  G.levelFlare = 0; G.flareWaited = 0;
+  G.levelFlare = 0;
   if (typeof UI !== 'undefined' && UI.lvlUp) UI.lvlUp.classList.remove('on');
   G.trail = []; G.trailT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
@@ -6314,7 +6314,6 @@ function addXP(n){
    problems and were both broken by the same missing beat.
    ============================================================ */
 const FLARE_HOLD = 1.25;   // how long the banner holds before the cards
-const FLARE_WAIT = 2.6;    // longest it will wait out a chain still running
 
 function armLevelFlare(){
   /* The clear screen already says "Level 4 — take a perk" on its own face,
@@ -6328,7 +6327,6 @@ function armLevelFlare(){
   if (el) $('lvlUpNum').textContent = G.run.level;
   if (G.levelFlare > 0) return;
   G.levelFlare = FLARE_HOLD;
-  G.flareWaited = 0;
   G.flash = Math.max(G.flash, 0.4);
   NHAudio.levelUp();
   if (!el) return;
@@ -6340,18 +6338,29 @@ function armLevelFlare(){
   $('gsHint').classList.remove('on');
 }
 
+/* One countdown, and nothing else. The first cut also held the cards back
+   while a chain was live, on the theory that being yanked out mid-corner was
+   rude — and it was wrong on both counts.
+
+   It was wrong mechanically: opening the card screen freezes the simulation,
+   so the chain clock, the pending bank and the multiplier are all exactly
+   where you left them when you come back. Measured at three seconds on the
+   card screen, the clock lost 0.03s. There was never anything to protect.
+
+   And it was wrong as a rule, because a chain does not end while you are
+   playing well — every wreck resets the clock, which is the whole design of
+   it — so "wait for the chain to end" meant "wait for the district to end",
+   which is what it did. The cap that was meant to bound that was itself
+   broken: it accumulated only on frames where the countdown landed at or
+   below zero after subtracting a different frame's dt, so frame-time jitter
+   made 2.6 seconds take the better part of a minute.
+
+   The delay is now the same 1.25s every single time, which is worth more
+   than politeness: you learn it once. */
 function stepFlare(dt){
   if (G.levelFlare <= 0) return;
-  G.levelFlare -= dt;
-  if (G.levelFlare > 0) return;
-  /* a chain in hand is a sentence you are still finishing */
-  if (G.chainT > 0 && G.pending > 0 && G.flareWaited < FLARE_WAIT) {
-    G.flareWaited += dt;
-    G.levelFlare = dt;                    // stay armed one more frame
-    return;
-  }
-  G.levelFlare = 0;
-  if (UI.lvlUp) UI.lvlUp.classList.remove('on');
+  G.levelFlare = Math.max(0, G.levelFlare - dt);
+  if (G.levelFlare <= 0 && UI.lvlUp) UI.lvlUp.classList.remove('on');
 }
 
 /* Offered at the next safe moment rather than mid-corner. */
