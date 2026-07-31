@@ -1,6 +1,7 @@
-/* Inlines style.css and game.js into index.html to produce two artefacts:
+/* Inlines style.css and game.js into index.html to produce three artefacts:
      dist/index.html     — self-contained single file, what you zip for CrazyGames
      dist/mockup.html    — body fragment for publishing as a shareable page
+     dist/artifact.html  — body fragment for playtesting: the cabinet and a test card
    index.html stays the source of truth; nothing is duplicated by hand. */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -242,9 +243,165 @@ ${js}
 </script>
 `);
 
+/* The playtest artefact. Same fragment contract as the mockup — the host
+   supplies the document shell — but this one is for *playing*, so the game
+   takes the whole first screen and the only thing under it is a card saying
+   what changed and what to look at. No pitch prose: a page you are testing
+   on should not make you scroll past an argument to reach the controls.
+
+   Committed to the arcade ground rather than answering the viewer's light
+   preference, for the same reason the game is: this is a cabinet screen. */
+fs.writeFileSync(path.join(ROOT, 'dist/artifact.html'), `<title>NEON HEAT — playtest build</title>
+<script>
+/* The host owns <head>, and a phone with no viewport meta lays the page out
+   at 980px — which renders the whole cabinet at a third scale and leaves the
+   HUD unreadable. Set one if the shell has not. This is the only line on the
+   page that reaches outside its own fragment. */
+if (!document.querySelector('meta[name=viewport]')) {
+  document.head.insertAdjacentHTML('beforeend',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');
+}
+</script>
+<style>
+${css}
+
+/* --- page chrome, playtest build only: not part of the game --- */
+html{color-scheme:dark}
+html,body{background:#02030A;height:auto;overflow:auto}
+body{display:block}
+
+.cabinet{
+  position:relative;
+  /* svh, not vh: on a phone the browser chrome would otherwise crop the HUD */
+  height:100svh;min-height:30rem;
+  border-bottom:1px solid rgba(110,170,255,.16);
+}
+.cabinet #stage{position:absolute;inset:0}
+
+.card{
+  --rail:10.5rem;
+  max-width:60rem;margin:0 auto;padding:0 5vmin 6rem;
+  color:var(--ice);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+.card h1{
+  margin:0;padding:3rem 0 .5rem;
+  font-size:clamp(1.5rem,4vw,2.2rem);font-weight:800;letter-spacing:-.03em;
+  line-height:1.05;color:#fff;text-wrap:balance;
+}
+.card h1 em{font-style:normal;color:var(--cyan)}
+.lede{
+  margin:0 0 2.4rem;max-width:60ch;
+  font-size:.95rem;line-height:1.7;color:#98A7C2;
+}
+
+/* the rail carries the game's own vernacular, the way the HUD labels do */
+.line{
+  display:grid;grid-template-columns:var(--rail) 1fr;gap:.6rem 2.4rem;
+  padding:1.5rem 0;border-top:1px solid rgba(110,170,255,.14);
+  align-items:baseline;
+}
+.line > h2{
+  margin:0;font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);line-height:1.7;
+}
+.line > div{min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.line p{margin:0;max-width:62ch;font-size:.95rem;line-height:1.72;color:#98A7C2}
+.line p b{color:var(--ice);font-weight:700}
+.line p i{font-style:normal;color:var(--magenta);font-weight:700}
+.line p u{
+  text-decoration:none;color:var(--amber);font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+.keys{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.keys kbd{
+  font:inherit;font-size:.7rem;font-weight:700;letter-spacing:.08em;
+  color:var(--ice);background:rgba(110,170,255,.07);
+  border:1px solid rgba(110,170,255,.2);border-radius:3px;padding:.22rem .5rem;
+}
+.keys span{
+  font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dim);font-weight:700;margin-right:.35rem;
+}
+.foot{
+  margin:0;padding:2rem 0 0;max-width:56ch;
+  font-size:.74rem;letter-spacing:.09em;color:var(--dim);line-height:1.9;
+}
+@media (max-width:720px){
+  .line{grid-template-columns:1fr;gap:.5rem;padding:1.3rem 0}
+  .line > h2{line-height:1.3}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+
+<div class="cabinet">
+${body}
+</div>
+
+<div class="card">
+  <h1>Playtest build — <em>zones, gates and a boss that fights back</em></h1>
+  <p class="lede">Click the screen above and press Enter to roll out. Saves go to this
+  page's local storage, so a run you abandon is still there when you come back.</p>
+
+  <div class="line">
+    <h2>Controls</h2>
+    <div>
+      <div class="keys">
+        <span>Steer</span><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>A</kbd><kbd>D</kbd>
+        <span>Go</span><kbd>Enter</kbd>
+        <span>Perk</span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>
+        <span>Mute</span><kbd>M</kbd>
+        <span>Back</span><kbd>Esc</kbd>
+      </div>
+      <p>On a phone, the first finger down becomes the stick wherever it lands. Steering is
+      the entire input — there is no brake, no handbrake and no boost button.</p>
+    </div>
+  </div>
+
+  <div class="line">
+    <h2>The road</h2>
+    <div><p>Every district is <b>three stretches</b> drawn from twelve zones, and the road
+    changes under you twice on the way to the checkpoint. Watch the floor, the barriers and
+    what crosses overhead: a rail yard has live rails and chain-link, the wharf has open
+    water and an unfenced quay, the skyway has nothing at all underneath it. The board and
+    the brief both name which three you are about to drive.</p></div>
+  </div>
+
+  <div class="line">
+    <h2>The gates</h2>
+    <div><p>A painted band across the road marks each checkpoint. You owe <u>30%</u>,
+    <u>64%</u> then <u>100%</u> of the quota by the time you cross them — miss one and the
+    district ends <i>there</i>, not at the far end. Clearing one welds hull back on, puts
+    more traffic out and raises what the next stretch pays, up to <u>&times;1.32</u>.
+    Banking past the quota no longer ends the district; it pays overtime at the line.</p></div>
+  </div>
+
+  <div class="line">
+    <h2>The unit</h2>
+    <div><p>Banking is still the only weapon, but no single cash-in takes more than
+    <u>a fifth</u> of a pursuit unit's integrity, so the fight is five cash-ins deep
+    whatever you are driving. The overflow banks as score rather than vanishing. At two
+    thirds and one third it <i>breaks off</i> — that window is for building the next chain,
+    not for finishing it.</p></div>
+  </div>
+
+  <p class="foot">
+    Everything above this line is running, not described. Zero asset files — every pixel
+    and every note is generated at run time.
+  </p>
+</div>
+
+<script>
+${js}
+</script>
+`);
+
 /* The submission artefact: a zip with index.html at its root, and nothing
-   else in it. dist/mockup.html is deliberately excluded — it is the
-   shareable pitch page, not the game build. */
+   else in it. dist/mockup.html and dist/artifact.html are deliberately
+   excluded — they are pages about the game, not the game build. */
 const dist = path.join(ROOT, 'dist');
 const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
@@ -253,6 +410,7 @@ execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
 console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
 console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
+console.log('dist/artifact.html ' + kb(path.join(dist, 'artifact.html')) + '   (playtest page)');
 console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
 
 /* guard the two things that would fail their review silently */
