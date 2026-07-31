@@ -1804,189 +1804,160 @@ body{
   100%{transform:none;opacity:1}
 }
 
-/* ---- the level-up banner ----
+/* ---- the level-up strike ----
    Sits across the road above the car rather than in a corner: the player's
    eyes are on the lane ahead, and a HUD rail lighting up in the periphery is
    exactly what they did not notice the first time.
 
-   It speaks the menu title's language on purpose — LEVEL hollow-stroked in
-   cyan, UP filled white-to-magenta — because that is already the game's most
-   confident piece of type and a reward should look like it belongs to the
-   same machine. What it adds is the one trick the title cannot do while it
-   is sitting still: the words arrive as three separated colour plates and
-   pull into register, which is what a neon sign does when it strikes.
+   The first cut of this was heavy uppercase at weight 800 with negative
+   tracking, which is the register of a 1994 shareware splash screen no matter
+   what colour it is painted. The look this game is actually reaching for runs
+   the other way: thin, wide, geometric, and mostly *linework* — a frame that
+   draws itself, a rule the type sits between, corner ticks on a grid, and one
+   hairline slicing the letters. Light emits from thin strokes instead of
+   filling fat ones, and the negative space is the point.
 
-   Sequence, once through, 1.5s: a scan rips across, the plates slam in from
-   oversize and converge, a shockwave and four streaks push out behind them,
-   one chroma kick at the midpoint, then the whole thing lifts and splits
-   apart again on the way out. One glitch, not a stutter — repeated glitching
-   reads as a broken screen rather than a struck sign. */
+   The motion follows from that. Nothing bounces, overshoots or squashes,
+   because none of those are things a projected interface does. It draws, it
+   wipes, it holds, it retracts — every easing decisive and terminal. The
+   letters open from the centre outward with their tracking closing as they
+   go, which reads as a system coming online rather than a logo landing. */
 .lvlUp{
   position:absolute;left:50%;top:44%;
   transform:translate(-50%,-50%);
   display:flex;flex-direction:column;align-items:center;
-  gap:calc(var(--u)*.9);
+  gap:calc(var(--u)*1.5);
   opacity:0;pointer-events:none;
-  /* the word is capped by width as well as height: 11u of a tall phone is
-     wider than the phone */
-  --lu:min(calc(var(--u)*16),13.5vw);
+  --lu:min(calc(var(--u)*6.6),6.4vw);
+  --hair:max(1px,calc(var(--u)*.11));
 }
-.lvlUp.on{animation:luHold 1.5s linear both}
-@keyframes luHold{0%,99%{opacity:1}100%{opacity:0}}
+.lvlUp.on{animation:luHold 1.6s linear both}
+@keyframes luHold{0%,98%{opacity:1}100%{opacity:0}}
 
-/* --- the words --- */
-.luWords{position:relative;display:flex;justify-content:center}
-/* the crisp plate rides on top of the two colour ghosts */
-.luWord{position:relative;z-index:2}
-.lvlUp.on .luWords{animation:luIn 1.5s cubic-bezier(.16,1,.3,1) both}
-.luWord,.luGhost{
-  display:flex;gap:calc(var(--u)*.9);align-items:baseline;
-  font-family:var(--sans);font-size:var(--lu);font-weight:800;line-height:.9;
-  text-transform:uppercase;letter-spacing:-.03em;white-space:nowrap;
-}
-.luWord i{
-  font-style:normal;letter-spacing:.06em;
-  color:transparent;-webkit-text-stroke:calc(var(--u)*.16) var(--cyan);
-  filter:drop-shadow(0 0 calc(var(--u)*1.4) rgba(61,232,255,.75));
-}
-.luWord b{
-  background:linear-gradient(180deg,#fff 8%,var(--magenta) 96%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 0 calc(var(--u)*2) rgba(255,46,136,.7));
-}
-/* the colour plates, flattened to one hue each so the split is legible */
-.luGhost{position:absolute;left:0;top:0;opacity:0;mix-blend-mode:screen}
-.luGhost i,.luGhost b{
-  font-style:normal;letter-spacing:.06em;
-  background:none;color:inherit;-webkit-text-stroke:0;filter:none;
-}
-.luGhost.c{color:var(--cyan)}
-.luGhost.m{color:var(--magenta)}
-.lvlUp.on .luGhost.c{animation:luPlateC 1.5s cubic-bezier(.16,1,.3,1) both}
-.lvlUp.on .luGhost.m{animation:luPlateM 1.5s cubic-bezier(.16,1,.3,1) both}
-
-@keyframes luIn{
-  0%  {opacity:0;transform:scale(1.5);filter:blur(calc(var(--u)*.75))}
-  8%  {opacity:1}
-  17% {transform:scale(.962);filter:blur(0)}
-  24% {transform:scale(1)}
-  76% {opacity:1;transform:scale(1)}
-  100%{opacity:0;transform:scale(1.07) translateY(calc(var(--u)*-2.6))}
-}
-/* both plates run the same shape mirrored: thrown wide, pulled to a hairline
-   of misregistration, kicked once at the midpoint, thrown wide again */
-@keyframes luPlateC{
-  0%  {opacity:0;transform:translate(calc(var(--u)*-2.6),calc(var(--u)*.4))}
-  9%  {opacity:.95}
-  22% {opacity:.5}
-  26% {transform:translate(calc(var(--u)*-.26),0)}
-  47% {transform:translate(calc(var(--u)*-.26),0)}
-  50% {transform:translate(calc(var(--u)*1.7),calc(var(--u)*-.22))}
-  54% {transform:translate(calc(var(--u)*-.26),0)}
-  76% {opacity:.5;transform:translate(calc(var(--u)*-.26),0)}
-  100%{opacity:0;transform:translate(calc(var(--u)*-3),calc(var(--u)*-2.6))}
-}
-@keyframes luPlateM{
-  0%  {opacity:0;transform:translate(calc(var(--u)*2.6),calc(var(--u)*-.4))}
-  9%  {opacity:.95}
-  22% {opacity:.5}
-  26% {transform:translate(calc(var(--u)*.26),0)}
-  47% {transform:translate(calc(var(--u)*.26),0)}
-  50% {transform:translate(calc(var(--u)*-1.7),calc(var(--u)*.22))}
-  54% {transform:translate(calc(var(--u)*.26),0)}
-  76% {opacity:.5;transform:translate(calc(var(--u)*.26),0)}
-  100%{opacity:0;transform:translate(calc(var(--u)*3),calc(var(--u)*-2.6))}
+.luType{
+  position:relative;
+  padding:calc(var(--u)*1.9) calc(var(--u)*3.4);
 }
 
-/* --- the strike: a scan rip, a shockwave, and four streaks --- */
-.luRip,.luWave,.luStreaks{position:absolute;left:50%;top:calc(50% - var(--u)*2);pointer-events:none}
-.luRip{
-  width:150vw;height:calc(var(--u)*.55);transform:translate(-50%,-50%);
-  background:linear-gradient(90deg,transparent 0%,rgba(61,232,255,.9) 22%,#fff 50%,rgba(255,46,136,.9) 78%,transparent 100%);
-  opacity:0;
+/* --- the type: thin, wide, and set on a grid --- */
+.luWords{
+  display:block;font-family:var(--sans);
+  font-size:var(--lu);font-weight:300;line-height:1;
+  text-transform:uppercase;color:#EAF7FF;
+  letter-spacing:.42em;text-indent:.42em;white-space:nowrap;
+  text-shadow:
+    0 0 calc(var(--u)*.5) rgba(255,255,255,.55),
+    0 0 calc(var(--u)*2.2) rgba(61,232,255,.75),
+    0 0 calc(var(--u)*5) rgba(61,232,255,.35);
 }
-.lvlUp.on .luRip{animation:luRip .62s cubic-bezier(.1,.9,.2,1) both}
-@keyframes luRip{
-  0%  {opacity:0;transform:translate(-50%,-50%) scaleX(.04) scaleY(2.2)}
-  16% {opacity:1;transform:translate(-50%,-50%) scaleX(1) scaleY(2.2)}
-  46% {opacity:.85;transform:translate(-50%,-50%) scaleX(1) scaleY(.3)}
-  100%{opacity:0;transform:translate(-50%,-50%) scaleX(1) scaleY(.12)}
-}
-.luWave{
-  width:calc(var(--u)*22);height:calc(var(--u)*13);
-  transform:translate(-50%,-50%);border-radius:50%;
-  border:calc(var(--u)*.2) solid rgba(61,232,255,.55);opacity:0;
-}
-.lvlUp.on .luWave{animation:luWave .85s cubic-bezier(.15,.85,.3,1) .05s both}
-@keyframes luWave{
-  0%  {opacity:0;transform:translate(-50%,-50%) scale(.25)}
-  14% {opacity:.85}
-  100%{opacity:0;transform:translate(-50%,-50%) scale(3.6)}
-}
-.luStreaks{width:0;height:0}
-.luStreaks i{
-  position:absolute;height:calc(var(--u)*.18);width:calc(var(--u)*16);
-  border-radius:99px;opacity:0;
-}
-.luStreaks i:nth-child(1){top:calc(var(--u)*-3.2);background:linear-gradient(90deg,transparent,var(--cyan))}
-.luStreaks i:nth-child(2){top:calc(var(--u)*2.6);background:linear-gradient(90deg,transparent,var(--cyan))}
-.luStreaks i:nth-child(3){top:calc(var(--u)*-1.6);background:linear-gradient(270deg,transparent,var(--magenta))}
-.luStreaks i:nth-child(4){top:calc(var(--u)*3.6);background:linear-gradient(270deg,transparent,var(--magenta))}
-.lvlUp.on .luStreaks i:nth-child(1){animation:luStreakL .7s cubic-bezier(.1,.9,.2,1) .04s both}
-.lvlUp.on .luStreaks i:nth-child(2){animation:luStreakL .7s cubic-bezier(.1,.9,.2,1) .12s both}
-.lvlUp.on .luStreaks i:nth-child(3){animation:luStreakR .7s cubic-bezier(.1,.9,.2,1) .08s both}
-.lvlUp.on .luStreaks i:nth-child(4){animation:luStreakR .7s cubic-bezier(.1,.9,.2,1) .16s both}
-@keyframes luStreakL{
-  0%  {opacity:0;transform:translateX(calc(var(--u)*-8)) scaleX(.2)}
-  22% {opacity:.9}
-  100%{opacity:0;transform:translateX(calc(var(--u)*-34)) scaleX(1)}
-}
-@keyframes luStreakR{
-  0%  {opacity:0;transform:translateX(calc(var(--u)*8)) scaleX(.2)}
-  22% {opacity:.9}
-  100%{opacity:0;transform:translateX(calc(var(--u)*34)) scaleX(1)}
+.lvlUp.on .luWords{animation:luOpen 1.6s cubic-bezier(.16,.84,.24,1) both}
+@keyframes luOpen{
+  /* a centre-out wipe with the tracking closing behind it */
+  0%  {clip-path:inset(0 50% 0 50%);letter-spacing:.95em;opacity:0}
+  10% {opacity:1}
+  40% {clip-path:inset(0 0 0 0);letter-spacing:.42em}
+  86% {clip-path:inset(0 0 0 0);letter-spacing:.42em;opacity:1}
+  100%{clip-path:inset(0 50% 0 50%);letter-spacing:.62em;opacity:0}
 }
 
-/* --- the level itself, on a struck rule under the words --- */
-.luRule{
-  display:flex;align-items:center;gap:calc(var(--u)*1.2);
-  font-size:calc(var(--u)*1.5);font-weight:800;
-  letter-spacing:.34em;text-transform:uppercase;color:var(--amber);
+/* the Tron cut: one hairline of dark straight through the letterforms */
+.luSlice{
+  position:absolute;left:calc(var(--u)*3.4);right:calc(var(--u)*3.4);
+  top:47%;height:calc(var(--u)*.3);
+  background:var(--void);opacity:.94;
+  transform:translateY(-50%) scaleX(0);transform-origin:50% 50%;
 }
-.lvlUp.on .luRule{animation:luUnder 1.5s cubic-bezier(.16,1,.3,1) .14s both}
-.luRule s{
-  display:block;height:1px;width:calc(var(--u)*7);text-decoration:none;
-  background:linear-gradient(90deg,transparent,var(--amber));
+.lvlUp.on .luSlice{animation:luSlice 1.6s cubic-bezier(.16,.84,.24,1) .1s both}
+@keyframes luSlice{
+  0%  {transform:translateY(-50%) scaleX(0)}
+  32% {transform:translateY(-50%) scaleX(1)}
+  86% {transform:translateY(-50%) scaleX(1)}
+  100%{transform:translateY(-50%) scaleX(0)}
 }
-.luRule s:last-child{background:linear-gradient(270deg,transparent,var(--amber))}
-.luRule em{font-style:normal;text-indent:.34em;display:flex;gap:calc(var(--u)*.7);align-items:baseline}
-.luRule b{
-  font-size:calc(var(--u)*2.6);color:#fff;letter-spacing:0;
-  font-variant-numeric:tabular-nums;
-  text-shadow:0 0 calc(var(--u)*1.8) rgba(255,177,61,.9);
+
+/* --- the frame: a beam that splits into two edges --- */
+.luBeam,.luEdge{
+  position:absolute;left:50%;height:var(--hair);width:100%;
+  background:linear-gradient(90deg,transparent,var(--cyan) 18%,#EAF7FF 50%,var(--cyan) 82%,transparent);
+  box-shadow:0 0 calc(var(--u)*1.1) rgba(61,232,255,.65);
 }
-.luNext{
-  font-size:calc(var(--u)*1.1);letter-spacing:.42em;text-transform:uppercase;
-  font-weight:700;color:var(--dim);text-indent:.42em;
+.luBeam{top:50%;transform:translate(-50%,-50%) scaleX(0)}
+.luEdge.t{top:0;transform:translate(-50%,0) scaleX(0)}
+.luEdge.b{bottom:0;top:auto;transform:translate(-50%,0) scaleX(0)}
+.lvlUp.on .luBeam{animation:luBeam 1.6s cubic-bezier(.16,.84,.24,1) both}
+.lvlUp.on .luEdge{animation:luEdge 1.6s cubic-bezier(.16,.84,.24,1) both}
+@keyframes luBeam{
+  0%  {opacity:0;transform:translate(-50%,-50%) scaleX(0)}
+  6%  {opacity:1}
+  14% {transform:translate(-50%,-50%) scaleX(1)}
+  26% {opacity:0;transform:translate(-50%,-50%) scaleX(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scaleX(1)}
 }
-.lvlUp.on .luNext{animation:luUnder 1.5s cubic-bezier(.16,1,.3,1) .22s both}
-@keyframes luUnder{
-  0%  {opacity:0;transform:translateY(calc(var(--u)*1.4))}
-  20% {opacity:1;transform:none}
-  76% {opacity:1;transform:none}
-  100%{opacity:0;transform:translateY(calc(var(--u)*-1.6))}
+@keyframes luEdge{
+  /* the edges are the beam, travelling apart to their places */
+  0%  {opacity:0;transform:translate(-50%,0) scaleX(0)}
+  12% {opacity:0;transform:translate(-50%,0) scaleX(.3)}
+  34% {opacity:1;transform:translate(-50%,0) scaleX(1)}
+  86% {opacity:1;transform:translate(-50%,0) scaleX(1)}
+  100%{opacity:0;transform:translate(-50%,0) scaleX(0)}
+}
+.luEdge.t{transform-origin:50% 50%}
+
+/* corner ticks — the grid the frame is registered to */
+.luTick{
+  position:absolute;width:var(--hair);height:calc(var(--u)*.95);
+  background:var(--cyan);opacity:0;
+  box-shadow:0 0 calc(var(--u)*.8) rgba(61,232,255,.8);
+}
+.luTick.tl{left:0;top:0}
+.luTick.tr{right:0;top:0}
+.luTick.bl{left:0;bottom:0}
+.luTick.br{right:0;bottom:0}
+.lvlUp.on .luTick{animation:luTick 1.6s cubic-bezier(.16,.84,.24,1) both}
+@keyframes luTick{
+  0%,30%{opacity:0;transform:scaleY(0)}
+  42%   {opacity:1;transform:scaleY(1)}
+  86%   {opacity:1;transform:scaleY(1)}
+  100%  {opacity:0;transform:scaleY(0)}
+}
+
+/* --- the readout, in the HUD's own micro-label register --- */
+.luSub{
+  display:flex;align-items:center;gap:calc(var(--u)*1.1);
+  font-size:calc(var(--u)*1.15);font-weight:600;
+  letter-spacing:.38em;text-transform:uppercase;color:var(--dim);
+}
+.luSub span{text-indent:.38em}
+.luSub b{
+  font-size:calc(var(--u)*1.15);font-weight:700;letter-spacing:.2em;
+  color:var(--cyan);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.4) rgba(61,232,255,.8);
+}
+.luSub s{
+  display:block;width:calc(var(--u)*2.2);height:var(--hair);
+  background:rgba(140,170,210,.4);text-decoration:none;
+}
+.lvlUp.on .luSub{animation:luSub 1.6s cubic-bezier(.16,.84,.24,1) .18s both}
+@keyframes luSub{
+  0%  {opacity:0;letter-spacing:.62em}
+  34% {opacity:1;letter-spacing:.38em}
+  84% {opacity:1}
+  100%{opacity:0}
 }
 
 /* Reduced motion still gets the announcement — it is load-bearing — but as a
-   cut rather than a strike: no split, no sweep, no travel. */
+   cut: nothing draws, wipes or retracts. */
 @media (prefers-reduced-motion:reduce){
-  .lvlUp.on,
-  .lvlUp.on .luWords,.lvlUp.on .luRule,.lvlUp.on .luNext{
-    animation:fade .2s ease both;opacity:1;transform:none;filter:none;
+  .lvlUp.on{animation:fade .2s ease both;opacity:1}
+  .lvlUp.on .luWords,.lvlUp.on .luSub,.lvlUp.on .luEdge,
+  .lvlUp.on .luTick,.lvlUp.on .luSlice{
+    animation:none;opacity:1;clip-path:none;
   }
-  .lvlUp.on .luGhost,.lvlUp.on .luRip,.lvlUp.on .luWave,.lvlUp.on .luStreaks i{
-    animation:none;opacity:0;
-  }
+  .lvlUp.on .luEdge{transform:translate(-50%,0)}
+  .lvlUp.on .luEdge.b{transform:translate(-50%,0)}
+  .lvlUp.on .luTick{transform:none}
+  .lvlUp.on .luSlice{transform:translateY(-50%)}
+  .lvlUp.on .luBeam{animation:none;opacity:0}
   .xp.up .xpBar i{animation:none}
   .xp.up .xpHead b{animation:none}
 }

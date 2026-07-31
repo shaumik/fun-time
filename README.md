@@ -12,7 +12,7 @@ it and one rule the road plays by, and a district is three of them in a row with
 checkpoint between each. Every act ends in a named pursuit unit that fights in three
 phases.
 
-**Around 130 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
+**Around 129 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
 generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
 rather than a limitation, plus the ladder design and monetization plan.
 
