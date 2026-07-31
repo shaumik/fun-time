@@ -1759,6 +1759,10 @@ body{
 .xp{width:calc(var(--u)*30)}
 .xpHead{
   display:flex;align-items:baseline;justify-content:space-between;
+  /* without this the head shrink-wraps to its content inside the centred HUD
+     column, space-between has nothing to distribute, and the level and the
+     readout sit flush against each other as soon as either one grows */
+  width:100%;gap:calc(var(--u)*1);
   margin-bottom:calc(var(--u)*.35);
 }
 .xpHead span{
@@ -1782,11 +1786,87 @@ body{
 }
 .xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
 
-.luKick{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
-  font-weight:800;color:#7BF5B0;
+/* The rail completing is the proof. It holds full and pulses for the length
+   of the flare, and the readout says what happened rather than counting the
+   new level's first few points. */
+.xp.up .xpBar{box-shadow:0 0 calc(var(--u)*2.2) rgba(123,245,176,.55)}
+.xp.up .xpBar i{
+  background:linear-gradient(90deg,#7BF5B0,#FFFFFF);
+  transition:width .12s linear;
+  animation:xpFull .42s ease-in-out infinite alternate;
 }
-.luKick b{color:#fff;font-variant-numeric:tabular-nums}
+.xp.up .xpHead i{color:#7BF5B0;letter-spacing:.2em}
+.xp.up .xpHead b{animation:xpTick .5s cubic-bezier(.2,.9,.25,1) both}
+@keyframes xpFull{from{filter:brightness(1)}to{filter:brightness(1.55)}}
+@keyframes xpTick{
+  0%{transform:translateY(calc(var(--u)*1)) scale(.7);opacity:0}
+  60%{transform:translateY(0) scale(1.35);opacity:1}
+  100%{transform:none;opacity:1}
+}
+
+/* ---- the level-up banner ----
+   Sits across the road above the car rather than in a corner: the player's
+   eyes are on the lane ahead, and a HUD rail that lights up in the
+   periphery is exactly what they did not notice the first time. Struck
+   through with two rules so it reads as a marker being passed. */
+.lvlUp{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:calc(var(--u)*1.6);
+  opacity:0;pointer-events:none;
+}
+.lvlUp.on{animation:lvlUp 1.25s cubic-bezier(.2,.9,.25,1) both}
+.lvlUp i{
+  display:block;height:1px;width:calc(var(--u)*9);
+  background:linear-gradient(90deg,transparent,#7BF5B0);
+}
+.lvlUp i:last-child{background:linear-gradient(90deg,#7BF5B0,transparent)}
+.luBody{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.2)}
+.luWord{
+  font-size:calc(var(--u)*1.25);letter-spacing:.46em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;text-indent:.46em;
+}
+.luBody b{
+  font-size:calc(var(--u)*6.4);font-weight:800;line-height:.92;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+  text-shadow:0 0 calc(var(--u)*3.4) rgba(123,245,176,.85);
+}
+.luNext{
+  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);text-indent:.3em;
+}
+@keyframes lvlUp{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.86)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}
+  24%{transform:translate(-50%,-50%) scale(1)}
+  78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,calc(-50% - var(--u)*1.6)) scale(1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .lvlUp.on{animation:fade .2s ease both;opacity:1}
+  .xp.up .xpBar i{animation:none}
+  .xp.up .xpHead b{animation:none}
+}
+
+/* The card screen still has to name the level — the banner is gone by the
+   time you are reading cards — so the number is the first thing on it and
+   the cards stagger in behind, in reading order, rather than all three
+   landing at once with the level as a caption above them. */
+.luKick{
+  display:flex;align-items:baseline;justify-content:center;gap:calc(var(--u)*.9);
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;text-indent:.42em;
+  animation:pop .26s cubic-bezier(.2,.9,.25,1) both;
+}
+.luKick b{
+  font-size:calc(var(--u)*3.4);line-height:1;color:#fff;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;text-indent:0;
+  text-shadow:0 0 calc(var(--u)*2.4) rgba(123,245,176,.7);
+}
+#levelup .dtitle{animation:pop .26s cubic-bezier(.2,.9,.25,1) .06s both}
+#levelup .dcard:nth-child(1){animation-delay:.12s}
+#levelup .dcard:nth-child(2){animation-delay:.19s}
+#levelup .dcard:nth-child(3){animation-delay:.26s}
 #levelup .dcard{border-top-color:#7BF5B0}
 #levelup .dcard:hover{background:rgba(123,245,176,.09)}
 #levelup .dcard.uncommon{border-top-color:var(--magenta)}

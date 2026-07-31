@@ -1263,6 +1263,7 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   env:null, envPrev:null, envT:1, stage:0,
+  levelFlare:0, flareWaited:0,
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
@@ -1591,6 +1592,8 @@ function newWorld(ai){
   G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
+  G.levelFlare = 0; G.flareWaited = 0;
+  if (typeof UI !== 'undefined' && UI.lvlUp) UI.lvlUp.classList.remove('on');
   G.trail = []; G.trailT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
@@ -3007,12 +3010,73 @@ function addXP(n){
     run.xp -= xpFor(run.level);
     run.level++;
     G.pendingLevels++;
+    armLevelFlare();
   }
+}
+
+/* ============================================================
+   THE LEVEL-UP MOMENT
+   Levelling was invisible. addXP incremented a number and the perk screen
+   appeared on the next frame, so the only evidence you had levelled at all
+   was three cards arriving over the road unannounced — and they arrived
+   playing chip(), the same four notes a perk *pick* makes, so the moment
+   the run handed you something sounded like the moment you spent it. You
+   cannot feel rewarded by something you never saw happen.
+
+   The level announces itself on the road first now: the rail completes and
+   pulses, a banner names the level you just reached, and a cue plays that
+   belongs to nothing else in the game. The cards follow. The flare also
+   waits out a live chain, up to a cap, so the interruption lands on the
+   bank — the loop's own punctuation — instead of mid-corner. You know
+   instantly, and you are interrupted politely, which are two different
+   problems and were both broken by the same missing beat.
+   ============================================================ */
+const FLARE_HOLD = 1.25;   // how long the banner holds before the cards
+const FLARE_WAIT = 2.6;    // longest it will wait out a chain still running
+
+function armLevelFlare(){
+  /* The clear screen already says "Level 4 — take a perk" on its own face,
+     so a banner behind it would be the same news twice. */
+  if (G.state !== 'play') return;
+  const el = UI.lvlUp;
+  /* A fat bank can cross two levels at once. The banner names the level you
+     actually reached rather than the first one you passed through, but it
+     still only fires once — two announcements a frame apart is a stutter,
+     not a celebration. */
+  if (el) $('lvlUpNum').textContent = G.run.level;
+  if (G.levelFlare > 0) return;
+  G.levelFlare = FLARE_HOLD;
+  G.flareWaited = 0;
+  G.flash = Math.max(G.flash, 0.4);
+  NHAudio.levelUp();
+  if (!el) return;
+  el.classList.remove('on');
+  void el.offsetWidth;                    // restart the animation from zero
+  el.classList.add('on');
+  /* the first-district steering hint sits in the same band; a level-up
+     outranks a control reminder you have already acted on */
+  $('gsHint').classList.remove('on');
+}
+
+function stepFlare(dt){
+  if (G.levelFlare <= 0) return;
+  G.levelFlare -= dt;
+  if (G.levelFlare > 0) return;
+  /* a chain in hand is a sentence you are still finishing */
+  if (G.chainT > 0 && G.pending > 0 && G.flareWaited < FLARE_WAIT) {
+    G.flareWaited += dt;
+    G.levelFlare = dt;                    // stay armed one more frame
+    return;
+  }
+  G.levelFlare = 0;
+  if (UI.lvlUp) UI.lvlUp.classList.remove('on');
 }
 
 /* Offered at the next safe moment rather than mid-corner. */
 function maybeLevelUp(){
   if (G.pendingLevels <= 0 || G.state !== 'play') return;
+  /* the road gets to say it first */
+  if (G.levelFlare > 0) return;
   G.pendingLevels--;
   const run = G.run;
   G.offers = NHChips.rollPerks(run.perks, run.level);
@@ -3034,7 +3098,7 @@ function maybeLevelUp(){
     wrap.appendChild(el);
   });
   show(UI.levelup);
-  NHAudio.curse ? NHAudio.chip() : 0;
+  NHAudio.ui(true);
 }
 
 function takePerk(i){
@@ -3521,6 +3585,7 @@ function step(dt){
     }
 
     G.ghost = Math.max(0, G.ghost - dt);
+    stepFlare(dt);
     G.heat = Math.max(0, G.heat - dt * 0.038
            * (Tree.has('t_cool') && G.hp < G.hpMax * 0.3 ? 1.4 : 1));
     G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
@@ -5303,7 +5368,7 @@ const UI = {
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
-  convoy:$('convoy'), convoyLeft:$('convoyLeft')
+  convoy:$('convoy'), convoyLeft:$('convoyLeft'), lvlUp:$('lvlUp')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -5386,10 +5451,18 @@ function syncHUD(){
   const run0 = G.run;
   if (run0) {
     const maxed = run0.level >= LEVEL_CAP;
+    const flaring = G.levelFlare > 0;
     UI.xp.classList.toggle('max', maxed);
+    UI.xp.classList.toggle('up', flaring);
     UI.xpLvl.textContent = run0.level;
-    UI.xpNext.textContent = maxed ? 'MAX' : Math.floor(run0.xp) + ' / ' + xpFor(run0.level);
-    UI.xpFill.style.width = (maxed ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
+    /* Through the flare the rail reads as the bar you were filling reaching
+       the end, rather than as the new level's nearly empty one. The
+       completion is the thing being announced, and without holding it the
+       bar resets before you have looked at it. */
+    UI.xpNext.textContent = maxed ? 'MAX' : flaring ? 'LEVEL UP'
+      : Math.floor(run0.xp) + ' / ' + xpFor(run0.level);
+    UI.xpFill.style.width =
+      (maxed || flaring ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
   }
 
   const chasing = G.convoyState === 'live' && G.convoyLeft > 0;

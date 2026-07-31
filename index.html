@@ -73,6 +73,17 @@
       <div class="powers" id="powers"></div>
     </div>
 
+    <!-- the level-up lands on the road before it lands as a card screen -->
+    <div id="lvlUp" class="lvlUp">
+      <i></i>
+      <div class="luBody">
+        <span class="luWord">Level up</span>
+        <b id="lvlUpNum">2</b>
+        <span class="luNext">Take a perk</span>
+      </div>
+      <i></i>
+    </div>
+
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
       <b>Drag anywhere to steer</b>
@@ -183,7 +194,7 @@
   <!-- ============ level up ============ -->
   <div id="levelup" class="layer screen">
     <div class="draftIn">
-      <div class="luKick">Level <b id="luLevel">2</b></div>
+      <div class="luKick"><span>Level</span><b id="luLevel">2</b></div>
       <h2 class="dtitle">Take a perk</h2>
       <div class="dsub">It stays with you for the rest of the run</div>
       <div class="dcards" id="luCards"></div>

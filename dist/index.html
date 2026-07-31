@@ -1770,6 +1770,10 @@ body{
 .xp{width:calc(var(--u)*30)}
 .xpHead{
   display:flex;align-items:baseline;justify-content:space-between;
+  /* without this the head shrink-wraps to its content inside the centred HUD
+     column, space-between has nothing to distribute, and the level and the
+     readout sit flush against each other as soon as either one grows */
+  width:100%;gap:calc(var(--u)*1);
   margin-bottom:calc(var(--u)*.35);
 }
 .xpHead span{
@@ -1793,11 +1797,87 @@ body{
 }
 .xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
 
-.luKick{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
-  font-weight:800;color:#7BF5B0;
+/* The rail completing is the proof. It holds full and pulses for the length
+   of the flare, and the readout says what happened rather than counting the
+   new level's first few points. */
+.xp.up .xpBar{box-shadow:0 0 calc(var(--u)*2.2) rgba(123,245,176,.55)}
+.xp.up .xpBar i{
+  background:linear-gradient(90deg,#7BF5B0,#FFFFFF);
+  transition:width .12s linear;
+  animation:xpFull .42s ease-in-out infinite alternate;
 }
-.luKick b{color:#fff;font-variant-numeric:tabular-nums}
+.xp.up .xpHead i{color:#7BF5B0;letter-spacing:.2em}
+.xp.up .xpHead b{animation:xpTick .5s cubic-bezier(.2,.9,.25,1) both}
+@keyframes xpFull{from{filter:brightness(1)}to{filter:brightness(1.55)}}
+@keyframes xpTick{
+  0%{transform:translateY(calc(var(--u)*1)) scale(.7);opacity:0}
+  60%{transform:translateY(0) scale(1.35);opacity:1}
+  100%{transform:none;opacity:1}
+}
+
+/* ---- the level-up banner ----
+   Sits across the road above the car rather than in a corner: the player's
+   eyes are on the lane ahead, and a HUD rail that lights up in the
+   periphery is exactly what they did not notice the first time. Struck
+   through with two rules so it reads as a marker being passed. */
+.lvlUp{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:calc(var(--u)*1.6);
+  opacity:0;pointer-events:none;
+}
+.lvlUp.on{animation:lvlUp 1.25s cubic-bezier(.2,.9,.25,1) both}
+.lvlUp i{
+  display:block;height:1px;width:calc(var(--u)*9);
+  background:linear-gradient(90deg,transparent,#7BF5B0);
+}
+.lvlUp i:last-child{background:linear-gradient(90deg,#7BF5B0,transparent)}
+.luBody{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.2)}
+.luWord{
+  font-size:calc(var(--u)*1.25);letter-spacing:.46em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;text-indent:.46em;
+}
+.luBody b{
+  font-size:calc(var(--u)*6.4);font-weight:800;line-height:.92;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+  text-shadow:0 0 calc(var(--u)*3.4) rgba(123,245,176,.85);
+}
+.luNext{
+  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);text-indent:.3em;
+}
+@keyframes lvlUp{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.86)}
+  14%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}
+  24%{transform:translate(-50%,-50%) scale(1)}
+  78%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,calc(-50% - var(--u)*1.6)) scale(1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .lvlUp.on{animation:fade .2s ease both;opacity:1}
+  .xp.up .xpBar i{animation:none}
+  .xp.up .xpHead b{animation:none}
+}
+
+/* The card screen still has to name the level — the banner is gone by the
+   time you are reading cards — so the number is the first thing on it and
+   the cards stagger in behind, in reading order, rather than all three
+   landing at once with the level as a caption above them. */
+.luKick{
+  display:flex;align-items:baseline;justify-content:center;gap:calc(var(--u)*.9);
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;text-indent:.42em;
+  animation:pop .26s cubic-bezier(.2,.9,.25,1) both;
+}
+.luKick b{
+  font-size:calc(var(--u)*3.4);line-height:1;color:#fff;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;text-indent:0;
+  text-shadow:0 0 calc(var(--u)*2.4) rgba(123,245,176,.7);
+}
+#levelup .dtitle{animation:pop .26s cubic-bezier(.2,.9,.25,1) .06s both}
+#levelup .dcard:nth-child(1){animation-delay:.12s}
+#levelup .dcard:nth-child(2){animation-delay:.19s}
+#levelup .dcard:nth-child(3){animation-delay:.26s}
 #levelup .dcard{border-top-color:#7BF5B0}
 #levelup .dcard:hover{background:rgba(123,245,176,.09)}
 #levelup .dcard.uncommon{border-top-color:var(--magenta)}
@@ -1920,6 +2000,17 @@ body{
       <div class="powers" id="powers"></div>
     </div>
 
+    <!-- the level-up lands on the road before it lands as a card screen -->
+    <div id="lvlUp" class="lvlUp">
+      <i></i>
+      <div class="luBody">
+        <span class="luWord">Level up</span>
+        <b id="lvlUpNum">2</b>
+        <span class="luNext">Take a perk</span>
+      </div>
+      <i></i>
+    </div>
+
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
       <b>Drag anywhere to steer</b>
@@ -2030,7 +2121,7 @@ body{
   <!-- ============ level up ============ -->
   <div id="levelup" class="layer screen">
     <div class="draftIn">
-      <div class="luKick">Level <b id="luLevel">2</b></div>
+      <div class="luKick"><span>Level</span><b id="luLevel">2</b></div>
       <h2 class="dtitle">Take a perk</h2>
       <div class="dsub">It stays with you for the rest of the run</div>
       <div class="dcards" id="luCards"></div>
@@ -2642,6 +2733,32 @@ const A = {
       o.frequency.value = semi(523.25, n);
       const g = env(sfxBus, 0.16, 0.004, 0.42, t + k * 0.06);
       o.connect(g); o.start(t + k * 0.06); o.stop(t + k * 0.06 + 0.55);
+    });
+  },
+  /* Levelling used to borrow chip() — the same four notes a perk *pick*
+     makes — so the one moment the run hands you something arrived sounding
+     like the moment you spent it. This is the only cue in the game that
+     sweeps: two detuned saws climbing an octave under a major triad that
+     lands late, so the ear hears the rise before the arrival. */
+  levelUp(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    for (const det of [-5, 5]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(semi(196, det / 100), t);
+      o.frequency.exponentialRampToValueAtTime(semi(392, det / 100), t + 0.34);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass';
+      f.frequency.setValueAtTime(600, t);
+      f.frequency.exponentialRampToValueAtTime(4200, t + 0.34);
+      f.Q.value = 3;
+      const g = env(sfxBus, 0.20, 0.02, 0.42, t);
+      o.connect(f); f.connect(g); o.start(t); o.stop(t + 0.5);
+    }
+    [0, 4, 7, 12].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(523.25, n);
+      const g = env(sfxBus, 0.15, 0.006, 0.75, t + 0.30 + k * 0.045);
+      o.connect(g); o.start(t + 0.30 + k * 0.045); o.stop(t + 0.30 + k * 0.045 + 0.9);
     });
   },
   curse(){
@@ -4428,6 +4545,7 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   env:null, envPrev:null, envT:1, stage:0,
+  levelFlare:0, flareWaited:0,
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
@@ -4756,6 +4874,8 @@ function newWorld(ai){
   G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
   G.convoy = []; G.convoyState = 'pending'; G.convoyLeft = 0;
   G.stuckT = 0; G.reverseT = 0;
+  G.levelFlare = 0; G.flareWaited = 0;
+  if (typeof UI !== 'undefined' && UI.lvlUp) UI.lvlUp.classList.remove('on');
   G.trail = []; G.trailT = 0;
   G.missileT = Hangar.has('missile') ? 4 : 0;
   if (Hangar.has('blackbox')) G.power.shield = 7;
@@ -6172,12 +6292,73 @@ function addXP(n){
     run.xp -= xpFor(run.level);
     run.level++;
     G.pendingLevels++;
+    armLevelFlare();
   }
+}
+
+/* ============================================================
+   THE LEVEL-UP MOMENT
+   Levelling was invisible. addXP incremented a number and the perk screen
+   appeared on the next frame, so the only evidence you had levelled at all
+   was three cards arriving over the road unannounced — and they arrived
+   playing chip(), the same four notes a perk *pick* makes, so the moment
+   the run handed you something sounded like the moment you spent it. You
+   cannot feel rewarded by something you never saw happen.
+
+   The level announces itself on the road first now: the rail completes and
+   pulses, a banner names the level you just reached, and a cue plays that
+   belongs to nothing else in the game. The cards follow. The flare also
+   waits out a live chain, up to a cap, so the interruption lands on the
+   bank — the loop's own punctuation — instead of mid-corner. You know
+   instantly, and you are interrupted politely, which are two different
+   problems and were both broken by the same missing beat.
+   ============================================================ */
+const FLARE_HOLD = 1.25;   // how long the banner holds before the cards
+const FLARE_WAIT = 2.6;    // longest it will wait out a chain still running
+
+function armLevelFlare(){
+  /* The clear screen already says "Level 4 — take a perk" on its own face,
+     so a banner behind it would be the same news twice. */
+  if (G.state !== 'play') return;
+  const el = UI.lvlUp;
+  /* A fat bank can cross two levels at once. The banner names the level you
+     actually reached rather than the first one you passed through, but it
+     still only fires once — two announcements a frame apart is a stutter,
+     not a celebration. */
+  if (el) $('lvlUpNum').textContent = G.run.level;
+  if (G.levelFlare > 0) return;
+  G.levelFlare = FLARE_HOLD;
+  G.flareWaited = 0;
+  G.flash = Math.max(G.flash, 0.4);
+  NHAudio.levelUp();
+  if (!el) return;
+  el.classList.remove('on');
+  void el.offsetWidth;                    // restart the animation from zero
+  el.classList.add('on');
+  /* the first-district steering hint sits in the same band; a level-up
+     outranks a control reminder you have already acted on */
+  $('gsHint').classList.remove('on');
+}
+
+function stepFlare(dt){
+  if (G.levelFlare <= 0) return;
+  G.levelFlare -= dt;
+  if (G.levelFlare > 0) return;
+  /* a chain in hand is a sentence you are still finishing */
+  if (G.chainT > 0 && G.pending > 0 && G.flareWaited < FLARE_WAIT) {
+    G.flareWaited += dt;
+    G.levelFlare = dt;                    // stay armed one more frame
+    return;
+  }
+  G.levelFlare = 0;
+  if (UI.lvlUp) UI.lvlUp.classList.remove('on');
 }
 
 /* Offered at the next safe moment rather than mid-corner. */
 function maybeLevelUp(){
   if (G.pendingLevels <= 0 || G.state !== 'play') return;
+  /* the road gets to say it first */
+  if (G.levelFlare > 0) return;
   G.pendingLevels--;
   const run = G.run;
   G.offers = NHChips.rollPerks(run.perks, run.level);
@@ -6199,7 +6380,7 @@ function maybeLevelUp(){
     wrap.appendChild(el);
   });
   show(UI.levelup);
-  NHAudio.curse ? NHAudio.chip() : 0;
+  NHAudio.ui(true);
 }
 
 function takePerk(i){
@@ -6686,6 +6867,7 @@ function step(dt){
     }
 
     G.ghost = Math.max(0, G.ghost - dt);
+    stepFlare(dt);
     G.heat = Math.max(0, G.heat - dt * 0.038
            * (Tree.has('t_cool') && G.hp < G.hpMax * 0.3 ? 1.4 : 1));
     G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
@@ -8468,7 +8650,7 @@ const UI = {
   hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
-  convoy:$('convoy'), convoyLeft:$('convoyLeft')
+  convoy:$('convoy'), convoyLeft:$('convoyLeft'), lvlUp:$('lvlUp')
 };
 const heatPips = UI.heat.querySelectorAll('i');
 
@@ -8551,10 +8733,18 @@ function syncHUD(){
   const run0 = G.run;
   if (run0) {
     const maxed = run0.level >= LEVEL_CAP;
+    const flaring = G.levelFlare > 0;
     UI.xp.classList.toggle('max', maxed);
+    UI.xp.classList.toggle('up', flaring);
     UI.xpLvl.textContent = run0.level;
-    UI.xpNext.textContent = maxed ? 'MAX' : Math.floor(run0.xp) + ' / ' + xpFor(run0.level);
-    UI.xpFill.style.width = (maxed ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
+    /* Through the flare the rail reads as the bar you were filling reaching
+       the end, rather than as the new level's nearly empty one. The
+       completion is the thing being announced, and without holding it the
+       bar resets before you have looked at it. */
+    UI.xpNext.textContent = maxed ? 'MAX' : flaring ? 'LEVEL UP'
+      : Math.floor(run0.xp) + ' / ' + xpFor(run0.level);
+    UI.xpFill.style.width =
+      (maxed || flaring ? 100 : clamp(run0.xp / xpFor(run0.level), 0, 1) * 100) + '%';
   }
 
   const chasing = G.convoyState === 'live' && G.convoyLeft > 0;

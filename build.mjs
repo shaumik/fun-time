@@ -146,7 +146,7 @@ ${body}
   </div>
 
   <div class="spec">
-    <div><b>86</b><span>KB, zipped</span></div>
+    <div><b>128</b><span>KB, zipped</span></div>
     <div><b>0</b><span>image files</span></div>
     <div><b>0</b><span>audio files</span></div>
     <div><b>58</b><span>perks in the pool</span></div>

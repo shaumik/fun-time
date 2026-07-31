@@ -42,7 +42,7 @@ npm test           # the compliance harness, see section 9
 
 | File | What it is |
 |---|---|
-| `dist/neon-heat.zip` | **Upload this.** One file, `index.html` at the zip root. ~95 KB. |
+| `dist/neon-heat.zip` | **Upload this.** One file, `index.html` at the zip root. ~128 KB. |
 | `dist/index.html` | The same build, unzipped, for local checking. |
 | `dist/mockup.html` | The shareable pitch page. **Not** part of the submission. |
 
@@ -53,8 +53,8 @@ runtime, or if the SDK tag went missing.
 
 | Requirement | Theirs | Ours |
 |---|---|---|
-| Initial download (loading → first gameplayStart) | ≤ 50 MB, ≤ 20 MB for the mobile homepage | **95 KB** |
-| Total file size | ≤ 250 MB | 95 KB |
+| Initial download (loading → first gameplayStart) | ≤ 50 MB, ≤ 20 MB for the mobile homepage | **128 KB** |
+| Total file size | ≤ 250 MB | 128 KB |
 | File count | ≤ 1500 | **1** |
 | Time to gameplay | ≤ 20 s, and < 10 s is the conversion benchmark | one file, no fetches, no external assets |
 | Relative paths only | required | nothing to reference — the build is a single inlined file |
