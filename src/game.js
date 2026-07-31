@@ -4388,11 +4388,20 @@ function endRun(won){
   $('ovPlace').textContent = rank ? 'Personal best #' + rank : 'Outside your top ' + BOARD_MAX;
   $('ovPlace').classList.toggle('in', !!rank);
   /* one revive per run, and only when the run was worth saving */
-  $('btnRevive').disabled = G.revived || G.score < 400;
+  const reviveOffered = !G.revived && G.score >= 400;
+  $('btnRevive').disabled = !reviveOffered;
   $('btnDouble').disabled = false;
 
+  /* Their ad policy forbids pairing a midgame ad with a "watch a rewarded ad
+     to keep playing" offer at the same break: between two attempts you may
+     run a midgame and restart, or offer the revive, but not both. The revive
+     button is precisely that offer, so it suppresses the midgame whenever it
+     is live. Double-your-coins is not affected — it rewards a run that is
+     already over rather than continuing the current one, so it may sit
+     alongside a midgame. */
   const showOver = () => { show(UI.over); };
-  if (Save.data.runs % 3 === 0) Ads.midroll(showOver); else showOver();
+  if (!reviveOffered && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  else showOver();
 }
 
 function commitCoins(mult){
