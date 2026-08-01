@@ -3855,7 +3855,8 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
+  pickups:[], pops:[],   // pops: the short-lived flare left where one was taken
+  power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
@@ -3877,14 +3878,52 @@ const DISTRICTS = [
   'Radial', 'Saltgate', 'Underpass 9', 'The Shallows', 'Foundry Line'
 ];
 const DEPOT_NAMES = ['Lockup', 'Chop Shop', 'The Yard', 'Back Alley', 'Cold Store'];
+/* Every pursuit unit used to be the same object wearing a different name:
+   one chassis, one red, three behaviours. `look` gives each of them a
+   silhouette and a livery, so the thing chasing you is recognisable before
+   the toast telling you what it is has finished appearing. */
 const BOSSES = [
   { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
-    blurb:'Rams hard and salts the road behind it.' },
+    blurb:'Rams hard and salts the road behind it.',
+    look:{ len:74, wid:36, nose:.94, tail:.96, boxy:true, col:'#FF3355', col2:'#3A0A14' },
+    power:600, top:640 },
   { id:'siren',  name:'SIREN',   sub:'Signals Division',
-    blurb:'Pulses wipe a bank you have let grow too fat.' },
+    blurb:'Pulses wipe a bank you have let grow too fat.',
+    look:{ len:58, wid:27, nose:.48, tail:.60, col:'#B07CFF', col2:'#241040' },
+    power:610, top:670 },
   { id:'reaper', name:'REAPER',  sub:'Pursuit Special',
-    blurb:'Faster than you, and it brought friends.' }
+    blurb:'Faster than you, and it brought friends.',
+    look:{ len:64, wid:28, nose:.40, tail:.50, col:'#FF6B2A', col2:'#3A1204' },
+    power:660, top:720 },
+  { id:'bulwark', name:'BULWARK', sub:'Roadblock Division',
+    blurb:'Too wide to go around, and it keeps laying wreckage.',
+    look:{ len:96, wid:38, nose:.98, tail:.98, boxy:true, col:'#FFB13D', col2:'#3E2606' },
+    power:640, top:585 },
+  { id:'lance',  name:'LANCE',   sub:'Interceptor Wing',
+    blurb:'Charges again before you have finished dodging the last one.',
+    look:{ len:56, wid:24, nose:.36, tail:.46, col:'#9DFF3D', col2:'#1E3A05' },
+    power:690, top:745 }
 ];
+
+/* Which units a run will actually send. Selection used to be `act - 1`, and
+   since there are exactly three acts that meant every run fought the same
+   three in the same order — adding a fourth unit to this list would have
+   changed nothing at all. A run now draws three of the five, so the act
+   three fight is not a foregone conclusion and a player who has been
+   through the game twice has still not seen all of it.
+
+   Held module-level rather than on the run because newRun() builds its
+   route inside the object literal, before G.run exists to read from. */
+let bossOrder = [0, 1, 2];
+function rollBossOrder(){
+  const pool = BOSSES.map((_, i) => i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  bossOrder = pool.slice(0, 3);
+}
+const bossFor = act => BOSSES[bossOrder[(act - 1) % bossOrder.length]];
 
 /* How strong the player actually is, on a scale where a brand-new save is
    1.0 and a maxed garage at level 15 is about 5.7.
@@ -3916,19 +3955,20 @@ function powerIndex(){
 
 function districtCfg(n, type, act){
   const boss = type === 'boss';
-  const bi = act - 1;
   const elite = type === 'elite';
   return {
     n, boss, elite, type,
     name: (G.run && G.run.node && G.run.node.name) ||
-          (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
-    bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
+          (boss ? bossFor(act).name : DISTRICTS[(n - 1) % DISTRICTS.length]),
+    bossDef: boss ? bossFor(act) : null,
     len: Math.round(400 + n * 26),
     /* Elites cost more and pay double XP; the route choice has to bite */
     quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
        that used to be a two-chain fight now needs the headroom to last. */
-    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
+    /* scales with the act, not with which unit the draw happened to send —
+       a run must not get easier because it drew a different pursuit car */
+    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, act - 1))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
 }
@@ -4019,7 +4059,7 @@ function makeRoute(act){
     n.row = r; n.col = c; n.done = false;
     const info = NODE_INFO[n.type];
     const idx = r + 1 + (act - 1) * (ROWS - 1);
-    n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
+    n.name = n.type === 'boss' ? bossFor(act).name
            : n.type === 'depot' ? depots[di++ % depots.length]
            : pool[pi++ % pool.length];
     n.reward = info.reward;
@@ -4038,6 +4078,7 @@ function makeRoute(act){
 }
 
 function newRun(){
+  rollBossOrder();          // a fresh draw of pursuit units for this attempt
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
     xp: 0, level: 1, perks: [], hullBonus: 0,
@@ -4074,6 +4115,7 @@ function newWorld(ai){
   G.track = new Track();
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
+  G.pops = [];
   G.slicks = []; G.slickT = 0;
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
@@ -4132,6 +4174,52 @@ const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults
 
 const LANES = [-0.62, -0.21, 0.21, 0.62];
 
+/* ---------------- civilian traffic ----------------
+   Every car on this road used to be the same object: a chassis borrowed from
+   the player's own list, repainted '#7C8FBF', and sent out. In a game whose
+   whole premise is that traffic is ammunition rather than scenery, the
+   ammunition was the dullest thing on screen — one grey silhouette repeated
+   until the district ended.
+
+   Two tables instead. Shape carries the silhouette, because a bus you can
+   recognise at a glance is a different target from a coupe, and a road of
+   one repeated object reads as empty however many cars are on it. Paint
+   carries the colour, kept warm and neutral on purpose: nothing out here may
+   compete with the player's cyan or the barrier magenta, which are the two
+   things that have to stay instantly readable at speed.
+
+   `worth` is the one gameplay string attached. A bus is a bigger target and
+   harder to thread past, so it pays more when you go through it. */
+const CIV_SHAPES = [
+  { id:'sedan',  len:46, wid:23, nose:.62, tail:.74, worth:1.00, w:22 },
+  { id:'coupe',  len:43, wid:21, nose:.50, tail:.62, worth:0.95, w:16 },
+  { id:'wagon',  len:52, wid:24, nose:.68, tail:.92, worth:1.10, w:14 },
+  { id:'pickup', len:55, wid:26, nose:.72, tail:.84, worth:1.20, w:12 },
+  { id:'van',    len:60, wid:28, nose:.92, tail:.96, worth:1.35, w:10, boxy:true },
+  { id:'bus',    len:88, wid:31, nose:.98, tail:.98, worth:1.75, w:5,  boxy:true },
+  { id:'taxi',   len:47, wid:23, nose:.62, tail:.76, worth:1.05, w:9,  taxi:true }
+];
+const CIV_PAINT = [
+  ['#C4452E', '#3A0F09'],   // oxide red
+  ['#E4E0D4', '#4A4740'],   // bone
+  ['#D08618', '#3C2405'],   // ochre
+  ['#7A8CA8', '#1A2130'],   // steel — the old grey, now one voice among eight
+  ['#2F6E5C', '#0C1F1A'],   // deep teal, well short of the player's cyan
+  ['#8A5A9C', '#291533'],   // plum
+  ['#A8402C', '#310F08'],   // brick
+  ['#566A86', '#151B26']    // slate
+];
+const TAXI_PAINT = ['#F2B21E', '#3E2A04'];
+
+/* the same weighted draw the power-up roll uses */
+function pickW(list){
+  let total = 0;
+  for (const it of list) total += it.w;
+  let r = Math.random() * total;
+  for (const it of list) { r -= it.w; if (r <= 0) return it; }
+  return list[0];
+}
+
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
@@ -4140,9 +4228,12 @@ function addTraffic(ahead){
      through; lanes give the player a readable target to aim at and a readable
      gap to thread, which are the only two things you can do with a car. */
   const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
-  const c = CARS[rint(0, CARS.length)];
-  const spec = Object.assign({}, c, {
-    col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330)
+  const shape = pickW(CIV_SHAPES);
+  const paint = shape.taxi ? TAXI_PAINT : CIV_PAINT[rint(0, CIV_PAINT.length)];
+  const spec = Object.assign({}, shape, {
+    col: paint[0], col2: paint[1],
+    /* the heavier a thing is, the less willing it is to get out of the way */
+    power:300, grip:8, top: rnd(210, 330) / (1 + (shape.worth - 1) * 0.5)
   });
   const v = new Vehicle(spec, 'traffic');
   const pos = G.track.at(idx, lat);
@@ -4154,8 +4245,13 @@ function addTraffic(ahead){
 function addPolice(escort){
   const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
+  /* Was '#14203C' on '#080D1A' — near-black on near-black asphalt, so the
+     only thing announcing a pursuit unit was the strobe on its roof and the
+     car under it was a hole in the road. A patrol livery instead: it still
+     reads as authority rather than traffic, but you can see the thing that
+     is hunting you before it hits you. */
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660
+    col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0, top:660
   });
   const v = new Vehicle(spec, 'police');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
@@ -4171,11 +4267,8 @@ function addPolice(escort){
 function addBoss(){
   const cfg = G.run.cfg, def = cfg.bossDef;
   const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
-  const spec = Object.assign({}, CARS[2], {
-    len:62, wid:32, nose:0.9, tail:0.95,
-    col:'#FF3355', col2:'#3A0A14',
-    power: def.id === 'reaper' ? 660 : 600,
-    grip:7.2, top: def.id === 'reaper' ? 720 : 665
+  const spec = Object.assign({}, CARS[2], def.look, {
+    power: def.power, grip:7.2, top: def.top
   });
   const v = new Vehicle(spec, 'boss');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = pos.p.i;
@@ -4185,6 +4278,7 @@ function addBoss(){
   G.boss = v;
 
   if (def.id === 'reaper') { addPolice(true); addPolice(true); }
+  if (def.id === 'lance')  { addPolice(true); }
   NHAudio.boss();
   toast(def.name + ' — ' + def.sub, 'red');
 }
@@ -4246,6 +4340,16 @@ function stepBoss(dt){
     }
   } else if (b.def.id === 'reaper') {
     if (b.atk <= 0) { b.atk = 4.4; b.charge = 1.1; }
+    if (b.charge > 0) b.charge -= dt;
+  } else if (b.def.id === 'bulwark') {
+    /* It does not have to catch you. It is wide enough to take a lane away
+       just by being in it, and it spends the whole fight making the road
+       behind it unusable, so the line that worked last time is gone. */
+    if (b.atk <= 0) { b.atk = 2.6; dropHazard(b); dropHazard(b); }
+  } else if (b.def.id === 'lance') {
+    /* Reaper's charge with half the recovery: the pressure is that you never
+       get a clean beat to bank in. */
+    if (b.atk <= 0) { b.atk = 2.8; b.charge = 0.85; }
     if (b.charge > 0) b.charge -= dt;
   }
 
@@ -4385,6 +4489,7 @@ function smash(v, rel){
      then does the chain grow — so the first wreck is worth ×1 and every one
      after it is worth more than the last. */
   const gain = Math.round(260 * power * G.mult * M.bankMul * M.wreckMul
+             * (v.spec.worth || 1)
              * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
   G.pending += gain;
 
@@ -4801,8 +4906,17 @@ function stepPickups(dt){
     if (k.idx < car.idx - 12) { G.pickups.splice(i, 1); continue; }
     if (hyp(k.x - car.x, k.y - car.y) < 52) {
       takePickup(Object.assign({}, k.kind, { x:k.x, y:k.y }));
+      /* Collecting one used to be silent on screen — the icon simply stopped
+         existing. A ring thrown off where it stood is what turns a pickup
+         from an object you drove over into something that happened. */
+      G.pops.push({ x:k.x, y:k.y, t:0, life:0.42, rgb:k.kind.rgb, col:k.kind.col });
       G.pickups.splice(i, 1);
     }
+  }
+  for (let i = G.pops.length - 1; i >= 0; i--) {
+    const p = G.pops[i];
+    p.t += dt;
+    if (p.t >= p.life) G.pops.splice(i, 1);
   }
   const want = Math.round(4 * (G.run ? G.run.M.pickupRate : 1));
   while (G.pickups.length < want) addPickup(rint(34, 110));
@@ -6157,10 +6271,15 @@ function drawVehicle(v, opt){
   }
 
   /* body */
+  /* Flank to lit crown to flank. This used to run col2 → 55%-toward-col2 →
+     col2, which is to say the paint never actually appeared: every body was
+     within a shade of black whatever colour it claimed to be. Now the crown
+     is nearly the paint itself and only the flanks fall into shadow, so a
+     red car reads red at speed while the shading still does its work. */
   const bg = ctx.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
-  bg.addColorStop(0, s.col2);
-  bg.addColorStop(0.45, mix(s.col, s.col2, 0.55));
-  bg.addColorStop(1, s.col2);
+  bg.addColorStop(0,    mix(s.col, s.col2, 0.58));
+  bg.addColorStop(0.42, mix(s.col, s.col2, 0.06));
+  bg.addColorStop(1,    mix(s.col, s.col2, 0.48));
   carPath(ctx, s);
   ctx.fillStyle = bg; ctx.fill();
 
@@ -6168,19 +6287,40 @@ function drawVehicle(v, opt){
   ctx.strokeStyle = hexA(s.col, 0.95);
   ctx.lineWidth = 1.7; ctx.stroke();
 
-  /* cockpit */
-  ctx.beginPath();
-  ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
-  ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
-  ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
-  ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
-  ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
-  ctx.lineTo(s.len * 0.14, s.wid * 0.30);
-  ctx.closePath();
+  /* cockpit — a canopy on a car, a glazed side on anything box-shaped.
+     Without this a bus is just a very long coupe, and the silhouette work
+     is wasted at the only size the player ever sees it. */
   const cg = ctx.createLinearGradient(s.len * 0.2, 0, -s.len * 0.3, 0);
   cg.addColorStop(0, 'rgba(200,235,255,0.30)');
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
-  ctx.fillStyle = cg; ctx.fill();
+  if (s.boxy) {
+    ctx.fillStyle = cg;
+    ctx.fillRect(-s.len * 0.34, -s.wid * 0.34, s.len * 0.66, s.wid * 0.68);
+    /* mullions: the thing that actually says "windows" rather than "panel" */
+    ctx.fillStyle = hexA(s.col2, 0.85);
+    const bays = s.len > 70 ? 5 : 3;
+    for (let i = 1; i < bays; i++) {
+      const bx = -s.len * 0.34 + (s.len * 0.66) * (i / bays);
+      ctx.fillRect(bx - s.len * 0.008, -s.wid * 0.34, s.len * 0.016, s.wid * 0.68);
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
+    ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
+    ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
+    ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
+    ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
+    ctx.lineTo(s.len * 0.14, s.wid * 0.30);
+    ctx.closePath();
+    ctx.fillStyle = cg; ctx.fill();
+  }
+
+  /* a lit roof sign, so one vehicle in the stream is a city rather than a
+     shape — small, but it is what makes the road look inhabited */
+  if (s.taxi) {
+    ctx.fillStyle = 'rgba(255,240,200,0.92)';
+    ctx.fillRect(-s.len * 0.02, -s.wid * 0.17, s.len * 0.12, s.wid * 0.34);
+  }
 
   /* centre stripe */
   ctx.fillStyle = hexA(s.col, 0.22);
@@ -6568,41 +6708,75 @@ function drawToys(){
 /* Power-ups read as hovering plates: a spinning diamond, a hard glyph and a
    pool of their own colour on the asphalt so they are visible from far
    enough back to change lanes for. */
+/* ---------------- pickups ----------------
+   These were a 19px diamond with a soft halo, which at the zoom the game
+   actually runs at is a speck you notice after you have already driven past
+   it. A power-up is one of the few things on the road worth changing line
+   for, so it now announces itself from a distance: a ground pool, a pulse
+   ring that keeps expanding, and a core large enough to aim at. */
 function drawPickups(){
   for (const k of G.pickups) {
     const kind = k.kind;
-    const bob = 1 + Math.sin(k.spin * 1.7) * 0.08;
+    const bob = 1 + Math.sin(k.spin * 1.7) * 0.10;
+    /* one pulse every ~1.4s, independent of the spin so the two do not beat
+       against each other into a single confusing wobble */
+    const pulse = (k.spin * 0.42) % 1;
     ctx.save();
     ctx.translate(k.x, k.y);
 
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 54);
-    g.addColorStop(0, 'rgba(' + kind.rgb + ',0.38)');
-    g.addColorStop(1, 'rgba(' + kind.rgb + ',0)');
+
+    /* the pool it sits in */
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 84);
+    g.addColorStop(0,    'rgba(' + kind.rgb + ',0.46)');
+    g.addColorStop(0.45, 'rgba(' + kind.rgb + ',0.12)');
+    g.addColorStop(1,    'rgba(' + kind.rgb + ',0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, 54, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 84, 0, TAU); ctx.fill();
+
+    /* the pulse — reaches well past the pool, which is what carries it into
+       peripheral vision while the player is watching traffic */
+    ctx.strokeStyle = 'rgba(' + kind.rgb + ',' + (0.42 * (1 - pulse)).toFixed(3) + ')';
+    ctx.lineWidth = 3.5 * (1 - pulse) + 0.8;
+    ctx.beginPath(); ctx.arc(0, 0, 26 + pulse * 62, 0, TAU); ctx.stroke();
+
     ctx.globalCompositeOperation = 'source-over';
 
     ctx.rotate(k.spin);
     ctx.scale(bob, bob);
     ctx.beginPath();
-    ctx.moveTo(0, -19); ctx.lineTo(19, 0); ctx.lineTo(0, 19); ctx.lineTo(-19, 0);
+    ctx.moveTo(0, -27); ctx.lineTo(27, 0); ctx.lineTo(0, 27); ctx.lineTo(-27, 0);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(6,10,20,0.85)';
+    ctx.fillStyle = 'rgba(6,10,20,0.88)';
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = kind.col;
     ctx.stroke();
 
     /* the glyph stays upright — a spinning letter is unreadable */
     ctx.rotate(-k.spin);
     ctx.fillStyle = kind.col;
-    ctx.font = '800 20px ui-sans-serif,system-ui,-apple-system,sans-serif';
+    ctx.font = '800 28px ui-sans-serif,system-ui,-apple-system,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(kind.glyph, 0, 1);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
+
+  /* and the flare left behind by one that was taken */
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of G.pops) {
+    const t = clamp(p.t / p.life, 0, 1);
+    const a = (1 - t) * (1 - t);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.strokeStyle = 'rgba(' + p.rgb + ',' + (a * 0.9).toFixed(3) + ')';
+    ctx.lineWidth = 9 * a + 1;
+    ctx.beginPath(); ctx.arc(0, 0, 20 + t * 96, 0, TAU); ctx.stroke();
+    blitGlow(p.col, 0, 0, 150 * (0.4 + t), 150 * (0.4 + t), a * 0.55);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* A chase you cannot see is just a random shove. Anything hunting you that
