@@ -1625,11 +1625,22 @@ function smash(v, rel){
           rnd(0.3, 0.85), rnd(3, 8),
           i % 3 ? '255,196,120' : '255,120,90', true, -6);
   }
+  /* The smoke used to be one flat grey for every car on the road, which is
+     what turned a pile-up into a field of identical dull blobs. Tinting it
+     with the paint of the thing that just came apart means a wreck now looks
+     like that car exploding rather than like weather. */
+  const wrgb = rgbOf(v.spec.col);
   for (let i = 0; i < 10; i++) {
     const a = rnd(0, TAU), sp = rnd(40, 180);
     spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
-          rnd(0.6, 1.3), rnd(9, 18), '140,150,170', false, 40);
+          rnd(0.6, 1.3), rnd(9, 18), wrgb, false, 40);
   }
+  /* and the shockwave, which is what makes it read as an impact at all */
+  G.pops.push({
+    x:v.x, y:v.y, t:0, life:0.30 + power * 0.10,
+    rgb:'255,206,150', col:'#FFB13D', hard:true,
+    r:120 + power * 90, g:190 + power * 120, w:12
+  });
   /* the pile-up counter already carries the streak; repeating it in the
      toast just doubles the noise now that wrecks come several a second */
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
@@ -3129,49 +3140,66 @@ function drawRoad(){
   ctx.fillStyle = TH.asphalt;
   ctx.fill();
 
-  /* the barriers spill light onto the surface they enclose */
+  /* ---- light on the road ----
+     This is the difference between a neon game and a dark one, and until now
+     the game was the dark one. The barrier spill was a single 10%-alpha pass,
+     and the reflections underneath it were gated behind LVL().wet — a level
+     modifier one contract chip sets, defaulting to 0. So in almost every
+     district the road reflected nothing at all, and the brightest thing on
+     screen was the HUD. Seventy percent of every frame was unlit asphalt.
+
+     The road is now always wet. `wet` deepens it rather than switching it on,
+     because a surface that only catches light during one weather event is a
+     surface that is black the rest of the time. */
+  const wetness = LVL().wet ? 1 : 0.62;
+
   ctx.save();
   ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'butt';
   for (const side of [-1, 1]) {
-    ctx.beginPath();
-    for (let i = a; i <= b; i++) {
-      const p = pts[i];
-      const hw = roadHalf(p) * side;
-      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-      if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
-    }
-    ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.10);
-    ctx.lineWidth = 90;
-    ctx.stroke();
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.restore();
-
-  /* wet asphalt throws long reflections of the barrier neon */
-  if (LVL().wet) {
-    ctx.save();
-    ctx.clip();
-    ctx.globalCompositeOperation = 'lighter';
-    for (const side of [-1, 1]) {
+    const col = side < 0 ? TH.left : TH.right;
+    const edge = () => {
       ctx.beginPath();
       for (let i = a; i <= b; i++) {
         const p = pts[i];
-        const hw = roadHalf(p) * side * 0.62;
+        const hw = roadHalf(p) * side;
+        const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+        if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+      }
+    };
+    /* wide atmospheric wash, then a tight hot line where the barrier meets
+       the surface — one pass alone reads as fog, two read as a light source */
+    edge();
+    ctx.strokeStyle = hexA(col, 0.13 * wetness);
+    ctx.lineWidth = 160;
+    ctx.stroke();
+    edge();
+    ctx.strokeStyle = hexA(col, 0.26 * wetness);
+    ctx.lineWidth = 44;
+    ctx.stroke();
+  }
+
+  /* and the long broken streaks the neon throws back off the surface */
+  for (const side of [-1, 1]) {
+    for (const [reach, width, alpha] of [[0.62, 46, 0.20], [0.34, 26, 0.12]]) {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = roadHalf(p) * side * reach;
         if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
         else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
       }
-      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.13);
-      ctx.lineWidth = 46;
+      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, alpha * wetness);
+      ctx.lineWidth = width;
       ctx.setLineDash([70, 34]);
       ctx.lineDashOffset = -(G.dist * 0.35) % 104;
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
   }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
 
   /* lane divider + centre dashes */
   ctx.strokeStyle = 'rgba(198,210,232,0.13)';
@@ -3863,18 +3891,32 @@ function drawPickups(){
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
+  drawPops();
+}
 
-  /* and the flare left behind by one that was taken */
+/* Expanding rings: a pickup taken, and a car going through the windscreen.
+   Same shape, different scale — a shockwave is the one piece of impact
+   feedback the game had no version of, and the reason a wreck at 400km/h
+   read as a puff of grey rather than as something you did. */
+function drawPops(){
   ctx.globalCompositeOperation = 'lighter';
   for (const p of G.pops) {
     const t = clamp(p.t / p.life, 0, 1);
     const a = (1 - t) * (1 - t);
+    const r = p.r || 96, g = p.g || 150;
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.strokeStyle = 'rgba(' + p.rgb + ',' + (a * 0.9).toFixed(3) + ')';
-    ctx.lineWidth = 9 * a + 1;
-    ctx.beginPath(); ctx.arc(0, 0, 20 + t * 96, 0, TAU); ctx.stroke();
-    blitGlow(p.col, 0, 0, 150 * (0.4 + t), 150 * (0.4 + t), a * 0.55);
+    ctx.lineWidth = (p.w || 9) * a + 1;
+    ctx.beginPath(); ctx.arc(0, 0, 20 + t * r, 0, TAU); ctx.stroke();
+    /* a second, faster ring gives the blast an edge rather than a smudge */
+    if (p.hard) {
+      const t2 = clamp(t * 1.7, 0, 1);
+      ctx.strokeStyle = 'rgba(255,244,220,' + ((1 - t2) * 0.7).toFixed(3) + ')';
+      ctx.lineWidth = 5 * (1 - t2) + 0.5;
+      ctx.beginPath(); ctx.arc(0, 0, 14 + t2 * r * 0.8, 0, TAU); ctx.stroke();
+    }
+    blitGlow(p.col, 0, 0, g * (0.4 + t), g * (0.4 + t), a * 0.55);
     ctx.restore();
   }
   ctx.globalCompositeOperation = 'source-over';
@@ -4083,6 +4125,12 @@ function blitGlow(col, x, y, rx, ry, alpha){
 }
 
 /* ---- small colour helpers ---- */
+/* "#3DE8FF" -> "61,232,255", which is the form the particle spawner wants */
+function rgbOf(hex){
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+}
 function hexA(hex, a){
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
