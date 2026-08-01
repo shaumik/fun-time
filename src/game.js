@@ -618,7 +618,7 @@ addEventListener('keydown', e => {
     if (G.state === 'board') closeBoard();
     else if (G.state === 'daily') closeDaily();
     else if (G.state === 'menu') $('btnPlay').onclick();
-    else if (G.state === 'over') { commitCoins(1); toGarage(); }
+    else if (G.state === 'over') { commitCoins(1); startRunDirect(); }
     else if (G.state === 'garage') { hide(UI.garage); startRun(); }
     else if (G.state === 'brief') beginDistrict();
     else if (G.state === 'cleared') leaveCleared();
@@ -1658,6 +1658,19 @@ function hitstop(secs, shake){
   G.shake = Math.max(G.shake, shake);
 }
 
+/* ---------------- the early leash ----------------
+   Simulated sessions: the average run lasted under ninety seconds, cleared
+   1.8 districts of the fifteen that exist, and half of all deaths were
+   traffic — the player being killed by the exact thing the game tells them
+   to drive through. Almost nobody was reaching a perk, a pursuit unit or a
+   second district, which is most of the game and all of the reason to come
+   back tomorrow.
+
+   So the first districts charge less hull per wreck, at full rate by the
+   fifth. It is a curve rather than a flat buff: the ceiling is untouched,
+   and a player who gets that far meets exactly the game that shipped. */
+const rampCost = () => clamp(0.55 + (((G.run && G.run.district) || 1) - 1) * 0.11, 0.55, 1);
+
 function damage(amount, reason){
   if (G.car.inv > 0 && reason !== 'wall') return;
   G.hp -= amount;
@@ -1686,7 +1699,7 @@ function smash(v, rel){
   G.chainT = G.chainMax = chainTime();
 
   /* Ram Plate eats the hull cost outright — that is what the pickup is for */
-  if (!G.power.shield) damage(Math.round(9 * power * (M.hullCost || 1)), 'traffic');
+  if (!G.power.shield) damage(Math.round(9 * power * (M.hullCost || 1) * rampCost()), 'traffic');
 
   /* kinetic transfer: you come out of a hit faster, not slower */
   const cs = Math.cos(car.a), sn = Math.sin(car.a);
@@ -2726,7 +2739,7 @@ function convoyHit(v, rel){
     car.vx *= 0.72; car.vy *= 0.72;
     G.shake = Math.max(G.shake, 20);
     hitstop(0.05, 18);
-    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1)), 'traffic');
+    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1) * rampCost()), 'traffic');
     NHAudio.hit(1.3);
     for (let i = 0; i < 16; i++) {
       const a = rnd(0, TAU), sp = rnd(120, 420);
@@ -2753,7 +2766,7 @@ function convoyHit(v, rel){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1)), 'traffic');
+  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1) * rampCost()), 'traffic');
 
   hitstop(0.09, 30);
   G.flash = Math.max(G.flash, 0.6);
@@ -4553,8 +4566,18 @@ function startRun(){
    rejection on its own. A player with no completed run skips all of it and
    starts driving the first district straight off the loading screen. Everyone
    who has finished a run has seen the flow already and keeps it. */
-function startFirstRun(){
-  Hangar.grantStarter();
+/* ---------------- straight onto the road ----------------
+   No route board, no dispatch card, no brief — pick the opening node and
+   drive. Two callers, for two different reasons.
+
+   The first-ever run, because the platform requires a new player to be in
+   gameplay within one click. And every retry, because measuring the session
+   showed the zero-click start only ever helped run one: a wreck put the
+   player back through garage, board, dispatch and brief, five clicks and
+   four screens, every single time. A ten-minute session is seven to ten
+   runs of this game, which was forty clicks of menus — and runs per session
+   is the whole of average play time. */
+function startRunDirect(){
   hide(UI.menu); hide(UI.over); hide(UI.garage);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
@@ -4568,6 +4591,11 @@ function startFirstRun(){
   G.run.contract = null;          // no wager on a run you have not been taught yet
   G.fastStart = true;
   beginNode();
+}
+
+function startFirstRun(){
+  Hangar.grantStarter();
+  startRunDirect();
 }
 
 /* ============================================================
@@ -5088,7 +5116,8 @@ $('btnPlay').onclick   = () => {
   if (dailyReady() && Save.data.runs > 0) { hide(UI.menu); claimDaily(); }
   else toGarage();
 };
-$('btnAgain').onclick  = () => { commitCoins(1); toGarage(); };
+$('btnAgain').onclick  = () => { commitCoins(1); startRunDirect(); };
+$('btnOvGarage').onclick = () => { commitCoins(1); toGarage(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => toGarage();
 $('btnRecords').onclick = () => { NHAudio.ui(true); showBoard('menu'); };

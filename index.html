@@ -237,12 +237,16 @@
              the screen useful when ads cannot serve at all. -->
         <button class="btn rew ghost" id="btnReviveCoins">Revive for <b id="revivePrice">750</b> coins</button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
-        <button class="btn primary" id="btnAgain">Spend it in the garage</button>
+        <!-- One click back onto the road. The route board, the dispatch and
+             the brief are all still there behind Garage for anyone who wants
+             them, but they are no longer the toll on every retry. -->
+        <button class="btn primary" id="btnAgain">Run it again<span class="key">Enter</span></button>
       </div>
       <!-- A notice, not a popup: their adblock rules ask for the former and
            explicitly forbid the latter, which would fight fullscreen. -->
       <div class="ovAdNote hide" id="ovAdNote"></div>
       <div class="ovFoot">
+        <button class="btn" id="btnOvGarage">Garage</button>
         <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
       </div>
