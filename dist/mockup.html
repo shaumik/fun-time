@@ -3433,27 +3433,83 @@ function adTick(dt){
    own ground, asphalt, barrier colours, skyline and air. The generator is
    unchanged; only what it is dressed in moves.
    ============================================================ */
+/* Every ground here used to be black — #06080F, #080A0B, #04030A. The three
+   districts had different barrier colours and different building heights,
+   and it made almost no difference, because all of it was painted onto the
+   same abyss. A district reads as a place when the floor under it has a
+   colour, so each of these now owns its ground, its ambient, and the grid
+   burned into it — and one of them has no ground at all. */
 const THEMES = [
   { id:'downtown', name:'The Grid',
-    ground:'#06080F', asphalt:'#131A2C', left:'#3DE8FF', right:'#FF2E88',
+    ground:'#070C1C', amb:'61,232,255', asphalt:'#131A2C',
+    left:'#3DE8FF', right:'#FF2E88',
     bldA:'#3DE8FF', bldB:'#FF2E88', face1:'#141A2D', face2:'#0F1424',
     h:[110, 480], size:[48, 118], gap:0.34, lit:0.80, back:[80, 400],
+    grid:{ rgb:'61,232,255', fine:240, coarse:960, a1:0.10, a2:0.26 },
     air:null },
+
   { id:'docks', name:'Sunken Docks',
-    ground:'#080A0B', asphalt:'#1B1A18', left:'#FFB13D', right:'#2FE08A',
+    ground:'#06140F', amb:'47,224,138', asphalt:'#17201C',
+    left:'#FFB13D', right:'#2FE08A',
     bldA:'#FFB13D', bldB:'#6FE3C0', face1:'#1E1C18', face2:'#141310',
     /* long low sheds instead of towers, and more sky between them */
     h:[90, 280], size:[110, 240], gap:0.46, lit:0.45, back:[110, 520],
+    /* wet dock concrete: wide slabs, barely scored */
+    grid:{ rgb:'47,224,138', fine:420, coarse:1680, a1:0.07, a2:0.17 },
     air:{ rgb:'150,170,180', rate:0.14, size:[16, 38], life:[1.8, 3.2], drift:26 } },
+
   { id:'undercity', name:'The Undercity',
-    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#F2F6FF',
+    ground:'#0B0518', amb:'176,124,255', asphalt:'#141026',
+    left:'#B07CFF', right:'#F2F6FF',
     bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
     /* close, tall and constant — it should read as a tunnel, not a skyline */
     h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
-    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } }
+    /* service tunnel decking: tight, hot, close underfoot */
+    grid:{ rgb:'176,124,255', fine:150, coarse:600, a1:0.13, a2:0.30 },
+    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } },
+
+  /* Above the weather. There is no floor to grid — the road is a ribbon in
+     open sky — so the space under it is cloud, lit from somewhere warm off
+     frame. This is the district that proves the others are not all one
+     black room, and it carries the orange the palette has been missing. */
+  { id:'skyport', name:'Skyport',
+    ground:'#0A1430', amb:'255,150,60', asphalt:'#1A2340',
+    left:'#FF8A2A', right:'#3DE8FF',
+    bldA:'#FF8A2A', bldB:'#8CF3FF', face1:'#16203A', face2:'#0E1628',
+    /* sparse and very tall: towers coming up through the cloud deck */
+    h:[520, 1100], size:[60, 130], gap:0.62, lit:0.95, back:[60, 260],
+    grid:null,
+    clouds:{ rgb:'150,190,255', warm:'255,160,90', size:900, drift:0.045 },
+    air:{ rgb:'255,190,140', rate:0.10, size:[20, 52], life:[2.4, 4.0], drift:40 } },
+
+  /* The hot one. Everything else on this list is cool-cored; this is the
+     district that is orange all the way down, so a run that draws it does
+     not look like a run that did not. */
+  { id:'redline', name:'Redline',
+    ground:'#1A0710', amb:'255,90,60', asphalt:'#241019',
+    left:'#FF3355', right:'#FFC24A',
+    bldA:'#FF3355', bldB:'#FF8A2A', face1:'#2A1018', face2:'#1A0810',
+    h:[160, 560], size:[70, 160], gap:0.28, lit:0.72, back:[70, 340],
+    grid:{ rgb:'255,90,70', fine:300, coarse:1200, a1:0.11, a2:0.24 },
+    air:{ rgb:'255,140,80', rate:0.45, size:[3, 8], life:[0.7, 1.5], drift:-120 } }
 ];
+
+/* Which districts a run visits, and in what order. Same reason the pursuit
+   pool is drawn per run: there are five of these and three acts, so a fixed
+   act-to-theme mapping meant two of them could never be seen and every run
+   was the same three rooms in the same order. */
+let themeOrder = [0, 1, 2];
+function rollThemeOrder(){
+  const pool = THEMES.map((_, i) => i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  themeOrder = pool.slice(0, 3);
+}
+const themeFor = act => THEMES[themeOrder[(Math.max(1, act) - 1) % themeOrder.length]];
 let TH = THEMES[0];
-function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
+function setTheme(act){ TH = themeFor(act); }
 
 /* ---------------- cars ----------------
    One player car. Four selectable chassis were four stat rolls that said the
@@ -4271,6 +4327,7 @@ function makeRoute(act){
 
 function newRun(){
   rollBossOrder();          // a fresh draw of pursuit units for this attempt
+  rollThemeOrder();         // and of the districts they will be met in
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
     xp: 0, level: 1, perks: [], hullBonus: 0,
@@ -6200,20 +6257,55 @@ function drawGround(){
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
   const R = hyp(W, H) / cam.zoom * 0.62;
-  const rgb = rgbOf(TH.left);
-
   ctx.globalCompositeOperation = 'lighter';
-  /* fine mesh, then majors every fourth line so the floor has a rhythm
-     rather than a uniform screen-door texture */
-  for (const [S, alpha, wMul] of [[240, 0.10, 1], [960, 0.26, 2.2]]) {
-    ctx.strokeStyle = 'rgba(' + rgb + ',' + alpha + ')';
-    ctx.lineWidth = (1.4 * wMul) / cam.zoom;
-    ctx.beginPath();
-    const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
-    for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
-    const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
-    for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
-    ctx.stroke();
+
+  /* An ambient pool centred on the player. Without it the ground colour is
+     flat wallpaper; with it the district reads as lit from where the action
+     is, and the edges of the frame fall away into its own dark. */
+  const amb = ctx.createRadialGradient(cam.x, cam.y, 0, cam.x, cam.y, R * 1.1);
+  amb.addColorStop(0,   'rgba(' + TH.amb + ',0.13)');
+  amb.addColorStop(0.5, 'rgba(' + TH.amb + ',0.05)');
+  amb.addColorStop(1,   'rgba(' + TH.amb + ',0)');
+  ctx.fillStyle = amb;
+  ctx.fillRect(cam.x - R * 1.1, cam.y - R * 1.1, R * 2.2, R * 2.2);
+
+  if (TH.clouds) {
+    /* No floor here — the road is a ribbon in open sky. Cloud tops are drawn
+       from a coarse lattice so they tile forever without being stored, and
+       drift against the direction of travel to sell the altitude. */
+    const C = TH.clouds, S = C.size;
+    const off = G.dist * C.drift;
+    const x0 = Math.floor((cam.x - R) / S) * S, y0 = Math.floor((cam.y - R) / S) * S;
+    for (let x = x0; x <= cam.x + R; x += S) {
+      for (let y = y0; y <= cam.y + R; y += S) {
+        /* a stable per-cell jitter, so every bank sits somewhere of its own */
+        const h = Math.sin(x * 0.0007 + y * 0.0013) * 43758.5453;
+        const j = h - Math.floor(h);
+        const cxp = x + j * S * 0.7, cyp = y + ((h * 7) % 1) * S * 0.7 + off % S;
+        const r = S * (0.34 + j * 0.30);
+        const g = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, r);
+        /* warm on top, cool underneath: one light source, off frame */
+        g.addColorStop(0,    'rgba(' + (j > 0.62 ? C.warm : C.rgb) + ',0.10)');
+        g.addColorStop(0.55, 'rgba(' + C.rgb + ',0.035)');
+        g.addColorStop(1,    'rgba(' + C.rgb + ',0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, TAU); ctx.fill();
+      }
+    }
+  } else if (TH.grid) {
+    /* fine mesh under coarse majors, so the floor has a rhythm rather than a
+       uniform screen-door texture. Spacing and heat are the district's. */
+    const g = TH.grid;
+    for (const [S, alpha, wMul] of [[g.fine, g.a1, 1], [g.coarse, g.a2, 2.2]]) {
+      ctx.strokeStyle = 'rgba(' + g.rgb + ',' + alpha + ')';
+      ctx.lineWidth = (1.4 * wMul) / cam.zoom;
+      ctx.beginPath();
+      const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
+      for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
+      const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
+      for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+      ctx.stroke();
+    }
   }
   ctx.globalCompositeOperation = 'source-over';
 }
@@ -7508,7 +7600,7 @@ function showMap(){
   UI.hud.classList.add('off');
   hide(UI.cleared); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
-  $('mTitle').textContent = THEMES[(run.act - 1) % THEMES.length].name;
+  $('mTitle').textContent = themeFor(run.act).name;
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
   /* Quotas move with your level now, so the board has to re-read them
@@ -8767,6 +8859,9 @@ window.__NH = {
   takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
+  /* pin every act of the run to one district, for art passes and screenshots */
+  forceTheme: i => { themeOrder = [i, i, i]; setTheme(1); },
+  THEMES,
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
