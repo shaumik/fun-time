@@ -101,9 +101,16 @@ function init(){
   tick();
 }
 
+/* iOS parks the AudioContext in `interrupted` when the tab is backgrounded or
+   a call arrives, and it usually surfaces as `suspended` on the way back —
+   but only a real user gesture is allowed to restart it, which is why this
+   hangs off input events rather than visibilitychange. Android keeps the
+   context running and silences it instead, so this is a no-op there. */
 function resume(){
   if (!ready) { init(); return; }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state === 'suspended' || ac.state === 'interrupted') {
+    try { ac.resume(); } catch (e) {}
+  }
 }
 
 /* ---------------------------------------------------------- engine voice

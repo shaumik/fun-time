@@ -242,9 +242,35 @@ ${js}
 </script>
 `);
 
+/* dist/playable.html — the game on its own as a body fragment, for publishing
+   to a hosted page so it can be played on a real phone without a dev server.
+   The mockup is a pitch page with the game inside an essay; this is the game
+   filling the viewport and nothing else, which is what you want when the thing
+   being checked is the game rather than the argument for it.
+
+   Two things it deliberately cannot test. There is no SDK script tag, so the
+   game takes its no-SDK path and every placement is the local simulation —
+   fine for walking the flow, useless for proving the handshake. And the host
+   supplies the document, so there is no viewport-fit=cover and the safe-area
+   insets all resolve to 0; notch behaviour has to be checked on the real
+   build. Not part of the submission — the zip carries index.html alone. */
+fs.writeFileSync(path.join(ROOT, 'dist/playable.html'), `<title>NEON HEAT — playable build</title>
+<style>
+${css}
+
+/* --- host-page overrides, playable build only: not part of the game --- */
+html{color-scheme:dark}
+html,body{background:#02030A;overflow:hidden}
+</style>
+${body}
+<script>
+${js}
+</script>
+`);
+
 /* The submission artefact: a zip with index.html at its root, and nothing
-   else in it. dist/mockup.html is deliberately excluded — it is the
-   shareable pitch page, not the game build. */
+   else in it. dist/mockup.html and dist/playable.html are deliberately
+   excluded — neither is the game build. */
 const dist = path.join(ROOT, 'dist');
 const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
@@ -253,6 +279,7 @@ execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
 console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
 console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
+console.log('dist/playable.html ' + kb(path.join(dist, 'playable.html')) + '   (hosted playable build)');
 console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
 
 /* guard the two things that would fail their review silently */
