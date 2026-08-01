@@ -107,7 +107,13 @@ function init(){
    hangs off input events rather than visibilitychange. Android keeps the
    context running and silences it instead, so this is a no-op there. */
 function resume(){
-  if (!ready) { init(); return; }
+  /* Do NOT return after init(). Chrome hands back a running context when it
+     is constructed inside a gesture, but WebKit routinely hands back a
+     suspended one even then — so an early return here spent the player's
+     first gesture creating a context and left it silent until they happened
+     to produce a second. Build it and start it in the same gesture. */
+  if (!ready) init();
+  if (!ready || !ac) return;
   if (ac.state === 'suspended' || ac.state === 'interrupted') {
     try { ac.resume(); } catch (e) {}
   }

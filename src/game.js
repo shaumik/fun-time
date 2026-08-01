@@ -679,6 +679,31 @@ function readInput(){
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
   if (swipeMode() && GS.on && !steer) steer = GS.steer;  // analogue, unlike the keyboard
   IN.steer = steer;
+  if (steer) dismissCtrlHint();     // they have the control; stop telling them
+}
+
+/* ---------------- the control hint ----------------
+   On a zero-click start this is doing two jobs. It teaches the control, and
+   it is the only thing on screen asking for the gesture that lets audio
+   begin — no browser will start an AudioContext until the player produces
+   one, so a first district driven without touching anything is silent by
+   design, not by fault. It therefore waits for the player rather than
+   expiring on a timer into a quiet game with nothing left to explain it. */
+function showCtrlHint(){
+  const el = $('gsHint');
+  el.firstElementChild.textContent = swipeMode()
+    ? 'Drag anywhere to steer'
+    : 'Press ← → to steer';
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 20000);  // backstop only
+}
+function dismissCtrlHint(){
+  const el = $('gsHint');
+  if (!el.classList.contains('on') || el._going) return;
+  el._going = true;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.classList.remove('on'); el._going = false; }, 900);
 }
 
 /* ============================================================
@@ -4458,15 +4483,7 @@ function beginDistrict(){
      has to cover the keyboard as well as the touchscreen. Visual, one line,
      and it times itself out — their guidance asks for onboarding in gameplay
      rather than a screen in front of it. */
-  if (G.run.district === 1) {
-    const el = $('gsHint');
-    el.firstElementChild.textContent = swipeMode()
-      ? 'Drag anywhere to steer'
-      : 'Press ← → to steer';
-    el.classList.add('on');
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('on'), 5200);
-  }
+  if (G.run.district === 1) showCtrlHint();
 }
 
 function clearDistrict(){

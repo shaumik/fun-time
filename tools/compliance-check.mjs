@@ -26,7 +26,13 @@ if (!fs.existsSync(path.join(ROOT, 'dist', 'index.html'))) {
 /* Prefer a preinstalled Chromium when there is one, else let Playwright find
    its own. Keeps this runnable both in CI images and on a laptop. */
 const PINNED = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
-const launchOpts = fs.existsSync(PINNED) ? { executablePath: PINNED } : {};
+/* Headless Chromium lets audio autoplay by default, which hides the entire
+   class of bug where a game never unlocks its AudioContext. Enforce the
+   policy real players get. */
+const launchOpts = {
+  args: ['--autoplay-policy=document-user-activation-required'],
+  ...(fs.existsSync(PINNED) ? { executablePath: PINNED } : {}),
+};
 
 /* A mock that records every SDK call and can be told to fail ads the way the
    platform does during Basic Launch or against an adblocker. */
@@ -442,6 +448,40 @@ await session({ returning: true }, async (page, errors) => {
   check('the brief screen still appears for returning players',
     seen.includes('brief'), seen.join(' -> '));
   check('no console errors on the long flow', errors.length === 0, errors.slice(0, 3).join(' | '));
+});
+
+/* ---- 21. audio unlocks on the player's FIRST gesture, whatever it is ----
+   A zero-click start means the game is silent until the player interacts —
+   browser policy, not a fault. What is a fault is needing a second gesture,
+   which is what an early return after init() used to cause. */
+const state = page => page.evaluate(() => {
+  const pr = window.NHAudio._probe();
+  return pr ? pr.ac.state : 'no-context';
+});
+for (const [label, act] of [
+  ['keyboard', p => p.keyboard.press('ArrowLeft')],
+  ['click',    p => p.evaluate(() => document.getElementById('stage').click())],
+  ['pointer',  p => p.mouse.click(400, 300)],
+]) {
+  await session({}, async page => {
+    check(`silent before any input (${label} run)`, (await state(page)) === 'no-context');
+    await act(page);
+    await page.waitForTimeout(350);
+    check(`one ${label} gesture is enough to start audio`,
+      (await state(page)) === 'running', await state(page));
+  });
+}
+
+/* ---- 22. the hint waits for the player instead of expiring into silence ---- */
+await session({}, async page => {
+  const on = () => page.evaluate(() => document.getElementById('gsHint').classList.contains('on'));
+  check('control hint is up on landing', await on());
+  await page.waitForTimeout(7000);          // well past the old 5.2s timeout
+  check('hint still up after 7s with no input', await on());
+  await page.keyboard.down('ArrowLeft');
+  await page.waitForTimeout(1400);
+  await page.keyboard.up('ArrowLeft');
+  check('hint clears once the player steers', !(await on()));
 });
 
 const failed = results.filter(r => !r.pass);
