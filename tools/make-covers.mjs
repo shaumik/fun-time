@@ -58,11 +58,11 @@ const launchOpts = fs.existsSync(PINNED) ? { executablePath: PINNED } : {};
    best at different points in a chain. */
 const COVERS = [
   { name: 'landscape-1920x1080.png', w: 1920, h: 1080, type: 10.5, top: '10%', lead: 5200,
-    zoom: 1.72, rot: 0.40, sx: 90,  sy: 150, ahead: 2, step: 1 },
+    zoom: 1.72, rot: 0.40, sx: 90,  sy: 150, ahead: 2, step: 1, drift: 0.55, blast: 280 },
   { name: 'portrait-800x1200.png',   w: 800,  h: 1200, type: 13.5, top: '6%',  lead: 6100,
-    zoom: 1.75, rot: 0.20, sx: 0,   sy: 165, ahead: 2, step: 1 },
+    zoom: 1.75, rot: 0.20, sx: 0,   sy: 165, ahead: 2, step: 1, drift: 0.60, blast: 300 },
   { name: 'square-800x800.png',      w: 800,  h: 800,  type: 13.0, top: '6%',  lead: 5600,
-    zoom: 1.80, rot: 0.42, sx: 55,  sy: 105, ahead: 2, step: 1 },
+    zoom: 1.80, rot: 0.42, sx: 55,  sy: 105, ahead: 2, step: 1, drift: 0.58, blast: 290 },
 ];
 
 /* Freeze the run at a chosen instant and point the camera at it. The camera
@@ -70,56 +70,83 @@ const COVERS = [
    survives to the shutter. Wrecks are detonated deliberately rather than
    waited for: a cover wants the moment the game is selling, and a clean
    empty road is not that moment. */
-const ART_DIRECT = ({ zoom, rot, sx, sy, ahead, step }) => `(() => {
+/* Stage the frame, then set it off. The order matters: everything is placed
+   first, the detonation happens last, and the shutter opens a couple of
+   frames into the blast while the shockwave is still expanding. */
+const STAGE = ({ ahead, step, drift }) => `(() => {
   const N = window.__NH, G = N.G;
-  N.setPause('cover', true);
-  /* the hero should not be wearing its damage flash */
-  G.car.hitFlash = 0; G.car.inv = 0;
-  /* Put the car back on the centreline. Five seconds of ramming leaves it
-     scraping a barrier, which reads as a mistake in a still even though it
-     is exactly how the game is played. */
-  /* +10 rather than +0: the detonation happens at the car, so landing it
-     exactly where it stood buries the hero in its own smoke. Moved a little
-     up the road, the same debris reads as wreckage in its wake. */
-  const base = G.car.idx + 10;
+  /* Only a few segments forward. The bot has been drifting for five seconds
+     and its light ribbons trail the actual path it drove — move the hero far
+     from that and the cover loses the one thing the game is named after. */
+  const base = G.car.idx + 3;
   const pos = G.track.at(base, 0);
-  G.car.x = pos.x; G.car.y = pos.y; G.car.a = pos.a;
-  /* Traffic is the ammunition, so the cover has to show some of it in front
-     of the car rather than an empty road. These are the run's own vehicles
-     moved onto the track ahead — arranged, not invented. */
-  const lanes = [-95, 25, 115, -45, 70, -15];
-  /* Five seconds of ramming leaves most of the traffic array wrecked, and a
-     wreck draws as debris rather than as a car — which is how a cover shot
-     ends up with an empty road. Prefer the survivors, and press wrecks back
-     into service as intact cars if there are not enough of them, so the
-     frame is composed rather than left to what happened to survive. */
+  /* The car is left sideways. An earlier version snapped it dead straight
+     onto the centreline, which is tidy and is also the single thing most
+     responsible for the cover having no action in it — this is a drift game
+     and the hero was parked. */
+  G.car.x = pos.x; G.car.y = pos.y; G.car.a = pos.a + ${drift};
+  G.car.drift = 1; G.car.slip = 0.6;
+  G.car.boostT = Math.max(G.car.boostT, 1.5);   // lit exhaust plume
+  G.car.boost = 1;
+
+  /* Traffic across the lanes ahead — the thing about to be hit, and the
+     things queued up behind it. */
+  const lanes = [-20, 95, -105, 45, 120, -60];
   const live = G.traffic.filter(v => !v.wrecked);
   const pool = (live.length >= 6 ? live : G.traffic).slice(0, 6);
   pool.forEach((v, i) => {
-    /* off base, not off car.idx — the hero was just moved ten segments up
-       the road and car.idx still says where it used to be, which put every
-       one of these behind the camera. In segments: SEG is 56 world units and
-       the visible radius at this zoom is under 500, so anything past six or
-       seven segments ahead is off frame entirely. */
+    /* off base, not off car.idx — the hero was just moved up the road and
+       car.idx still says where it used to be, which put every one of these
+       behind the camera. SEG is 56 world units and the visible radius at
+       cover zoom is under 500, so past six or seven segments is off frame. */
     const q = G.track.at(base + ${ahead} + i * ${step}, lanes[i]);
     v.x = q.x; v.y = q.y; v.a = q.a;
     v.wrecked = 0; v.spin = 0; v.hitFlash = 0;
   });
-  /* and bring the frozen camera with it */
+
+  /* Escort drones, locked on and firing. They are the best-looking thing the
+     game owns — mint arrowheads on the shoulders, a beam to whatever they
+     have acquired, and a burn glow growing on the target — and a cover that
+     leaves them out is selling the game short. dwell is pinned high so the
+     beams are drawn at full heat rather than at the moment they lock. */
+  G.power.drones = 20;
+  G.drones = [-1, 1].map((side, k) => {
+    const q = G.track.at(base + 1, side * 78);
+    return { x:q.x, y:q.y, side, vx:0, vy:0,
+             /* aimed at cars further up the road, deliberately NOT the one
+                about to explode: a beam terminating inside a fireball is
+                just more white, and the beam is the readable part */
+             target: pool[3 + k] || pool[pool.length - 1] || null,
+             /* BEAM_DWELL is 0.42s and heat saturates at 1. Pinning dwell to
+                999 ran every glow at maximum, which together with the blast
+                and the boost plume blew the whole frame out. Just past half
+                heat reads as a beam doing work without flaring the bloom. */
+             dwell: 0.24, ang:0 };
+  });
+})()`;
+
+/* One car, in the hero's face rather than behind it. Two detonations plus the
+   drone glows and the boost plume is more additive light than the bloom can
+   take, and the frame goes white. */
+const DETONATE = `(() => {
+  const N = window.__NH, G = N.G;
+  const near = G.traffic
+    .filter(v => !v.wrecked && !G.drones.some(d => d.target === v))
+    .map(v => ({ v, d: Math.hypot(v.x - G.car.x, v.y - G.car.y) }))
+    .sort((a, b) => a.d - b.d)[0];
+  if (near) { try { N.smash(near.v, 900); } catch (e) {} }
+})()`;
+
+/* Freeze and aim. Called two frames into the blast, so the shockwave ring is
+   mid-flight and the debris is still hot rather than settled smoke. */
+const AIM = ({ zoom, rot, sx, sy }) => `(() => {
+  const N = window.__NH, G = N.G;
+  N.setPause('cover', true);
   N.cam.x = G.car.x; N.cam.y = G.car.y;
   N.cam.rot = G.car.a + ${rot};
   N.cam.zoom *= ${zoom};
   N.cam.sx = ${sx};
   N.cam.sy = ${sy};
-})()`;
-
-const DETONATE = `(() => {
-  const N = window.__NH, G = N.G;
-  const near = G.traffic
-    .map(v => ({ v, d: Math.hypot(v.x - G.car.x, v.y - G.car.y) }))
-    .sort((a, b) => a.d - b.d)
-    .slice(0, 3);
-  for (const n of near) { try { N.smash(n.v, 780); } catch (e) {} }
 })()`;
 
 /* Strip the game down to its own rendering, and lay the wordmark over it.
@@ -217,12 +244,14 @@ for (const cover of COVERS) {
   });
   await drive(page, cover.lead);
 
+  /* Stage, detonate, and open the shutter two frames in. The previous order
+     detonated first and then waited 520ms for the flash to decay before
+     tidying the survivors back into lanes, which is how a demolition game
+     ended up with a cover of cars queueing. */
+  await page.evaluate(STAGE(cover));
   await page.evaluate(DETONATE);
-  /* Long enough for the detonation flash to fall off but not so long that the
-     debris clears. Freezing at the peak instead blows a white haze across the
-     whole frame and kills the contrast the neon depends on. */
-  await page.waitForTimeout(520);
-  await page.evaluate(ART_DIRECT(cover));
+  await page.waitForTimeout(cover.blast);    // mid-blast, not after it
+  await page.evaluate(AIM(cover));
   await page.waitForTimeout(60);             // one paused frame at the new camera
   await page.evaluate(COMPOSE(cover));
   await page.waitForTimeout(120);
