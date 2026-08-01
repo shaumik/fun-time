@@ -3229,6 +3229,7 @@ const Ads = {
   suspended: false,    // platform is refusing ads this session
   canServe(){ return !this.blocked && !this.suspended; },
   blockedNote(){
+    if (!this.caps().rewarded && this.ready) return '';   // not a fault, just this network
     if (this.blocked)   return 'Ad blocker detected — the ad bonuses are unavailable.';
     if (this.suspended) return 'Ad bonuses are unavailable right now.';
     return '';
@@ -3270,7 +3271,26 @@ const Ads = {
      from their SDK alone, so a build carrying a second network is a
      rejection — the build script enforces this per target. */
   resolve(){
-    return (window.CrazyGames && window.CrazyGames.SDK) || null;
+    /* an adapter compiled in by a build target wins; otherwise CrazyGames,
+       whose SDK the seam is shaped after; otherwise nothing, and the game
+       runs on simulated placements */
+    return window.__NH_PROVIDER || (window.CrazyGames && window.CrazyGames.SDK) || null;
+  },
+
+  /* What the provider on the other end can actually serve. Not every network
+     has rewarded placements — GameMonetize documents none at all — and a
+     rewarded button that cannot pay out is the exact thing CrazyGames reject
+     builds for. Worth honouring everywhere, not just where it is policed. */
+  caps(){
+    /* Read off the adapter, not off this.sdk. What a network can serve is a
+       static fact about the adapter and is known the moment it loads —
+       this.sdk is only set once init() resolves, which on a portal that
+       never answers is eight seconds of the game believing it can offer
+       rewarded ads it cannot. */
+    const p = this.sdk || this.resolve();
+    const c = p && p.caps;
+    return { rewarded: !c || c.rewarded !== false,
+             midgame:  !c || c.midgame  !== false };
   },
 
   async boot(){
@@ -8187,7 +8207,7 @@ function endRun(won){
      alongside a midgame. */
   const showOver = () => { show(UI.over); refreshAdOffers(); };
   /* no point pausing the game for a request we already know cannot fill */
-  if (!reviveOffered && Ads.canServe() && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  if (!reviveOffered && Ads.canServe() && Ads.caps().midgame && Save.data.runs % 3 === 0) Ads.midroll(showOver);
   else showOver();
 }
 
@@ -8268,7 +8288,9 @@ function revivePrice(){
 function refreshAdOffers(){
   const over = UI.over && !UI.over.classList.contains('hide');
   const price = revivePrice();
-  const serve = Ads.canServe();
+  /* a network with no rewarded placements is the same case as ads being
+     blocked: the offers come down and the coin route carries the screen */
+  const serve = Ads.canServe() && Ads.caps().rewarded;
   const reviveOK = !G.revived && G.score >= 400;
 
   const pEl = $('revivePrice');
