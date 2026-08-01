@@ -146,9 +146,34 @@ const Ads = {
     try { refreshAdOffers(); } catch (e) {}
   },
 
+  /* ---------------- the platform seam ----------------
+     Everything below this line talks to one object, shaped like the
+     CrazyGames v3 SDK, and assumes nothing about who is on the other end of
+     it. That shape is the contract, and it is the whole reason a second
+     distribution channel is a build target rather than a rewrite: the game
+     referenced window.CrazyGames in exactly one place, and this is it.
+
+     An adapter for another network has to present:
+       init() -> Promise
+       game:  { loadingStart, loadingStop, gameplayStart, gameplayStop,
+                happytime, settings:{muteAudio}, addSettingsChangeListener,
+                reportGameCompletedPercentage, setGameContext, clearGameContext }
+       ad:    { requestAd(type, {adStarted, adFinished, adError}), hasAdblock() }
+       user:  { getUser(), systemInfo, addAuthListener }   // optional
+     Anything missing is guarded at the call site, so a partial adapter
+     degrades rather than throws.
+
+     Exactly one provider may be compiled into a build. CrazyGames allow ads
+     from their SDK alone, so a build carrying a second network is a
+     rejection — the build script enforces this per target. */
+  resolve(){
+    return (window.CrazyGames && window.CrazyGames.SDK) || null;
+  },
+
   async boot(){
-    const SDK = window.CrazyGames && window.CrazyGames.SDK;
-    if (!SDK) return;                       // not hosted on CrazyGames
+    const SDK = this.resolve();
+    /* no provider: sim placements, local saves, game plays normally */
+    if (!SDK) return;
     try {
       /* v3 is promise-based and unusable until init resolves */
       await SDK.init();

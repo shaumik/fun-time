@@ -268,6 +268,26 @@ ${js}
 </script>
 `);
 
+/* ---------------- standalone target ----------------
+   The same game with no portal SDK: for self-hosting, for itch.io, and as
+   the base an adapter for another ad network drops into.
+
+   It is a separate artefact rather than a switch inside one build, and that
+   is not tidiness. CrazyGames allow ads from their SDK alone, so a build
+   carrying a second network is a rejection — the only safe shape is one
+   provider per build, enforced below.
+
+   Nothing in the game needs changing for this: Ads.resolve() finds no
+   provider, every placement falls back to the local simulated overlay, and
+   saves fall back to localStorage. To wire a real network, implement the
+   adapter contract documented at the platform seam in src/game.js and add
+   its script tag here — nowhere else. */
+const standalone = fs.readFileSync(path.join(ROOT, 'dist/index.html'), 'utf8')
+  .replace(/\s*<!--[^>]*?CrazyGames SDK[\s\S]*?-->\s*/, '\n')
+  .replace(/\s*<script src="https:\/\/sdk\.crazygames\.com\/[^"]*"><\/script>/, '');
+fs.mkdirSync(path.join(ROOT, 'dist/standalone'), { recursive: true });
+fs.writeFileSync(path.join(ROOT, 'dist/standalone/index.html'), standalone);
+
 /* The submission artefact: a zip with index.html at its root, and nothing
    else in it. dist/mockup.html and dist/playable.html are deliberately
    excluded — neither is the game build. */
@@ -276,15 +296,31 @@ const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
 execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 
+const sZip = path.join(dist, 'standalone', 'neon-heat-standalone.zip');
+fs.rmSync(sZip, { force: true });
+execSync('zip -q -X neon-heat-standalone.zip index.html', { cwd: path.join(dist, 'standalone') });
+
 const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
 console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
 console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
 console.log('dist/playable.html ' + kb(path.join(dist, 'playable.html')) + '   (hosted playable build)');
 console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
+console.log('dist/standalone/neon-heat-standalone.zip ' + kb(sZip) + '   (self-host / itch.io, no SDK)');
 
-/* guard the two things that would fail their review silently */
+/* Guard each target against the thing that would fail it silently. Both
+   checks are about the same rule from opposite sides: exactly one ad
+   provider per build, and never two. */
+const hosts = s => [...s.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m => m[2]);
+
 const built = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const ext = [...built.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m => m[2]);
-const stray = ext.filter(u => !u.startsWith('sdk.crazygames.com'));
+const stray = hosts(built).filter(u => !u.startsWith('sdk.crazygames.com'));
 if (stray.length) console.warn('WARNING external requests besides the SDK: ' + stray.join(', '));
 if (!built.includes('sdk.crazygames.com')) console.warn('WARNING the SDK script tag is missing from the build');
+
+/* The standalone build must carry no provider at all until one is chosen —
+   a stray CrazyGames tag here would sitelock a self-hosted copy to their
+   domains, and any other host would be an unvetted network. */
+const alone = fs.readFileSync(path.join(dist, 'standalone', 'index.html'), 'utf8');
+if (alone.includes('sdk.crazygames.com')) console.warn('WARNING standalone build still carries the CrazyGames SDK');
+const aStray = hosts(alone);
+if (aStray.length) console.warn('WARNING standalone build requests external hosts: ' + aStray.join(', '));
