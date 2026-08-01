@@ -3250,27 +3250,83 @@ function adTick(dt){
    own ground, asphalt, barrier colours, skyline and air. The generator is
    unchanged; only what it is dressed in moves.
    ============================================================ */
+/* Every ground here used to be black — #06080F, #080A0B, #04030A. The three
+   districts had different barrier colours and different building heights,
+   and it made almost no difference, because all of it was painted onto the
+   same abyss. A district reads as a place when the floor under it has a
+   colour, so each of these now owns its ground, its ambient, and the grid
+   burned into it — and one of them has no ground at all. */
 const THEMES = [
   { id:'downtown', name:'The Grid',
-    ground:'#06080F', asphalt:'#131A2C', left:'#3DE8FF', right:'#FF2E88',
+    ground:'#070C1C', amb:'61,232,255', amb2:'255,46,136', rows:2, asphalt:'#131A2C',
+    left:'#3DE8FF', right:'#FF2E88',
     bldA:'#3DE8FF', bldB:'#FF2E88', face1:'#141A2D', face2:'#0F1424',
     h:[110, 480], size:[48, 118], gap:0.34, lit:0.80, back:[80, 400],
+    grid:{ rgb:'61,232,255', fine:240, coarse:960, a1:0.10, a2:0.26 },
     air:null },
+
   { id:'docks', name:'Sunken Docks',
-    ground:'#080A0B', asphalt:'#1B1A18', left:'#FFB13D', right:'#2FE08A',
+    ground:'#06140F', amb:'47,224,138', amb2:'255,177,61', rows:2, asphalt:'#17201C',
+    left:'#FFB13D', right:'#2FE08A',
     bldA:'#FFB13D', bldB:'#6FE3C0', face1:'#1E1C18', face2:'#141310',
     /* long low sheds instead of towers, and more sky between them */
     h:[90, 280], size:[110, 240], gap:0.46, lit:0.45, back:[110, 520],
+    /* wet dock concrete: wide slabs, barely scored */
+    grid:{ rgb:'47,224,138', fine:420, coarse:1680, a1:0.07, a2:0.17 },
     air:{ rgb:'150,170,180', rate:0.14, size:[16, 38], life:[1.8, 3.2], drift:26 } },
+
   { id:'undercity', name:'The Undercity',
-    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#F2F6FF',
+    ground:'#0B0518', amb:'176,124,255', amb2:'127,166,255', rows:3, asphalt:'#141026',
+    left:'#B07CFF', right:'#F2F6FF',
     bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
     /* close, tall and constant — it should read as a tunnel, not a skyline */
     h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
-    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } }
+    /* service tunnel decking: tight, hot, close underfoot */
+    grid:{ rgb:'176,124,255', fine:150, coarse:600, a1:0.13, a2:0.30 },
+    air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } },
+
+  /* Above the weather. There is no floor to grid — the road is a ribbon in
+     open sky — so the space under it is cloud, lit from somewhere warm off
+     frame. This is the district that proves the others are not all one
+     black room, and it carries the orange the palette has been missing. */
+  { id:'skyport', name:'Skyport',
+    ground:'#0A1430', amb:'255,150,60', amb2:'61,232,255', rows:2, asphalt:'#1A2340',
+    left:'#FF8A2A', right:'#3DE8FF',
+    bldA:'#FF8A2A', bldB:'#8CF3FF', face1:'#16203A', face2:'#0E1628',
+    /* sparse and very tall: towers coming up through the cloud deck */
+    h:[520, 1100], size:[60, 130], gap:0.62, lit:0.95, back:[60, 260],
+    grid:null,
+    clouds:{ rgb:'150,190,255', warm:'255,160,90', size:900, drift:0.045 },
+    air:{ rgb:'255,190,140', rate:0.10, size:[20, 52], life:[2.4, 4.0], drift:40 } },
+
+  /* The hot one. Everything else on this list is cool-cored; this is the
+     district that is orange all the way down, so a run that draws it does
+     not look like a run that did not. */
+  { id:'redline', name:'Redline',
+    ground:'#1A0710', amb:'255,90,60', amb2:'255,194,74', rows:2, asphalt:'#241019',
+    left:'#FF3355', right:'#FFC24A',
+    bldA:'#FF3355', bldB:'#FF8A2A', face1:'#2A1018', face2:'#1A0810',
+    h:[160, 560], size:[70, 160], gap:0.28, lit:0.72, back:[70, 340],
+    grid:{ rgb:'255,90,70', fine:300, coarse:1200, a1:0.11, a2:0.24 },
+    air:{ rgb:'255,140,80', rate:0.45, size:[3, 8], life:[0.7, 1.5], drift:-120 } }
 ];
+
+/* Which districts a run visits, and in what order. Same reason the pursuit
+   pool is drawn per run: there are five of these and three acts, so a fixed
+   act-to-theme mapping meant two of them could never be seen and every run
+   was the same three rooms in the same order. */
+let themeOrder = [0, 1, 2];
+function rollThemeOrder(){
+  const pool = THEMES.map((_, i) => i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  themeOrder = pool.slice(0, 3);
+}
+const themeFor = act => THEMES[themeOrder[(Math.max(1, act) - 1) % themeOrder.length]];
 let TH = THEMES[0];
-function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
+function setTheme(act){ TH = themeFor(act); }
 
 /* ---------------- cars ----------------
    One player car. Four selectable chassis were four stat rolls that said the
@@ -3328,14 +3384,26 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
-const QF = { bloom:1, wide:1, city:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
+const QF = { bloom:1, wide:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
+/* The ladder had two rungs pretending to be three: 'med' and 'low' set
+   exactly the same flags, and bloom/city/glow were pinned to 1 at every
+   tier, so the only thing that ever fell away was the backing-store scale.
+   That is thin cover for a platform that disables games which cannot hold a
+   frame on a 4GB Chromebook — and thinner now the city has depth to draw. */
 function setQuality(t){
   QF.tier = t;
-  const high = t === 'high';
-  QF.wide = QF.windows = QF.grain = high ? 1 : 0;
+  const high = t === 'high', low = t === 'low';
+  QF.wide    = high ? 1 : 0;
+  QF.grain   = high ? 1 : 0;
+  /* window rows are the most expensive detail in the scene: a save, a clip
+     and two additive dashed strokes per visible face */
+  QF.windows  = low ? 0 : 1;
+  /* the ranks behind the front one are mass rather than architecture, so
+     they are the first thing worth losing and the last thing anyone misses */
+  QF.cityDeep = low ? 0 : 1;
   QF.bloom = 1; QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
-  QF.dpr = high ? 1.5 : 1;
+  QF.dpr = high ? 1.5 : low ? 0.9 : 1.15;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -3648,19 +3716,34 @@ class Track {
       p.b = [];
       for (const side of [-1, 1]) {
         if (Math.random() < TH.gap) continue;
-        const off = this.hw + rnd(TH.back[0], TH.back[1]);
         const nx = -Math.sin(this.ang), ny = Math.cos(this.ang);
-        p.b.push({
-          x: this.x + nx * off * side,
-          y: this.y + ny * off * side,
-          w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
-          h: rnd(TH.h[0], TH.h[1]),
-          a: this.ang + rnd(-0.25, 0.25),
-          hue: Math.random() < 0.5 ? TH.bldA : TH.bldB,
-          face1: TH.face1, face2: TH.face2,
-          lit: Math.random() < TH.lit,
-          seed: Math.random() * 1000
-        });
+        /* A block rather than a box. One mass per side left the skyline as
+           isolated cubes floating on the grid with black between them, which
+           is the thing that stopped it reading as a city at all. Several at
+           staggered depths and offsets overlap into a silhouette, and the
+           deeper rows are what fill the void behind the front row. */
+        const rows = TH.rows || 3;
+        for (let r = 0; r < rows; r++) {
+          const t = rows === 1 ? 0 : r / (rows - 1);
+          const off = this.hw + lerp(TH.back[0], TH.back[1], t) + rnd(-34, 34);
+          /* slide along the road too, or every row lines up on one normal */
+          const al = rnd(-1, 1) * SEG * 1.4;
+          p.b.push({
+            x: this.x + nx * off * side + Math.cos(this.ang) * al,
+            y: this.y + ny * off * side + Math.sin(this.ang) * al,
+            w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
+            /* back rows run taller: the front row should not hide the city */
+            h: rnd(TH.h[0], TH.h[1]) * (1 + t * 0.35),
+            a: this.ang + rnd(-0.25, 0.25),
+            /* a minority burn in the accent so the field is two colours */
+            hue: Math.random() < 0.22 ? (TH.bldB || TH.bldA)
+               : Math.random() < 0.5 ? TH.bldA : TH.bldB,
+            face1: TH.face1, face2: TH.face2,
+            lit: Math.random() < TH.lit,
+            row: r,
+            seed: Math.random() * 1000
+          });
+        }
       }
     }
     this.pts.push(p);
@@ -3704,11 +3787,12 @@ function spawn(x, y, vx, vy, life, r, col, add, grow){
 }
 /* decal corners are baked at spawn so the draw pass is one batched path
    instead of a save/rotate/restore per mark */
-function skid(x, y, a, w){
+function skid(x, y, a, w, rgb){
   if (SKID.length > 620) SKID.splice(0, 40);
   const c = Math.cos(a), s = Math.sin(a), L = 4;
   SKID.push({
     life:5.5,
+    rgb: rgb || '61,232,255',
     q:[ x - c*L - s*-w, y - s*L + c*-w,
         x + c*L - s*-w, y + s*L + c*-w,
         x + c*L - s*w,  y + s*L + c*w,
@@ -3819,7 +3903,8 @@ class Vehicle {
         for (const side of [-1, 1]) {
           const rx = this.x - cs * s.len * 0.30 - sn * s.wid * 0.42 * side;
           const ry = this.y - sn * s.len * 0.30 + cs * s.wid * 0.42 * side;
-          skid(rx, ry, this.a, s.wid * 0.20);
+          /* the ribbon takes the paint of whatever laid it */
+          skid(rx, ry, this.a, s.wid * 0.20, rgbOf(s.col));
         }
       }
       this.smokeT -= dt;
@@ -3862,7 +3947,8 @@ const G = {
   shake:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
+  pickups:[], pops:[],   // pops: the short-lived flare left where one was taken
+  power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
@@ -3884,14 +3970,52 @@ const DISTRICTS = [
   'Radial', 'Saltgate', 'Underpass 9', 'The Shallows', 'Foundry Line'
 ];
 const DEPOT_NAMES = ['Lockup', 'Chop Shop', 'The Yard', 'Back Alley', 'Cold Store'];
+/* Every pursuit unit used to be the same object wearing a different name:
+   one chassis, one red, three behaviours. `look` gives each of them a
+   silhouette and a livery, so the thing chasing you is recognisable before
+   the toast telling you what it is has finished appearing. */
 const BOSSES = [
   { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
-    blurb:'Rams hard and salts the road behind it.' },
+    blurb:'Rams hard and salts the road behind it.',
+    look:{ len:74, wid:36, nose:.94, tail:.96, boxy:true, col:'#FF3355', col2:'#3A0A14' },
+    power:600, top:640 },
   { id:'siren',  name:'SIREN',   sub:'Signals Division',
-    blurb:'Pulses wipe a bank you have let grow too fat.' },
+    blurb:'Pulses wipe a bank you have let grow too fat.',
+    look:{ len:58, wid:27, nose:.48, tail:.60, col:'#B07CFF', col2:'#241040' },
+    power:610, top:670 },
   { id:'reaper', name:'REAPER',  sub:'Pursuit Special',
-    blurb:'Faster than you, and it brought friends.' }
+    blurb:'Faster than you, and it brought friends.',
+    look:{ len:64, wid:28, nose:.40, tail:.50, col:'#FF6B2A', col2:'#3A1204' },
+    power:660, top:720 },
+  { id:'bulwark', name:'BULWARK', sub:'Roadblock Division',
+    blurb:'Too wide to go around, and it keeps laying wreckage.',
+    look:{ len:96, wid:38, nose:.98, tail:.98, boxy:true, col:'#FFB13D', col2:'#3E2606' },
+    power:640, top:585 },
+  { id:'lance',  name:'LANCE',   sub:'Interceptor Wing',
+    blurb:'Charges again before you have finished dodging the last one.',
+    look:{ len:56, wid:24, nose:.36, tail:.46, col:'#9DFF3D', col2:'#1E3A05' },
+    power:690, top:745 }
 ];
+
+/* Which units a run will actually send. Selection used to be `act - 1`, and
+   since there are exactly three acts that meant every run fought the same
+   three in the same order — adding a fourth unit to this list would have
+   changed nothing at all. A run now draws three of the five, so the act
+   three fight is not a foregone conclusion and a player who has been
+   through the game twice has still not seen all of it.
+
+   Held module-level rather than on the run because newRun() builds its
+   route inside the object literal, before G.run exists to read from. */
+let bossOrder = [0, 1, 2];
+function rollBossOrder(){
+  const pool = BOSSES.map((_, i) => i);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = rint(0, i + 1);
+    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+  bossOrder = pool.slice(0, 3);
+}
+const bossFor = act => BOSSES[bossOrder[(act - 1) % bossOrder.length]];
 
 /* How strong the player actually is, on a scale where a brand-new save is
    1.0 and a maxed garage at level 15 is about 5.7.
@@ -3923,19 +4047,20 @@ function powerIndex(){
 
 function districtCfg(n, type, act){
   const boss = type === 'boss';
-  const bi = act - 1;
   const elite = type === 'elite';
   return {
     n, boss, elite, type,
     name: (G.run && G.run.node && G.run.node.name) ||
-          (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
-    bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
+          (boss ? bossFor(act).name : DISTRICTS[(n - 1) % DISTRICTS.length]),
+    bossDef: boss ? bossFor(act) : null,
     len: Math.round(400 + n * 26),
     /* Elites cost more and pay double XP; the route choice has to bite */
     quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
        that used to be a two-chain fight now needs the headroom to last. */
-    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
+    /* scales with the act, not with which unit the draw happened to send —
+       a run must not get easier because it drew a different pursuit car */
+    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, act - 1))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
 }
@@ -4026,7 +4151,7 @@ function makeRoute(act){
     n.row = r; n.col = c; n.done = false;
     const info = NODE_INFO[n.type];
     const idx = r + 1 + (act - 1) * (ROWS - 1);
-    n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
+    n.name = n.type === 'boss' ? bossFor(act).name
            : n.type === 'depot' ? depots[di++ % depots.length]
            : pool[pi++ % pool.length];
     n.reward = info.reward;
@@ -4045,6 +4170,8 @@ function makeRoute(act){
 }
 
 function newRun(){
+  rollBossOrder();          // a fresh draw of pursuit units for this attempt
+  rollThemeOrder();         // and of the districts they will be met in
   return {
     act: 1, route: makeRoute(1), row: -1, col: -1,
     xp: 0, level: 1, perks: [], hullBonus: 0,
@@ -4081,6 +4208,7 @@ function newWorld(ai){
   G.track = new Track();
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
+  G.pops = [];
   G.slicks = []; G.slickT = 0;
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
@@ -4139,6 +4267,52 @@ const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults
 
 const LANES = [-0.62, -0.21, 0.21, 0.62];
 
+/* ---------------- civilian traffic ----------------
+   Every car on this road used to be the same object: a chassis borrowed from
+   the player's own list, repainted '#7C8FBF', and sent out. In a game whose
+   whole premise is that traffic is ammunition rather than scenery, the
+   ammunition was the dullest thing on screen — one grey silhouette repeated
+   until the district ended.
+
+   Two tables instead. Shape carries the silhouette, because a bus you can
+   recognise at a glance is a different target from a coupe, and a road of
+   one repeated object reads as empty however many cars are on it. Paint
+   carries the colour, kept warm and neutral on purpose: nothing out here may
+   compete with the player's cyan or the barrier magenta, which are the two
+   things that have to stay instantly readable at speed.
+
+   `worth` is the one gameplay string attached. A bus is a bigger target and
+   harder to thread past, so it pays more when you go through it. */
+const CIV_SHAPES = [
+  { id:'sedan',  len:46, wid:23, nose:.62, tail:.74, worth:1.00, w:22 },
+  { id:'coupe',  len:43, wid:21, nose:.50, tail:.62, worth:0.95, w:16 },
+  { id:'wagon',  len:52, wid:24, nose:.68, tail:.92, worth:1.10, w:14 },
+  { id:'pickup', len:55, wid:26, nose:.72, tail:.84, worth:1.20, w:12 },
+  { id:'van',    len:60, wid:28, nose:.92, tail:.96, worth:1.35, w:10, boxy:true },
+  { id:'bus',    len:88, wid:31, nose:.98, tail:.98, worth:1.75, w:5,  boxy:true },
+  { id:'taxi',   len:47, wid:23, nose:.62, tail:.76, worth:1.05, w:9,  taxi:true }
+];
+const CIV_PAINT = [
+  ['#C4452E', '#3A0F09'],   // oxide red
+  ['#E4E0D4', '#4A4740'],   // bone
+  ['#D08618', '#3C2405'],   // ochre
+  ['#7A8CA8', '#1A2130'],   // steel — the old grey, now one voice among eight
+  ['#2F6E5C', '#0C1F1A'],   // deep teal, well short of the player's cyan
+  ['#8A5A9C', '#291533'],   // plum
+  ['#A8402C', '#310F08'],   // brick
+  ['#566A86', '#151B26']    // slate
+];
+const TAXI_PAINT = ['#F2B21E', '#3E2A04'];
+
+/* the same weighted draw the power-up roll uses */
+function pickW(list){
+  let total = 0;
+  for (const it of list) total += it.w;
+  let r = Math.random() * total;
+  for (const it of list) { r -= it.w; if (r <= 0) return it; }
+  return list[0];
+}
+
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
@@ -4147,9 +4321,12 @@ function addTraffic(ahead){
      through; lanes give the player a readable target to aim at and a readable
      gap to thread, which are the only two things you can do with a car. */
   const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
-  const c = CARS[rint(0, CARS.length)];
-  const spec = Object.assign({}, c, {
-    col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330)
+  const shape = pickW(CIV_SHAPES);
+  const paint = shape.taxi ? TAXI_PAINT : CIV_PAINT[rint(0, CIV_PAINT.length)];
+  const spec = Object.assign({}, shape, {
+    col: paint[0], col2: paint[1],
+    /* the heavier a thing is, the less willing it is to get out of the way */
+    power:300, grip:8, top: rnd(210, 330) / (1 + (shape.worth - 1) * 0.5)
   });
   const v = new Vehicle(spec, 'traffic');
   const pos = G.track.at(idx, lat);
@@ -4161,8 +4338,13 @@ function addTraffic(ahead){
 function addPolice(escort){
   const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
+  /* Was '#14203C' on '#080D1A' — near-black on near-black asphalt, so the
+     only thing announcing a pursuit unit was the strobe on its roof and the
+     car under it was a hole in the road. A patrol livery instead: it still
+     reads as authority rather than traffic, but you can see the thing that
+     is hunting you before it hits you. */
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660
+    col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0, top:660
   });
   const v = new Vehicle(spec, 'police');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
@@ -4178,11 +4360,8 @@ function addPolice(escort){
 function addBoss(){
   const cfg = G.run.cfg, def = cfg.bossDef;
   const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
-  const spec = Object.assign({}, CARS[2], {
-    len:62, wid:32, nose:0.9, tail:0.95,
-    col:'#FF3355', col2:'#3A0A14',
-    power: def.id === 'reaper' ? 660 : 600,
-    grip:7.2, top: def.id === 'reaper' ? 720 : 665
+  const spec = Object.assign({}, CARS[2], def.look, {
+    power: def.power, grip:7.2, top: def.top
   });
   const v = new Vehicle(spec, 'boss');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = pos.p.i;
@@ -4192,6 +4371,7 @@ function addBoss(){
   G.boss = v;
 
   if (def.id === 'reaper') { addPolice(true); addPolice(true); }
+  if (def.id === 'lance')  { addPolice(true); }
   NHAudio.boss();
   toast(def.name + ' — ' + def.sub, 'red');
 }
@@ -4253,6 +4433,16 @@ function stepBoss(dt){
     }
   } else if (b.def.id === 'reaper') {
     if (b.atk <= 0) { b.atk = 4.4; b.charge = 1.1; }
+    if (b.charge > 0) b.charge -= dt;
+  } else if (b.def.id === 'bulwark') {
+    /* It does not have to catch you. It is wide enough to take a lane away
+       just by being in it, and it spends the whole fight making the road
+       behind it unusable, so the line that worked last time is gone. */
+    if (b.atk <= 0) { b.atk = 2.6; dropHazard(b); dropHazard(b); }
+  } else if (b.def.id === 'lance') {
+    /* Reaper's charge with half the recovery: the pressure is that you never
+       get a clean beat to bank in. */
+    if (b.atk <= 0) { b.atk = 2.8; b.charge = 0.85; }
     if (b.charge > 0) b.charge -= dt;
   }
 
@@ -4392,6 +4582,7 @@ function smash(v, rel){
      then does the chain grow — so the first wreck is worth ×1 and every one
      after it is worth more than the last. */
   const gain = Math.round(260 * power * G.mult * M.bankMul * M.wreckMul
+             * (v.spec.worth || 1)
              * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1));
   G.pending += gain;
 
@@ -4426,11 +4617,22 @@ function smash(v, rel){
           rnd(0.3, 0.85), rnd(3, 8),
           i % 3 ? '255,196,120' : '255,120,90', true, -6);
   }
+  /* The smoke used to be one flat grey for every car on the road, which is
+     what turned a pile-up into a field of identical dull blobs. Tinting it
+     with the paint of the thing that just came apart means a wreck now looks
+     like that car exploding rather than like weather. */
+  const wrgb = rgbOf(v.spec.col);
   for (let i = 0; i < 10; i++) {
     const a = rnd(0, TAU), sp = rnd(40, 180);
     spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
-          rnd(0.6, 1.3), rnd(9, 18), '140,150,170', false, 40);
+          rnd(0.6, 1.3), rnd(9, 18), wrgb, false, 40);
   }
+  /* and the shockwave, which is what makes it read as an impact at all */
+  G.pops.push({
+    x:v.x, y:v.y, t:0, life:0.30 + power * 0.10,
+    rgb:'255,206,150', col:'#FFB13D', hard:true,
+    r:120 + power * 90, g:190 + power * 120, w:12
+  });
   /* the pile-up counter already carries the streak; repeating it in the
      toast just doubles the noise now that wrecks come several a second */
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
@@ -4808,8 +5010,17 @@ function stepPickups(dt){
     if (k.idx < car.idx - 12) { G.pickups.splice(i, 1); continue; }
     if (hyp(k.x - car.x, k.y - car.y) < 52) {
       takePickup(Object.assign({}, k.kind, { x:k.x, y:k.y }));
+      /* Collecting one used to be silent on screen — the icon simply stopped
+         existing. A ring thrown off where it stood is what turns a pickup
+         from an object you drove over into something that happened. */
+      G.pops.push({ x:k.x, y:k.y, t:0, life:0.42, rgb:k.kind.rgb, col:k.kind.col });
       G.pickups.splice(i, 1);
     }
+  }
+  for (let i = G.pops.length - 1; i >= 0; i--) {
+    const p = G.pops[i];
+    p.t += dt;
+    if (p.t >= p.life) G.pops.splice(i, 1);
   }
   const want = Math.round(4 * (G.run ? G.run.M.pickupRate : 1));
   while (G.pickups.length < want) addPickup(rint(34, 110));
@@ -5877,21 +6088,84 @@ function applyCam(){
   ctx.translate(-cam.x, -cam.y);
 }
 
+/* ---------------- the floor ----------------
+   The grid was already here, at rgba(70,120,190,0.075) — which is to say it
+   was not here. Everything outside the road was flat void, and void is what
+   made the whole frame read as black no matter what happened on the road.
+
+   It is a light source now: a fine grid under a coarse one, both emitting,
+   the coarse lines carrying the district's own hue. This is the floor the
+   game has been implying since the first line of its pitch. */
 function drawGround(){
   ctx.fillStyle = TH.ground;
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
-  /* world-aligned grid: cheap, and it reads as motion at speed */
   const R = hyp(W, H) / cam.zoom * 0.62;
-  const S = 240;
-  ctx.strokeStyle = 'rgba(70,120,190,0.075)';
-  ctx.lineWidth = 1.4 / cam.zoom;
-  ctx.beginPath();
-  const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
-  for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
-  const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
-  for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
-  ctx.stroke();
+  ctx.globalCompositeOperation = 'lighter';
+
+  /* An ambient pool centred on the player. Without it the ground colour is
+     flat wallpaper; with it the district reads as lit from where the action
+     is, and the edges of the frame fall away into its own dark. */
+  const amb = ctx.createRadialGradient(cam.x, cam.y, 0, cam.x, cam.y, R * 1.1);
+  amb.addColorStop(0,   'rgba(' + TH.amb + ',0.13)');
+  amb.addColorStop(0.5, 'rgba(' + TH.amb + ',0.05)');
+  amb.addColorStop(1,   'rgba(' + TH.amb + ',0)');
+  ctx.fillStyle = amb;
+  ctx.fillRect(cam.x - R * 1.1, cam.y - R * 1.1, R * 2.2, R * 2.2);
+
+  /* A second pool in the district's accent, thrown ahead of the car. One
+     ambient makes a field of a single hue, which is what left every district
+     reading as one colour plus black — two make it fall from one into the
+     other across the frame, which is the whole trick of the look. */
+  if (TH.amb2) {
+    const ax = cam.x + Math.cos(cam.rot) * R * 0.45;
+    const ay = cam.y + Math.sin(cam.rot) * R * 0.45;
+    const a2 = ctx.createRadialGradient(ax, ay, 0, ax, ay, R * 0.85);
+    a2.addColorStop(0, 'rgba(' + TH.amb2 + ',0.11)');
+    a2.addColorStop(1, 'rgba(' + TH.amb2 + ',0)');
+    ctx.fillStyle = a2;
+    ctx.fillRect(ax - R * 0.85, ay - R * 0.85, R * 1.7, R * 1.7);
+  }
+
+  if (TH.clouds) {
+    /* No floor here — the road is a ribbon in open sky. Cloud tops are drawn
+       from a coarse lattice so they tile forever without being stored, and
+       drift against the direction of travel to sell the altitude. */
+    const C = TH.clouds, S = C.size;
+    const off = G.dist * C.drift;
+    const x0 = Math.floor((cam.x - R) / S) * S, y0 = Math.floor((cam.y - R) / S) * S;
+    for (let x = x0; x <= cam.x + R; x += S) {
+      for (let y = y0; y <= cam.y + R; y += S) {
+        /* a stable per-cell jitter, so every bank sits somewhere of its own */
+        const h = Math.sin(x * 0.0007 + y * 0.0013) * 43758.5453;
+        const j = h - Math.floor(h);
+        const cxp = x + j * S * 0.7, cyp = y + ((h * 7) % 1) * S * 0.7 + off % S;
+        const r = S * (0.34 + j * 0.30);
+        const g = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, r);
+        /* warm on top, cool underneath: one light source, off frame */
+        g.addColorStop(0,    'rgba(' + (j > 0.62 ? C.warm : C.rgb) + ',0.10)');
+        g.addColorStop(0.55, 'rgba(' + C.rgb + ',0.035)');
+        g.addColorStop(1,    'rgba(' + C.rgb + ',0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, TAU); ctx.fill();
+      }
+    }
+  } else if (TH.grid) {
+    /* fine mesh under coarse majors, so the floor has a rhythm rather than a
+       uniform screen-door texture. Spacing and heat are the district's. */
+    const g = TH.grid;
+    for (const [S, alpha, wMul] of [[g.fine, g.a1, 1], [g.coarse, g.a2, 2.2]]) {
+      ctx.strokeStyle = 'rgba(' + g.rgb + ',' + alpha + ')';
+      ctx.lineWidth = (1.4 * wMul) / cam.zoom;
+      ctx.beginPath();
+      const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
+      for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
+      const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
+      for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+      ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function visibleRange(){
@@ -5921,49 +6195,66 @@ function drawRoad(){
   ctx.fillStyle = TH.asphalt;
   ctx.fill();
 
-  /* the barriers spill light onto the surface they enclose */
+  /* ---- light on the road ----
+     This is the difference between a neon game and a dark one, and until now
+     the game was the dark one. The barrier spill was a single 10%-alpha pass,
+     and the reflections underneath it were gated behind LVL().wet — a level
+     modifier one contract chip sets, defaulting to 0. So in almost every
+     district the road reflected nothing at all, and the brightest thing on
+     screen was the HUD. Seventy percent of every frame was unlit asphalt.
+
+     The road is now always wet. `wet` deepens it rather than switching it on,
+     because a surface that only catches light during one weather event is a
+     surface that is black the rest of the time. */
+  const wetness = LVL().wet ? 1 : 0.62;
+
   ctx.save();
   ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'butt';
   for (const side of [-1, 1]) {
-    ctx.beginPath();
-    for (let i = a; i <= b; i++) {
-      const p = pts[i];
-      const hw = roadHalf(p) * side;
-      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-      if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
-    }
-    ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.10);
-    ctx.lineWidth = 90;
-    ctx.stroke();
-  }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.restore();
-
-  /* wet asphalt throws long reflections of the barrier neon */
-  if (LVL().wet) {
-    ctx.save();
-    ctx.clip();
-    ctx.globalCompositeOperation = 'lighter';
-    for (const side of [-1, 1]) {
+    const col = side < 0 ? TH.left : TH.right;
+    const edge = () => {
       ctx.beginPath();
       for (let i = a; i <= b; i++) {
         const p = pts[i];
-        const hw = roadHalf(p) * side * 0.62;
+        const hw = roadHalf(p) * side;
+        const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+        if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+      }
+    };
+    /* wide atmospheric wash, then a tight hot line where the barrier meets
+       the surface — one pass alone reads as fog, two read as a light source */
+    edge();
+    ctx.strokeStyle = hexA(col, 0.13 * wetness);
+    ctx.lineWidth = 160;
+    ctx.stroke();
+    edge();
+    ctx.strokeStyle = hexA(col, 0.26 * wetness);
+    ctx.lineWidth = 44;
+    ctx.stroke();
+  }
+
+  /* and the long broken streaks the neon throws back off the surface */
+  for (const side of [-1, 1]) {
+    for (const [reach, width, alpha] of [[0.62, 46, 0.20], [0.34, 26, 0.12]]) {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = roadHalf(p) * side * reach;
         if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
         else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
       }
-      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.13);
-      ctx.lineWidth = 46;
+      ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, alpha * wetness);
+      ctx.lineWidth = width;
       ctx.setLineDash([70, 34]);
       ctx.lineDashOffset = -(G.dist * 0.35) % 104;
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
   }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.restore();
 
   /* lane divider + centre dashes */
   ctx.strokeStyle = 'rgba(198,210,232,0.13)';
@@ -6004,26 +6295,47 @@ function drawRoad(){
   }
 }
 
-/* three alpha buckets, one path each — 600 decals in 3 draw calls */
+/* ---------------- drift ribbons ----------------
+   These were rgba(3,5,12) — black smudges laid on black asphalt. The game is
+   called NEON HEAT and sells itself on drifting, and the drift was the one
+   thing on screen that emitted no light at all. They are light now: an
+   additive ribbon in the colour of whatever laid it, so a long slide writes
+   a glowing line across the road behind you and a pursuit unit cutting the
+   same corner writes its own in red.
+
+   Still three buckets and one path each — 600 decals in six draw calls now
+   rather than three, which is the whole cost of the change. */
 function drawSkids(){
-  for (let b = 0; b < 3; b++) {
-    const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
-    let any = false;
-    ctx.beginPath();
-    for (const s of SKID) {
-      if (s.life < lo || s.life >= hi) continue;
-      const q = s.q;
-      ctx.moveTo(q[0], q[1]);
-      ctx.lineTo(q[2], q[3]);
-      ctx.lineTo(q[4], q[5]);
-      ctx.lineTo(q[6], q[7]);
-      ctx.closePath();
-      any = true;
-    }
-    if (!any) continue;
-    ctx.fillStyle = 'rgba(3,5,12,' + (0.14 + b * 0.13).toFixed(2) + ')';
-    ctx.fill();
+  ctx.globalCompositeOperation = 'lighter';
+  /* group by colour so mixed traffic does not force a path per decal */
+  const byCol = new Map();
+  for (const s of SKID) {
+    let arr = byCol.get(s.rgb);
+    if (!arr) { arr = []; byCol.set(s.rgb, arr); }
+    arr.push(s);
   }
+  for (const [rgb, marks] of byCol) {
+    for (let b = 0; b < 3; b++) {
+      const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
+      let any = false;
+      ctx.beginPath();
+      for (const s of marks) {
+        if (s.life < lo || s.life >= hi) continue;
+        const q = s.q;
+        ctx.moveTo(q[0], q[1]);
+        ctx.lineTo(q[2], q[3]);
+        ctx.lineTo(q[4], q[5]);
+        ctx.lineTo(q[6], q[7]);
+        ctx.closePath();
+        any = true;
+      }
+      if (!any) continue;
+      /* fresher marks burn brighter, so the head of a slide is the hot end */
+      ctx.fillStyle = 'rgba(' + rgb + ',' + (0.05 + b * 0.11).toFixed(3) + ')';
+      ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawParticles(){
@@ -6164,10 +6476,15 @@ function drawVehicle(v, opt){
   }
 
   /* body */
+  /* Flank to lit crown to flank. This used to run col2 → 55%-toward-col2 →
+     col2, which is to say the paint never actually appeared: every body was
+     within a shade of black whatever colour it claimed to be. Now the crown
+     is nearly the paint itself and only the flanks fall into shadow, so a
+     red car reads red at speed while the shading still does its work. */
   const bg = ctx.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
-  bg.addColorStop(0, s.col2);
-  bg.addColorStop(0.45, mix(s.col, s.col2, 0.55));
-  bg.addColorStop(1, s.col2);
+  bg.addColorStop(0,    mix(s.col, s.col2, 0.58));
+  bg.addColorStop(0.42, mix(s.col, s.col2, 0.06));
+  bg.addColorStop(1,    mix(s.col, s.col2, 0.48));
   carPath(ctx, s);
   ctx.fillStyle = bg; ctx.fill();
 
@@ -6175,19 +6492,40 @@ function drawVehicle(v, opt){
   ctx.strokeStyle = hexA(s.col, 0.95);
   ctx.lineWidth = 1.7; ctx.stroke();
 
-  /* cockpit */
-  ctx.beginPath();
-  ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
-  ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
-  ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
-  ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
-  ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
-  ctx.lineTo(s.len * 0.14, s.wid * 0.30);
-  ctx.closePath();
+  /* cockpit — a canopy on a car, a glazed side on anything box-shaped.
+     Without this a bus is just a very long coupe, and the silhouette work
+     is wasted at the only size the player ever sees it. */
   const cg = ctx.createLinearGradient(s.len * 0.2, 0, -s.len * 0.3, 0);
   cg.addColorStop(0, 'rgba(200,235,255,0.30)');
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
-  ctx.fillStyle = cg; ctx.fill();
+  if (s.boxy) {
+    ctx.fillStyle = cg;
+    ctx.fillRect(-s.len * 0.34, -s.wid * 0.34, s.len * 0.66, s.wid * 0.68);
+    /* mullions: the thing that actually says "windows" rather than "panel" */
+    ctx.fillStyle = hexA(s.col2, 0.85);
+    const bays = s.len > 70 ? 5 : 3;
+    for (let i = 1; i < bays; i++) {
+      const bx = -s.len * 0.34 + (s.len * 0.66) * (i / bays);
+      ctx.fillRect(bx - s.len * 0.008, -s.wid * 0.34, s.len * 0.016, s.wid * 0.68);
+    }
+  } else {
+    ctx.beginPath();
+    ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
+    ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
+    ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
+    ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
+    ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
+    ctx.lineTo(s.len * 0.14, s.wid * 0.30);
+    ctx.closePath();
+    ctx.fillStyle = cg; ctx.fill();
+  }
+
+  /* a lit roof sign, so one vehicle in the stream is a city rather than a
+     shape — small, but it is what makes the road look inhabited */
+  if (s.taxi) {
+    ctx.fillStyle = 'rgba(255,240,200,0.92)';
+    ctx.fillRect(-s.len * 0.02, -s.wid * 0.17, s.len * 0.12, s.wid * 0.34);
+  }
 
   /* centre stripe */
   ctx.fillStyle = hexA(s.col, 0.22);
@@ -6268,6 +6606,15 @@ function drawCity(){
   }
 
   for (const bd of list) {
+    /* the deep rows are the first thing to go when frames slip — they are
+       what makes the city a mass, but the front row is what makes it legible */
+    if (!QF.cityDeep && bd.row > 0) continue;
+    /* Only the front rank is drawn in full. The rows behind it exist to fill
+       the void with mass, and mass needs a silhouette and a roofline, not a
+       save/clip and two additive dashed strokes per face — that detail was
+       costing 70% more frame time to render windows nobody can resolve at
+       that distance. */
+    const detail = bd.row === 0;
     const ca = Math.cos(bd.a), sa = Math.sin(bd.a);
     const hw = bd.w * 0.5, hd = bd.d * 0.5;
     const corners = [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([lx, ly]) =>
@@ -6306,23 +6653,42 @@ function drawCity(){
       ctx.fillStyle = i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424');
       ctx.fill();
 
-      if (bd.lit && QF.windows && !LVL().blackout) {
+      /* The vertical edge where two faces meet, lit. This is the single
+         cheapest thing that turns an extruded quad into architecture: it
+         gives the mass a corner, and a corner gives it volume. */
+      if (bd.lit && !LVL().blackout && detail) {
+        ctx.strokeStyle = hexA(bd.hue, 0.55);
+        ctx.lineWidth = Math.max(0.9, 1.8 * cam.zoom);
+        ctx.beginPath();
+        ctx.moveTo(b1[0], b1[1]); ctx.lineTo(t1[0], t1[1]);
+        ctx.stroke();
+      }
+
+      if (bd.lit && QF.windows && !LVL().blackout && detail) {
         ctx.save();
         ctx.clip();
-        /* dashed rows read as lit windows; solid rows read as wireframe */
-        ctx.strokeStyle = hexA(bd.hue, 0.34);
-        ctx.lineWidth = Math.max(0.8, 1.6 * cam.zoom);
-        ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
-        ctx.lineDashOffset = bd.seed;
-        ctx.beginPath();
+        /* Was one dashed stroke per floor, which reads as a scan line rather
+           than as a window. Now the rows are dashed *and* additive, so the
+           face glows from inside, and every third floor burns brighter — a
+           tower with uniform lighting reads as a texture, one with variation
+           reads as occupied. */
+        ctx.globalCompositeOperation = 'lighter';
         const floors = 3 + Math.floor(bd.h / 120);
-        for (let f = 1; f < floors; f++) {
-          const t = f / floors;
-          ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
-          ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
+        for (const [step, alpha, wid] of [[1, 0.30, 1.6], [3, 0.55, 2.4]]) {
+          ctx.strokeStyle = hexA(bd.hue, alpha);
+          ctx.lineWidth = Math.max(0.8, wid * cam.zoom);
+          ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 7 * cam.zoom)]);
+          ctx.lineDashOffset = bd.seed + step * 11;
+          ctx.beginPath();
+          for (let f = 1; f < floors; f += step) {
+            const t = f / floors;
+            ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
+            ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalCompositeOperation = 'source-over';
         ctx.restore();
       }
     }
@@ -6340,11 +6706,14 @@ function drawCity(){
       ctx.strokeStyle = hexA(bd.hue, 1);
       ctx.lineWidth = Math.max(1.2, 2.4 * cam.zoom);
       ctx.stroke();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = hexA(bd.hue, 0.32);
-      ctx.lineWidth = Math.max(2, 9 * cam.zoom);
-      ctx.stroke();
-      ctx.globalCompositeOperation = 'source-over';
+      /* the wide bloom pass is the expensive one; the front rank earns it */
+      if (detail) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = hexA(bd.hue, 0.32);
+        ctx.lineWidth = Math.max(2, 9 * cam.zoom);
+        ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
+      }
     }
   }
 
@@ -6575,41 +6944,89 @@ function drawToys(){
 /* Power-ups read as hovering plates: a spinning diamond, a hard glyph and a
    pool of their own colour on the asphalt so they are visible from far
    enough back to change lanes for. */
+/* ---------------- pickups ----------------
+   These were a 19px diamond with a soft halo, which at the zoom the game
+   actually runs at is a speck you notice after you have already driven past
+   it. A power-up is one of the few things on the road worth changing line
+   for, so it now announces itself from a distance: a ground pool, a pulse
+   ring that keeps expanding, and a core large enough to aim at. */
 function drawPickups(){
   for (const k of G.pickups) {
     const kind = k.kind;
-    const bob = 1 + Math.sin(k.spin * 1.7) * 0.08;
+    const bob = 1 + Math.sin(k.spin * 1.7) * 0.10;
+    /* one pulse every ~1.4s, independent of the spin so the two do not beat
+       against each other into a single confusing wobble */
+    const pulse = (k.spin * 0.42) % 1;
     ctx.save();
     ctx.translate(k.x, k.y);
 
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 54);
-    g.addColorStop(0, 'rgba(' + kind.rgb + ',0.38)');
-    g.addColorStop(1, 'rgba(' + kind.rgb + ',0)');
+
+    /* the pool it sits in */
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 84);
+    g.addColorStop(0,    'rgba(' + kind.rgb + ',0.46)');
+    g.addColorStop(0.45, 'rgba(' + kind.rgb + ',0.12)');
+    g.addColorStop(1,    'rgba(' + kind.rgb + ',0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, 54, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 84, 0, TAU); ctx.fill();
+
+    /* the pulse — reaches well past the pool, which is what carries it into
+       peripheral vision while the player is watching traffic */
+    ctx.strokeStyle = 'rgba(' + kind.rgb + ',' + (0.42 * (1 - pulse)).toFixed(3) + ')';
+    ctx.lineWidth = 3.5 * (1 - pulse) + 0.8;
+    ctx.beginPath(); ctx.arc(0, 0, 26 + pulse * 62, 0, TAU); ctx.stroke();
+
     ctx.globalCompositeOperation = 'source-over';
 
     ctx.rotate(k.spin);
     ctx.scale(bob, bob);
     ctx.beginPath();
-    ctx.moveTo(0, -19); ctx.lineTo(19, 0); ctx.lineTo(0, 19); ctx.lineTo(-19, 0);
+    ctx.moveTo(0, -27); ctx.lineTo(27, 0); ctx.lineTo(0, 27); ctx.lineTo(-27, 0);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(6,10,20,0.85)';
+    ctx.fillStyle = 'rgba(6,10,20,0.88)';
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = kind.col;
     ctx.stroke();
 
     /* the glyph stays upright — a spinning letter is unreadable */
     ctx.rotate(-k.spin);
     ctx.fillStyle = kind.col;
-    ctx.font = '800 20px ui-sans-serif,system-ui,-apple-system,sans-serif';
+    ctx.font = '800 28px ui-sans-serif,system-ui,-apple-system,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(kind.glyph, 0, 1);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
+  drawPops();
+}
+
+/* Expanding rings: a pickup taken, and a car going through the windscreen.
+   Same shape, different scale — a shockwave is the one piece of impact
+   feedback the game had no version of, and the reason a wreck at 400km/h
+   read as a puff of grey rather than as something you did. */
+function drawPops(){
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of G.pops) {
+    const t = clamp(p.t / p.life, 0, 1);
+    const a = (1 - t) * (1 - t);
+    const r = p.r || 96, g = p.g || 150;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.strokeStyle = 'rgba(' + p.rgb + ',' + (a * 0.9).toFixed(3) + ')';
+    ctx.lineWidth = (p.w || 9) * a + 1;
+    ctx.beginPath(); ctx.arc(0, 0, 20 + t * r, 0, TAU); ctx.stroke();
+    /* a second, faster ring gives the blast an edge rather than a smudge */
+    if (p.hard) {
+      const t2 = clamp(t * 1.7, 0, 1);
+      ctx.strokeStyle = 'rgba(255,244,220,' + ((1 - t2) * 0.7).toFixed(3) + ')';
+      ctx.lineWidth = 5 * (1 - t2) + 0.5;
+      ctx.beginPath(); ctx.arc(0, 0, 14 + t2 * r * 0.8, 0, TAU); ctx.stroke();
+    }
+    blitGlow(p.col, 0, 0, g * (0.4 + t), g * (0.4 + t), a * 0.55);
+    ctx.restore();
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* A chase you cannot see is just a random shove. Anything hunting you that
@@ -6704,10 +7121,13 @@ let streaks = null;
 function drawSpeed(){
   if (G.state !== 'play' && G.state !== 'crash') return;
   const sp = G.car ? G.car.speed : 0;
-  const t = clamp((sp - 430) / 420, 0, 1) * (G.car && G.car.boost ? 1.35 : 1);
-  if (t < 0.04) return;
+  /* Started at 430 and topped out at 0.10 alpha, which meant the game had a
+     speed effect that only appeared once you were already flat out and was
+     invisible when it did. It reads from cruising pace now, and it reads. */
+  const t = clamp((sp - 300) / 380, 0, 1) * (G.car && G.car.boost ? 1.45 : 1);
+  if (t < 0.03) return;
   if (!streaks) {
-    streaks = Array.from({ length: 46 }, () => ({
+    streaks = Array.from({ length: 72 }, () => ({
       a: Math.random() * TAU, r: 0.42 + Math.random() * 0.72, l: 0.1 + Math.random() * 0.3,
       s: 0.6 + Math.random() * 0.9
     }));
@@ -6717,17 +7137,29 @@ function drawSpeed(){
   ctx.lineCap = 'round';
   const cx = W / 2, cy = camY(), R = hyp(W, H) * 0.62;
   const phase = (G.dist * 0.0016);
+  /* streaks carry the district's accent, so going fast in Redline looks
+     different from going fast in Skyport */
+  const srgb = TH.amb2 || '190,232,255';
   for (const s of streaks) {
     const f = ((s.r + phase * s.s) % 1.1);
-    const r0 = R * f, r1 = R * (f + s.l * t);
+    const r0 = R * f, r1 = R * (f + s.l * t * 1.6);
     const ca = Math.cos(s.a), sa = Math.sin(s.a);
-    ctx.strokeStyle = 'rgba(190,232,255,' + (0.10 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
-    ctx.lineWidth = 1.6 + t * 2;
+    ctx.strokeStyle = 'rgba(' + srgb + ',' + (0.30 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
+    ctx.lineWidth = 1.6 + t * 3.2;
     ctx.beginPath();
     ctx.moveTo(cx + ca * r0, cy + sa * r0);
     ctx.lineTo(cx + ca * r1, cy + sa * r1);
     ctx.stroke();
   }
+
+  /* The edges close in as you wind up — the frame itself narrowing is what
+     sells speed, more than anything moving inside it. Additive at the rim
+     rather than a dark vignette, so it reads as light tearing past. */
+  const vg = ctx.createRadialGradient(cx, cy, R * (0.62 - t * 0.20), cx, cy, R * 1.05);
+  vg.addColorStop(0, 'rgba(' + srgb + ',0)');
+  vg.addColorStop(1, 'rgba(' + srgb + ',' + (0.20 * t).toFixed(3) + ')');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -6815,6 +7247,12 @@ function blitGlow(col, x, y, rx, ry, alpha){
 }
 
 /* ---- small colour helpers ---- */
+/* "#3DE8FF" -> "61,232,255", which is the form the particle spawner wants */
+function rgbOf(hex){
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+}
 function hexA(hex, a){
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -7047,7 +7485,7 @@ function showMap(){
   UI.hud.classList.add('off');
   hide(UI.cleared); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
-  $('mTitle').textContent = THEMES[(run.act - 1) % THEMES.length].name;
+  $('mTitle').textContent = themeFor(run.act).name;
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
   /* Quotas move with your level now, so the board has to re-read them
@@ -8306,6 +8744,9 @@ window.__NH = {
   takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
+  /* pin every act of the run to one district, for art passes and screenshots */
+  forceTheme: i => { themeOrder = [i, i, i]; setTheme(1); },
+  THEMES,
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
