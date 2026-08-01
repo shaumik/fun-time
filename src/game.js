@@ -798,11 +798,12 @@ function spawn(x, y, vx, vy, life, r, col, add, grow){
 }
 /* decal corners are baked at spawn so the draw pass is one batched path
    instead of a save/rotate/restore per mark */
-function skid(x, y, a, w){
+function skid(x, y, a, w, rgb){
   if (SKID.length > 620) SKID.splice(0, 40);
   const c = Math.cos(a), s = Math.sin(a), L = 4;
   SKID.push({
     life:5.5,
+    rgb: rgb || '61,232,255',
     q:[ x - c*L - s*-w, y - s*L + c*-w,
         x + c*L - s*-w, y + s*L + c*-w,
         x + c*L - s*w,  y + s*L + c*w,
@@ -913,7 +914,8 @@ class Vehicle {
         for (const side of [-1, 1]) {
           const rx = this.x - cs * s.len * 0.30 - sn * s.wid * 0.42 * side;
           const ry = this.y - sn * s.len * 0.30 + cs * s.wid * 0.42 * side;
-          skid(rx, ry, this.a, s.wid * 0.20);
+          /* the ribbon takes the paint of whatever laid it */
+          skid(rx, ry, this.a, s.wid * 0.20, rgbOf(s.col));
         }
       }
       this.smokeT -= dt;
@@ -3096,21 +3098,35 @@ function applyCam(){
   ctx.translate(-cam.x, -cam.y);
 }
 
+/* ---------------- the floor ----------------
+   The grid was already here, at rgba(70,120,190,0.075) — which is to say it
+   was not here. Everything outside the road was flat void, and void is what
+   made the whole frame read as black no matter what happened on the road.
+
+   It is a light source now: a fine grid under a coarse one, both emitting,
+   the coarse lines carrying the district's own hue. This is the floor the
+   game has been implying since the first line of its pitch. */
 function drawGround(){
   ctx.fillStyle = TH.ground;
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
-  /* world-aligned grid: cheap, and it reads as motion at speed */
   const R = hyp(W, H) / cam.zoom * 0.62;
-  const S = 240;
-  ctx.strokeStyle = 'rgba(70,120,190,0.075)';
-  ctx.lineWidth = 1.4 / cam.zoom;
-  ctx.beginPath();
-  const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
-  for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
-  const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
-  for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
-  ctx.stroke();
+  const rgb = rgbOf(TH.left);
+
+  ctx.globalCompositeOperation = 'lighter';
+  /* fine mesh, then majors every fourth line so the floor has a rhythm
+     rather than a uniform screen-door texture */
+  for (const [S, alpha, wMul] of [[240, 0.10, 1], [960, 0.26, 2.2]]) {
+    ctx.strokeStyle = 'rgba(' + rgb + ',' + alpha + ')';
+    ctx.lineWidth = (1.4 * wMul) / cam.zoom;
+    ctx.beginPath();
+    const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
+    for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
+    const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
+    for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+    ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function visibleRange(){
@@ -3240,26 +3256,47 @@ function drawRoad(){
   }
 }
 
-/* three alpha buckets, one path each — 600 decals in 3 draw calls */
+/* ---------------- drift ribbons ----------------
+   These were rgba(3,5,12) — black smudges laid on black asphalt. The game is
+   called NEON HEAT and sells itself on drifting, and the drift was the one
+   thing on screen that emitted no light at all. They are light now: an
+   additive ribbon in the colour of whatever laid it, so a long slide writes
+   a glowing line across the road behind you and a pursuit unit cutting the
+   same corner writes its own in red.
+
+   Still three buckets and one path each — 600 decals in six draw calls now
+   rather than three, which is the whole cost of the change. */
 function drawSkids(){
-  for (let b = 0; b < 3; b++) {
-    const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
-    let any = false;
-    ctx.beginPath();
-    for (const s of SKID) {
-      if (s.life < lo || s.life >= hi) continue;
-      const q = s.q;
-      ctx.moveTo(q[0], q[1]);
-      ctx.lineTo(q[2], q[3]);
-      ctx.lineTo(q[4], q[5]);
-      ctx.lineTo(q[6], q[7]);
-      ctx.closePath();
-      any = true;
-    }
-    if (!any) continue;
-    ctx.fillStyle = 'rgba(3,5,12,' + (0.14 + b * 0.13).toFixed(2) + ')';
-    ctx.fill();
+  ctx.globalCompositeOperation = 'lighter';
+  /* group by colour so mixed traffic does not force a path per decal */
+  const byCol = new Map();
+  for (const s of SKID) {
+    let arr = byCol.get(s.rgb);
+    if (!arr) { arr = []; byCol.set(s.rgb, arr); }
+    arr.push(s);
   }
+  for (const [rgb, marks] of byCol) {
+    for (let b = 0; b < 3; b++) {
+      const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
+      let any = false;
+      ctx.beginPath();
+      for (const s of marks) {
+        if (s.life < lo || s.life >= hi) continue;
+        const q = s.q;
+        ctx.moveTo(q[0], q[1]);
+        ctx.lineTo(q[2], q[3]);
+        ctx.lineTo(q[4], q[5]);
+        ctx.lineTo(q[6], q[7]);
+        ctx.closePath();
+        any = true;
+      }
+      if (!any) continue;
+      /* fresher marks burn brighter, so the head of a slide is the hot end */
+      ctx.fillStyle = 'rgba(' + rgb + ',' + (0.05 + b * 0.11).toFixed(3) + ')';
+      ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawParticles(){
@@ -3568,23 +3605,42 @@ function drawCity(){
       ctx.fillStyle = i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424');
       ctx.fill();
 
+      /* The vertical edge where two faces meet, lit. This is the single
+         cheapest thing that turns an extruded quad into architecture: it
+         gives the mass a corner, and a corner gives it volume. */
+      if (bd.lit && !LVL().blackout) {
+        ctx.strokeStyle = hexA(bd.hue, 0.55);
+        ctx.lineWidth = Math.max(0.9, 1.8 * cam.zoom);
+        ctx.beginPath();
+        ctx.moveTo(b1[0], b1[1]); ctx.lineTo(t1[0], t1[1]);
+        ctx.stroke();
+      }
+
       if (bd.lit && QF.windows && !LVL().blackout) {
         ctx.save();
         ctx.clip();
-        /* dashed rows read as lit windows; solid rows read as wireframe */
-        ctx.strokeStyle = hexA(bd.hue, 0.34);
-        ctx.lineWidth = Math.max(0.8, 1.6 * cam.zoom);
-        ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
-        ctx.lineDashOffset = bd.seed;
-        ctx.beginPath();
+        /* Was one dashed stroke per floor, which reads as a scan line rather
+           than as a window. Now the rows are dashed *and* additive, so the
+           face glows from inside, and every third floor burns brighter — a
+           tower with uniform lighting reads as a texture, one with variation
+           reads as occupied. */
+        ctx.globalCompositeOperation = 'lighter';
         const floors = 3 + Math.floor(bd.h / 120);
-        for (let f = 1; f < floors; f++) {
-          const t = f / floors;
-          ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
-          ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
+        for (const [step, alpha, wid] of [[1, 0.30, 1.6], [3, 0.55, 2.4]]) {
+          ctx.strokeStyle = hexA(bd.hue, alpha);
+          ctx.lineWidth = Math.max(0.8, wid * cam.zoom);
+          ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 7 * cam.zoom)]);
+          ctx.lineDashOffset = bd.seed + step * 11;
+          ctx.beginPath();
+          for (let f = 1; f < floors; f += step) {
+            const t = f / floors;
+            ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
+            ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalCompositeOperation = 'source-over';
         ctx.restore();
       }
     }
