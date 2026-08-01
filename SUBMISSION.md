@@ -17,6 +17,19 @@ Produces:
 The build warns if anything other than the CrazyGames SDK would be requested at
 runtime, or if the SDK tag went missing.
 
+## 1a. Check
+
+```
+npm run check
+```
+
+Drives `dist/index.html` against a mocked v3 SDK in headless Chromium and
+asserts 97 things their QA looks at — click depth to gameplay, SDK event
+ordering, rewarded-button behaviour under Basic Launch and adblock, identity
+handling for guests and signed-in players, and legibility at all ten iframe
+sizes they list. Needs `npm i` once for Playwright. A green run proves this
+side of the contract; it does **not** prove the handshake with the real SDK.
+
 ## 2. Upload
 
 Developer portal → **Submit game** → upload `dist/neon-heat.zip`.
@@ -65,6 +78,11 @@ Paste-ready. Edit to taste.
 > Desktop — Arrow keys or A/D to steer. That is the whole control. M to mute.
 > Mobile — touch anywhere and drag sideways to steer. Nothing else to press. Hit a rail
 > head-on and the car reverses out by itself.
+
+Key handling reads `KeyboardEvent.code`, which names physical positions, so an
+AZERTY player reaching for ZQSD gets the same bindings without rebinding —
+their "Q" is physically `KeyA`. Escape is deliberately unbound: it is on their
+restricted list because the browser and their own fullscreen control own it.
 
 **Suggested tags:** driving, racing, drift, crash, destruction, roguelite, arcade, 1 player, singleplayer
 
@@ -121,6 +139,19 @@ audio back. Test it locally with `?muteAudio=true`.
 | Safe-area insets honoured on notched devices | Yes — every edge-anchored element, in both orientations |
 | No custom fullscreen button | Yes — none exists |
 | No cross-promotion or external links | Yes — the build requests nothing but the SDK |
+| **New players land in gameplay** | Yes — **zero clicks**; a first-ever load starts district 1 directly |
+| **No rewarded button without effect** | Yes — `hasAdblock()` up front, and the offers are withdrawn on `adblock` / `adsDisabledBasicLaunch` |
+| **An alternative to watching an ad** | Yes — revive is also purchasable with coins |
+| **Unfilled ads tell the player to retry** | Yes — transient codes keep the offer up and toast |
+| **CrazyGames username *and* avatar shown** | Yes — on the records board, guests excluded |
+| **Guest signing in mid-session detected** | Yes — `addAuthListener` |
+| **`systemInfo` used for device detection** | Yes — overrides the local hover/touch probe once init resolves |
+| **`reportGameCompletedPercentage`** | Yes — deepest district over the 15 authored ones, monotonic |
+| **`setGameContext` / `clearGameContext`** | Yes — act, district, level and node type |
+| **Escape not bound to anything** | Yes — it is a restricted key and used to abandon the run |
+| **Text legible at `devicePixelRatio:1`** | Yes — 10px floor on every font, verified at all ten iframe sizes |
+| **Wheel and right-click swallowed** | Yes — except the garage work order, which scrolls |
+| **iOS audio revived on a user gesture** | Yes — `touchend`, `click` and `pointerdown`, handling `interrupted` too |
 
 ## 6. Before you hit submit
 
@@ -129,15 +160,40 @@ Two things I could not verify from here, both worth ten minutes:
 1. **Run it once on their platform.** The SDK integration is tested against a *mock* — every
    call and callback is exercised (init, loading, gameplay bracketing, rewarded, midgame,
    ad errors, and a hung ad that never calls back), but never against the real SDK. The
-   shape matches their current docs; the handshake is unproven.
+   shape matches their current docs; the handshake is unproven. Their preview tool at
+   `crazygames.com/preview` is the place to prove it, and it also reports back on the
+   SDK features you implemented.
 2. **Test on a real iPhone.** iOS Safari is where web games break — audio unlock and
-   viewport behaviour especially. Emulated Chromium is not a substitute.
+   viewport behaviour especially. Emulated Chromium is not a substitute. The audio
+   context now resumes on `touchend`/`click` and handles the `interrupted` state their
+   docs describe, but that path has only been exercised in Chromium.
+3. **Look at the first thirty seconds yourself.** The single biggest change here is that
+   new players no longer pass through four screens before driving. Load the build with
+   an empty `localStorage` and check the run it drops you into is one you would want a
+   stranger judging the game on.
+
+**Two calls left open, both yours to make:**
+
+1. **Progress save stays on localStorage + APS.** Their docs call the Data module
+   "preferred" but list APS as an allowed alternative, and this game has no in-game
+   purchases, so APS is legal. Switching to the Data module means the submission form's
+   Progress Save answer *must* change to "using the Data Module" in the same breath —
+   the module is disabled otherwise and saves break silently. Not worth doing blind.
+   Keep answering **"Yes, using LocalStorage"** while this build ships as-is.
+2. **No banner ads.** `requestBanner` is still unwired. Banners are optional, and their
+   rules around them are easy to fail — not during gameplay, only on screens open five
+   seconds or more, never covering UI at any size, two per view maximum. Shipping
+   without them is not a rejection; shipping them badly is.
 
 Not built, in case it comes up in review: no *global* leaderboard — theirs is a
 server-to-server API and this build has no backend to hold the key, so what ships is a
-local top-ten of the player's own runs — and no tutorial
-beyond a one-time control hint, and no banner ads (`requestBanner` is not wired — the
-rewarded and midgame placements are).
+local top-ten of the player's own runs.
+
+Onboarding is now in gameplay rather than in front of it, which is what their
+guidelines ask for: a first-ever load drops straight into district 1 and a single
+timed line names the control for whichever input the player is on. Returning players
+get the menu, garage and route board exactly as before — the rule is about *new*
+users, and a player with a save has already seen the flow.
 
 **No sitelock either**, and that one is deliberate. Their guide suggests checking that
 `"crazygames"` appears within the last three parts of the hostname and blanking the
@@ -152,7 +208,19 @@ test against the live platform, and a bad bet before then.
 |---|---|
 | Rewarded — revive | On a wreck, once per run, only if the run was worth saving |
 | Rewarded — double coins | Game over screen |
-| Midgame interstitial | Every third run end, **unless** the Revive offer is live |
+| Paid revive (no ad) | Same screen, priced `500 + 250 × district` from banked coins |
+| Midgame interstitial | Every third run end, **unless** the Revive offer is live or ads are known dead |
+
+All four buttons on that screen — both ad offers, the paid alternative and
+"Spend it in the garage" — are measured identical in width, height, font size,
+weight and family, which is their explicit requirement for the
+continue-without-watching path.
+
+When no ad can serve, the two ad routes are removed rather than disabled-and-
+clickable, an inline notice says why (never a popup — their adblock rules
+forbid those), and the coin revive carries the screen. `unfilled` and
+`adCooldown` are treated as transient: the offer stays and the player is told
+to try again.
 
 All three degrade to a simulated overlay when the SDK is absent, so the flow stays
 demonstrable off-platform.

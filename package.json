@@ -5,6 +5,10 @@
   "description": "A drift roguelite for web distribution",
   "scripts": {
     "build": "node build.mjs",
+    "check": "node tools/compliance-check.mjs",
     "serve": "npx --yes serve -l 3000 ."
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
   }
 }

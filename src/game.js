@@ -110,10 +110,41 @@ const Ads = {
   async readUser(){
     try {
       const u = this.sdk && this.sdk.user && await this.sdk.user.getUser();
-      if (u && u.username) this.playerName = u.username;
+      if (u) this.applyUser(u);
     } catch (e) { /* not signed in, or no user module — anonymous is fine */ }
   },
   playing: false,      // mirrors gameplayStart/Stop so we never double-fire
+
+  /* ---- can an ad actually serve right now? ----
+     Their rules forbid a rewarded offer that is "clickable but without
+     effect", and say it twice: once for adblock users, and once for Basic
+     Launch, where monetization is off and every request comes back
+     `adsDisabledBasicLaunch`. Neither state is knowable from a button click
+     alone, so detect adblock up front and learn the rest from the first
+     error — then take the offers down rather than leaving dead buttons. */
+  blocked: false,      // adblocker present
+  suspended: false,    // platform is refusing ads this session
+  canServe(){ return !this.blocked && !this.suspended; },
+  blockedNote(){
+    if (this.blocked)   return 'Ad blocker detected — the ad bonuses are unavailable.';
+    if (this.suspended) return 'Ad bonuses are unavailable right now.';
+    return '';
+  },
+  /* `unfilled` and `adCooldown` are transient: the offer stays up and the
+     player is told to try again, which is what their docs ask for. */
+  noteAdError(err){
+    const code = (err && err.code) || '';
+    if (code === 'adblock') this.blocked = true;
+    else if (code === 'adsDisabledBasicLaunch') this.suspended = true;
+    return code;
+  },
+  async probeAdblock(){
+    try {
+      if (this.sdk && this.sdk.ad && this.sdk.ad.hasAdblock)
+        this.blocked = !!(await this.sdk.ad.hasAdblock());
+    } catch (e) { /* detection is best-effort; assume ads work */ }
+    try { refreshAdOffers(); } catch (e) {}
+  },
 
   async boot(){
     const SDK = window.CrazyGames && window.CrazyGames.SDK;
@@ -127,7 +158,14 @@ const Ads = {
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
       this.bindSettings(SDK);
+      this.readSystemInfo();
       this.readUser();
+      this.bindAuth();
+      this.probeAdblock();
+      this.flushContext();
+      /* a run already in progress by the time init lands still needs its
+         opening percentage reported */
+      try { reportProgress(); } catch (e) {}
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -185,13 +223,68 @@ const Ads = {
       this.sdk.ad.requestAd(type, {
         adStarted:  () => adPause(true),
         adFinished: () => finish(true),
-        adError:    () => finish(false)
+        adError:    err => { this.noteAdError(err); finish(false); }
       });
     } catch (e) { finish(false); }
   },
 
   rewarded(msg, done){ this.request('rewarded', msg, 3.2, done); },
-  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); }
+  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); },
+
+  /* ---- user module ----
+     A full integration is expected to show the CrazyGames username *and*
+     avatar rather than inventing its own identity, and to notice a guest
+     signing in mid-session instead of leaving them anonymous until reload. */
+  avatar: '',
+  applyUser(u){
+    this.playerName = (u && u.username) || '';
+    this.avatar     = (u && u.profilePictureUrl) || '';
+    try { refreshIdentity(); } catch (e) {}
+  },
+  bindAuth(){
+    try {
+      const us = this.sdk && this.sdk.user;
+      if (us && us.addAuthListener) us.addAuthListener(u => this.applyUser(u));
+    } catch (e) { /* older SDK without the listener — boot read still stands */ }
+  },
+
+  /* Their device detection is better than ours and they ask us to prefer it. */
+  systemInfo: null,
+  readSystemInfo(){
+    try { this.systemInfo = (this.sdk && this.sdk.user && this.sdk.user.systemInfo) || null; }
+    catch (e) { this.systemInfo = null; }
+    try { applyDeviceType(); } catch (e) {}
+  },
+  deviceType(){
+    const d = this.systemInfo && this.systemInfo.device;
+    return (d && d.type) || '';
+  },
+
+  /* Progress and context. NEON HEAT is endless, so "100%" is defined the way
+     their docs allow — our own consistent milestone — and set at the end of
+     the third act, which is the last authored content in the game. */
+  reported: -1,
+  progress(pct){
+    const v = clamp(Math.round(pct), 0, 100);
+    if (v <= this.reported) return;         // progression only moves forward
+    this.reported = v;
+    this.call(() => this.sdk.game.reportGameCompletedPercentage(v));
+  },
+  /* The first district now begins before init() resolves — that is the point
+     of the fast path — so a context set at that moment would be dropped on
+     the floor. Hold the latest one and send it when the SDK comes up. */
+  pendingContext: null,
+  context(o){
+    this.pendingContext = o;
+    this.call(() => this.sdk.game.setGameContext(o));
+  },
+  clearContext(){
+    this.pendingContext = null;
+    this.call(() => this.sdk.game.clearGameContext());
+  },
+  flushContext(){
+    if (this.pendingContext) this.call(() => this.sdk.game.setGameContext(this.pendingContext));
+  }
 };
 
 /* ---------------- pause ----------------
@@ -385,7 +478,12 @@ function resize(){
   /* In portrait the narrow axis governs legibility: height/100 on a 390x844
      phone gives 8.4px units inside a 390px-wide column, which overflows. */
   const portrait = W / H < 1.15;
-  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 3.2, 11);
+  /* The floors are a legibility requirement, not taste. Their QA checks text
+     at devicePixelRatio 1 in iframes as small as 821x462, where an unfloored
+     H/100 gives a 4.6px unit and captions render at about 5px — unreadable.
+     Every font-size also carries a 10px floor in the stylesheet; these keep
+     the boxes around that text growing with it instead of clipping it. */
+  const u = portrait ? clamp(W / 54, 5, 10) : clamp(H / 100, 6, 11);
   stage.style.setProperty('--u', u.toFixed(2) + 'px');
   /* plates are drawn at CSS size, so a resolution tweak must not rebuild
      them — that is three full-screen canvases of work */
@@ -459,12 +557,32 @@ addEventListener('keydown', e => {
   }
   if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
-  if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
+  /* Escape is deliberately unbound. It is on their restricted list because the
+     browser — and CrazyGames' own fullscreen control — already own it, and
+     this used to call toMenu(), which nulls the run. So a player in fullscreen
+     pressing Escape to get their cursor back also silently lost the run they
+     were driving. Quitting stays on the buttons, which no browser reserves. */
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
 
+/* pointerdown covers mouse and most touch, but WebKit is stricter about which
+   gesture may restart an interrupted AudioContext, and their docs name
+   touchend specifically. Cheap to listen for all three than to ship a game
+   that comes back from a phone call silent. */
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
+addEventListener('touchend',    () => NHAudio.resume(), { passive: true });
+addEventListener('click',       () => NHAudio.resume(), { passive: true });
+
+/* From their common-fixes list. A wheel event that escapes the game scrolls
+   the page embedding it, and a right-click drops a browser menu over the
+   canvas — on tablets a long press does the same. Both are suppressed, except
+   inside the garage work order, which is the one panel meant to scroll. */
+addEventListener('wheel', e => {
+  const t = e.target;
+  if (!(t && t.closest && t.closest('.gWork'))) e.preventDefault();
+}, { passive: false });
+addEventListener('contextmenu', e => e.preventDefault());
 stage.addEventListener('pointerdown', gsDown);
 stage.addEventListener('pointermove', gsMove);
 stage.addEventListener('pointerup', gsUp);
@@ -472,7 +590,19 @@ stage.addEventListener('pointercancel', gsUp);
 stage.addEventListener('lostpointercapture', gsUp);
 
 const touchEl = document.getElementById('touch');
-const hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
+/* A local guess, corrected later by the platform. CrazyGames strongly
+   recommend their own device detection over probes like this one, which
+   misreads touchscreen laptops as phones — but systemInfo only exists once
+   the SDK has initialised, which is after this file runs. So: guess now,
+   and let applyDeviceType() overrule it when the real answer arrives. */
+let hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
+function applyDeviceType(){
+  const t = Ads.deviceType();
+  if (!t) return;                       // SDK absent or older — keep the probe
+  hasTouch = (t === 'mobile' || t === 'tablet');
+  const b = $('btnCtrl');
+  if (b) b.classList.toggle('show', hasTouch);
+}
 touchEl.querySelectorAll('.tbtn').forEach(b => {
   const k = b.dataset.k;
   const on  = e => { e.preventDefault(); touch[k] = 1; b.classList.add('down'); };
@@ -539,6 +669,11 @@ function gsUp(e){
 function swipeMode(){ return hasTouch && Save.data.ctrl !== 'pads'; }
 
 function readInput(){
+  /* Already layout-adaptive, and deliberately so: KeyboardEvent.code names
+     physical positions after US QWERTY, so an AZERTY player reaching for ZQSD
+     presses the key labelled Q — which is physically KeyA and arrives here as
+     KeyA. Reading `code` rather than `key` is what satisfies their guidance
+     about not making French players rebind; don't "fix" this to `key`. */
   const l = keys.ArrowLeft  || keys.KeyA || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
@@ -3929,6 +4064,7 @@ function hide(el){ el.classList.add('hide'); }
 function toMenu(){
   G.state = 'menu';
   G.run = null;
+  Ads.clearContext();          // no district to blame once you are back out
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.cleared);
@@ -3945,6 +4081,30 @@ function startRun(){
   G.pendingLevels = 0; G.awaitingAdvance = false;
   shownScore = 0;
   showMap();
+}
+
+/* ---------------- first run ----------------
+   CrazyGames require new players to be in gameplay immediately, and allow at
+   most one click if that is not feasible. The full flow — menu, garage, route
+   board, dispatch, brief — is five clicks before the car moves, which is a
+   rejection on its own. A player with no completed run skips all of it and
+   starts driving the first district straight off the loading screen. Everyone
+   who has finished a run has seen the flow already and keeps it. */
+function startFirstRun(){
+  Hangar.grantStarter();
+  hide(UI.menu); hide(UI.over); hide(UI.garage);
+  G.run = newRun();
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  G.pendingLevels = 0; G.awaitingAdvance = false;
+  shownScore = 0;
+  /* the middle of the opening row: the plain Run, not an Elite */
+  const open = openNodes();
+  const pick = open[Math.floor(open.length / 2)] || open[0];
+  G.run.row = pick.row; G.run.col = pick.col;
+  G.run.node = G.run.route[pick.row][pick.col];
+  G.run.contract = null;          // no wager on a run you have not been taught yet
+  G.fastStart = true;
+  beginNode();
 }
 
 /* ============================================================
@@ -4231,7 +4391,9 @@ function beginNode(){
   G.tier = Math.min(3, Math.floor(G.heat));
   if (run.L.hazards) seedHazards();
 
-  showBrief();
+  /* the brief is a screen, and the first run is not allowed one */
+  if (G.fastStart) { G.fastStart = false; beginDistrict(); }
+  else showBrief();
 }
 
 /* Roadworks scatters strips across the district up front, so the bane is
@@ -4285,8 +4447,22 @@ function beginDistrict(){
   G.state = 'play';
   UI.hud.classList.remove('off');
   if (G.run.cfg.boss) addBoss();
-  if (swipeMode() && G.run.district === 1) {
+  /* Attached to any feedback the player sends from the platform, so a "stuck
+     here" report arrives with the district it was sent from. */
+  Ads.context({
+    act: String(G.run.act), district: String(G.run.district),
+    level: String(G.run.level), node: String(G.run.node && G.run.node.type)
+  });
+  /* The hint is now the entire onboarding: a first-time player lands here
+     without passing the menu that used to carry the "← → Steer" line, so it
+     has to cover the keyboard as well as the touchscreen. Visual, one line,
+     and it times itself out — their guidance asks for onboarding in gameplay
+     rather than a screen in front of it. */
+  if (G.run.district === 1) {
     const el = $('gsHint');
+    el.firstElementChild.textContent = swipeMode()
+      ? 'Drag anywhere to steer'
+      : 'Press ← → to steer';
     el.classList.add('on');
     clearTimeout(el._t);
     el._t = setTimeout(() => el.classList.remove('on'), 5200);
@@ -4363,6 +4539,7 @@ function endRun(won){
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
   if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
+  reportProgress();
   /* clearing districts is the achievement, so it pays on top of raw score */
   G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
   Save.data.runs++;
@@ -4389,8 +4566,6 @@ function endRun(won){
   $('ovPlace').classList.toggle('in', !!rank);
   /* one revive per run, and only when the run was worth saving */
   const reviveOffered = !G.revived && G.score >= 400;
-  $('btnRevive').disabled = !reviveOffered;
-  $('btnDouble').disabled = false;
 
   /* Their ad policy forbids pairing a midgame ad with a "watch a rewarded ad
      to keep playing" offer at the same break: between two attempts you may
@@ -4399,9 +4574,21 @@ function endRun(won){
      is live. Double-your-coins is not affected — it rewards a run that is
      already over rather than continuing the current one, so it may sit
      alongside a midgame. */
-  const showOver = () => { show(UI.over); };
-  if (!reviveOffered && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  const showOver = () => { show(UI.over); refreshAdOffers(); };
+  /* no point pausing the game for a request we already know cannot fill */
+  if (!reviveOffered && Ads.canServe() && Save.data.runs % 3 === 0) Ads.midroll(showOver);
   else showOver();
+}
+
+/* ---- progress reporting ----
+   NEON HEAT is endless, which their docs explicitly allow for: a developer
+   may define their own 100% as long as it is applied consistently. Ours is
+   the far end of the last authored act — three acts of five rows — so a
+   player who has driven every district the game contains reads as complete.
+   Reported on every run end, and never allowed to move backwards. */
+const RUN_DISTRICTS = ROWS * THEMES.length;
+function reportProgress(){
+  Ads.progress((Save.data.deepest || 0) / RUN_DISTRICTS * 100);
 }
 
 function commitCoins(mult){
@@ -4455,9 +4642,72 @@ $('btnBdBack').onclick  = () => { NHAudio.ui(true); closeBoard(); };
 $('btnBack').onclick   = () => { hide(UI.garage); toMenu(); };
 $('btnRace').onclick   = () => { hide(UI.garage); startRun(); };
 
-$('btnRevive').onclick = () => {
-  Ads.rewarded('Reviving your run', ok => {
-    if (!ok) return;
+/* What a revive costs if you would rather not watch anything. Their rewarded
+   rules require an alternative to the ad, and coins are the currency the
+   player already earns, so the offer scales with how deep the run got. */
+function revivePrice(){
+  const d = (G.run && G.run.district) || 1;
+  return 500 + d * 250;
+}
+
+/* ---- ad offers ----
+   Rebuilt whenever the game-over screen opens, and again if adblock detection
+   lands late. Nothing here may leave a live-looking button that does nothing. */
+function refreshAdOffers(){
+  const over = UI.over && !UI.over.classList.contains('hide');
+  const price = revivePrice();
+  const serve = Ads.canServe();
+  const reviveOK = !G.revived && G.score >= 400;
+
+  const pEl = $('revivePrice');
+  if (pEl) pEl.textContent = fmt(price);
+
+  const bRev  = $('btnRevive');
+  const bCoin = $('btnReviveCoins');
+  const bDbl  = $('btnDouble');
+  if (!bRev || !bCoin || !bDbl) return;
+
+  /* the ad routes go away entirely when no ad can serve */
+  bRev.disabled = !reviveOK || !serve;
+  bDbl.disabled = !serve;
+  bRev.classList.toggle('hide', !serve);
+  bDbl.classList.toggle('hide', !serve);
+
+  /* the paid route survives an adblocker, which is what keeps the screen
+     playable rather than punishing the player for their extension */
+  bCoin.disabled = !reviveOK || Save.data.coins < price;
+  bCoin.classList.toggle('hide', !reviveOK);
+
+  const note = $('ovAdNote');
+  if (note) {
+    const msg = serve ? '' : Ads.blockedNote();
+    note.textContent = msg;
+    note.classList.toggle('hide', !msg || !over);
+  }
+}
+
+/* Username and avatar come from the platform account; a guest stays a guest
+   and nothing on screen asks them to sign in. */
+function refreshIdentity(){
+  const who = $('bdWho');
+  if (who) who.textContent = Ads.playerName || 'Your runs';
+  const pic = $('bdPic');
+  if (!pic) return;
+  /* A guest has neither, and is never asked for either. If the image itself
+     fails we drop it rather than leave a broken frame on the board. */
+  if (Ads.avatar) {
+    pic.onerror = () => pic.classList.add('hide');
+    pic.src = Ads.avatar;
+    pic.alt = Ads.playerName || '';
+    pic.classList.remove('hide');
+  } else {
+    pic.classList.add('hide');
+    pic.removeAttribute('src');
+  }
+}
+
+function doRevive(){
+  {
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
@@ -4490,12 +4740,33 @@ $('btnRevive').onclick = () => {
     G.heat = Math.max(0, G.heat - 1);
     G.slow = 1;
     toast('Back in the race', 'gold');
-  });
+  }
+}
+
+/* An ad that never filled must say so and leave the player somewhere to go —
+   their docs ask us to encourage a retry rather than fail silently. */
+function adUnavailable(){
+  refreshAdOffers();
+  toast(Ads.canServe() ? 'No ad available — try again in a moment'
+                       : Ads.blockedNote(), 'gold');
+}
+
+$('btnRevive').onclick = () => {
+  Ads.rewarded('Reviving your run', ok => ok ? doRevive() : adUnavailable());
+};
+
+$('btnReviveCoins').onclick = () => {
+  const price = revivePrice();
+  if (G.revived || Save.data.coins < price) return;
+  Save.data.coins -= price;
+  Save.flush();
+  NHAudio.ui(true);
+  doRevive();
 };
 
 $('btnDouble').onclick = () => {
   Ads.rewarded('Doubling your coins', ok => {
-    if (!ok) return;
+    if (!ok) { adUnavailable(); return; }
     commitCoins(2);
     $('btnDouble').disabled = true;
     $('ovCoins').textContent = '0';
@@ -4670,7 +4941,7 @@ function showBoard(from){
           '<span class="bdT">' + relDay(r.t) + '</span>' +
         '</div>').join('')
     : '<div class="bdEmpty">No runs on the board yet. Go and put one there.</div>';
-  $('bdWho').textContent = Ads.playerName ? Ads.playerName : 'Your runs';
+  refreshIdentity();          // name and avatar, whenever the board opens
   G.boardFrom = from;
   hide(UI.menu); hide(UI.over);
   show(UI.board);
@@ -5097,7 +5368,10 @@ setCtrlLabel();
 setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
-toMenu();
+/* Never played: straight into the first district, no clicks. Otherwise the
+   menu, which a returning player expects and which their rule is not about. */
+if (Save.data.runs > 0) toMenu();
+else { toMenu(); startFirstRun(); }
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */

@@ -66,12 +66,12 @@ body{
 
 /* ---------- shared type ---------- */
 .lbl{
-  font-size:calc(var(--u)*1.35);
+  font-size:max(10px,calc(var(--u)*1.35));
   letter-spacing:.24em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .val{
-  font-size:calc(var(--u)*5.2);
+  font-size:max(10px,calc(var(--u)*5.2));
   font-weight:800;line-height:.95;
   font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   color:#fff;text-shadow:0 0 calc(var(--u)*2.4) rgba(61,232,255,.45);
@@ -79,7 +79,7 @@ body{
 .amber{color:var(--amber)!important;text-shadow:0 0 calc(var(--u)*2.4) rgba(255,177,61,.5)!important}
 .key{
   display:inline-block;
-  font-size:calc(var(--u)*1.05);letter-spacing:.14em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
   border:1px solid var(--edge);border-radius:calc(var(--u)*.45);
   padding:calc(var(--u)*.25) calc(var(--u)*.6);
@@ -107,14 +107,14 @@ body{
 }
 .combo.on{opacity:1;transform:none}
 .cmult{
-  font-size:calc(var(--u)*4.6);font-weight:800;line-height:1;
+  font-size:max(10px,calc(var(--u)*4.6));font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   color:var(--magenta);
   text-shadow:0 0 calc(var(--u)*3) rgba(255,46,136,.75);
 }
 .combo.hot .cmult{color:var(--amber);text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
 .cpts{
-  font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;margin-top:calc(var(--u)*.2);
 }
 .cbar{
@@ -127,7 +127,7 @@ body{
   box-shadow:0 0 calc(var(--u)*1.4) rgba(255,46,136,.9);
 }
 .cnote{
-  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);margin-top:calc(var(--u)*.7);
 }
 
@@ -143,11 +143,11 @@ body{
   margin-bottom:calc(var(--u)*.55);
 }
 .objHead span{
-  font-size:calc(var(--u)*1.15);letter-spacing:.26em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.26em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .objHead b{
-  font-size:calc(var(--u)*1.6);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*1.6));font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;
 }
 .obj.boss .objHead span{color:var(--red)}
@@ -188,7 +188,7 @@ body{
 }
 .build i{
   font-style:normal;
-  font-size:calc(var(--u)*1.05);letter-spacing:.12em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.12em;text-transform:uppercase;
   font-weight:800;color:var(--ice);
   border-left:calc(var(--u)*.35) solid var(--cyan);
   background:rgba(255,255,255,.05);
@@ -205,7 +205,7 @@ body{
 
 .dchip{
   display:inline-block;
-  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:#04121A;background:var(--cyan);
   border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1);
   margin-bottom:calc(var(--u)*1);
@@ -219,7 +219,7 @@ body{
 }
 .heat.on{opacity:1}
 .hlbl{
-  font-size:calc(var(--u)*1.15);letter-spacing:.28em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.28em;text-transform:uppercase;
   font-weight:800;color:var(--dim);margin-right:calc(var(--u)*.5);
 }
 .heat i{
@@ -239,12 +239,12 @@ body{
 }
 .speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
 .spdv{
-  font-size:calc(var(--u)*6.4);font-weight:800;line-height:.85;color:#fff;
+  font-size:max(10px,calc(var(--u)*6.4));font-weight:800;line-height:.85;color:#fff;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;
   text-shadow:0 0 calc(var(--u)*2.6) rgba(61,232,255,.5);
 }
 .spdu{
-  font-size:calc(var(--u)*1.3);letter-spacing:.22em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.22em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 /* Active power-ups. Nothing here is a resource you meter out any more, so
@@ -254,7 +254,7 @@ body{
   display:flex;align-items:center;gap:calc(var(--u)*.8);
   padding:calc(var(--u)*.45) calc(var(--u)*1);
   border:1px solid currentColor;border-radius:99px;
-  font-size:calc(var(--u)*1.15);font-weight:800;
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;
   background:rgba(4,8,18,.5);
   animation:pwrIn .18s cubic-bezier(.2,.9,.25,1) both;
@@ -288,7 +288,7 @@ body{
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
-  font-size:calc(var(--u)*1.9);font-weight:800;
+  font-size:max(10px,calc(var(--u)*1.9));font-weight:800;
   letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
   color:#fff;text-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.8);
   animation:toast 1.1s cubic-bezier(.2,.9,.2,1) forwards;
@@ -345,13 +345,13 @@ body{
 /* menu */
 .menuIn{text-align:center;max-width:calc(var(--u)*82)}
 .eyebrow{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);opacity:.85;
   margin-bottom:calc(var(--u)*2);
 }
 .title{
   margin:0;line-height:.82;
-  font-size:calc(var(--u)*13);font-weight:800;
+  font-size:max(10px,calc(var(--u)*13));font-weight:800;
   text-transform:uppercase;letter-spacing:-.03em;
   display:flex;flex-direction:column;align-items:center;
 }
@@ -367,7 +367,7 @@ body{
 }
 .tag{
   margin:calc(var(--u)*2.2) 0 calc(var(--u)*3.4);
-  font-size:calc(var(--u)*1.75);font-weight:600;color:var(--ice);opacity:.72;
+  font-size:max(10px,calc(var(--u)*1.75));font-weight:600;color:var(--ice);opacity:.72;
   letter-spacing:.02em;
 }
 .btns{display:flex;gap:calc(var(--u)*1.4);justify-content:center;flex-wrap:wrap}
@@ -376,7 +376,7 @@ body{
   margin-top:calc(var(--u)*3.4);
 }
 .hint{
-  font-size:calc(var(--u)*1.25);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .hint b{
@@ -386,7 +386,7 @@ body{
 }
 .best{
   margin-top:calc(var(--u)*2.6);
-  font-size:calc(var(--u)*1.3);letter-spacing:.24em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.24em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .best b{color:var(--cyan);font-variant-numeric:tabular-nums;margin-left:calc(var(--u)*.6)}
@@ -395,7 +395,7 @@ body{
 .btn{
   pointer-events:auto;cursor:pointer;
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.65);font-weight:800;
+  font-size:max(10px,calc(var(--u)*1.65));font-weight:800;
   letter-spacing:.16em;text-transform:uppercase;
   color:var(--ice);
   background:rgba(255,255,255,.05);
@@ -437,7 +437,7 @@ body{
 }
 .btn em{
   position:absolute;right:calc(var(--u)*1.4);
-  font-style:normal;font-size:calc(var(--u)*1.05);letter-spacing:.18em;
+  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.18em;
   opacity:.62;border:1px solid currentColor;border-radius:calc(var(--u)*.35);
   padding:calc(var(--u)*.15) calc(var(--u)*.55);
 }
@@ -445,22 +445,22 @@ body{
 /* ---------- district brief ---------- */
 .briefIn{text-align:center;max-width:calc(var(--u)*62)}
 .bkicker{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .bname{
   margin:calc(var(--u)*1.4) 0 calc(var(--u)*.8);
-  font-size:calc(var(--u)*8);font-weight:800;line-height:.9;
+  font-size:max(10px,calc(var(--u)*8));font-weight:800;line-height:.9;
   text-transform:uppercase;letter-spacing:-.02em;color:#fff;
   text-shadow:0 0 calc(var(--u)*3.5) rgba(61,232,255,.5);
 }
 .bsub{
-  font-size:calc(var(--u)*1.2);letter-spacing:.28em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.28em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .bobj{
   margin:calc(var(--u)*2.6) 0 calc(var(--u)*3.2);
-  font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
+  font-size:max(10px,calc(var(--u)*2));font-weight:600;color:var(--ice);line-height:1.5;
 }
 .bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
 /* boss briefs commit to red so the shift in stakes is instant */
@@ -476,11 +476,11 @@ body{
 .draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
 .dtitle{
   margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
-  font-size:calc(var(--u)*4.4);font-weight:800;
+  font-size:max(10px,calc(var(--u)*4.4));font-weight:800;
   text-transform:uppercase;letter-spacing:.02em;color:#fff;
 }
 .dsub{
-  font-size:calc(var(--u)*1.3);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);margin-bottom:calc(var(--u)*2.8);
 }
 .dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
@@ -504,21 +504,21 @@ body{
 .dcard.rare{border-top-color:var(--amber)}
 .dcard.rare:hover{background:rgba(255,177,61,.09)}
 .drar{
-  font-size:calc(var(--u)*1);letter-spacing:.24em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .dcard.uncommon .drar{color:var(--magenta)}
 .dcard.rare .drar{color:var(--amber)}
 .dname{
-  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
   text-transform:uppercase;letter-spacing:.01em;line-height:1.05;
 }
-.ddesc{font-size:calc(var(--u)*1.5);line-height:1.45;color:var(--ice);opacity:.82}
+.ddesc{font-size:max(10px,calc(var(--u)*1.5));line-height:1.45;color:var(--ice);opacity:.82}
 /* the drawback is never buried — an unreadable cost is not a choice */
 .dcard.oc{border-top-color:var(--red)}
 .octag{
   position:absolute;top:0;right:0;
-  font-size:calc(var(--u)*.95);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
   color:#1A0407;background:var(--red);
   padding:calc(var(--u)*.3) calc(var(--u)*.9);
   border-radius:0 0 0 calc(var(--u)*.6);
@@ -526,15 +526,15 @@ body{
 .dcurse{
   margin-top:auto;padding-top:calc(var(--u)*1);
   border-top:1px dashed rgba(255,51,85,.42);
-  font-size:calc(var(--u)*1.3);line-height:1.4;color:rgba(255,150,165,.9);
+  font-size:max(10px,calc(var(--u)*1.3));line-height:1.4;color:rgba(255,150,165,.9);
 }
 .dcurse span{
   display:block;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
-  font-size:calc(var(--u)*1.05);color:var(--red);margin-bottom:calc(var(--u)*.35);
+  font-size:max(10px,calc(var(--u)*1.05));color:var(--red);margin-bottom:calc(var(--u)*.35);
 }
 .dhint{
   margin-top:calc(var(--u)*2.4);
-  font-size:calc(var(--u)*1.15);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .dhint b{
@@ -543,7 +543,7 @@ body{
 }
 
 .ovRank{
-  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
 }
 
@@ -557,7 +557,7 @@ body{
 #btnCtrl.show{display:block}
 .mute{
   pointer-events:auto;cursor:pointer;font-family:var(--sans);
-  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
   background:none;border:1px solid var(--edge);border-radius:calc(var(--u)*.5);
   padding:calc(var(--u)*.6) calc(var(--u)*1.2);
@@ -584,18 +584,18 @@ body{
 
 .ovHead{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.4)}
 .ovKicker{
-  font-size:calc(var(--u)*1.4);letter-spacing:.34em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.34em;text-transform:uppercase;
   font-weight:800;color:var(--red);
 }
 .ovBadge{
-  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
   color:#04121A;background:var(--cyan);border-radius:99px;
   padding:calc(var(--u)*.35) calc(var(--u)*1.1);
   box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
 }
 .ovBadge.hide{display:none}
 .ovScore{
-  font-size:calc(var(--u)*9);font-weight:800;line-height:1;
+  font-size:max(10px,calc(var(--u)*9));font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;
   margin:calc(var(--u)*1.2) 0 calc(var(--u)*2.4);
   text-shadow:0 0 calc(var(--u)*3.4) rgba(61,232,255,.5);
@@ -607,15 +607,28 @@ body{
   margin-bottom:calc(var(--u)*2.4);
 }
 .ovRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+/* These labels sit above their values in a four-column grid, so a label that
+   wraps drops its own value half a line below the other three. Below the font
+   floor the columns are narrow enough for that to happen, so keep them on one
+   line and let the tracking give a little instead. */
 .ovRow span{
-  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
-  font-weight:700;color:var(--dim);
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);white-space:nowrap;
 }
-.ovRow b{font-size:calc(var(--u)*2.1);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.ovRow b{font-size:max(10px,calc(var(--u)*2.1));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .ovActs{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
 /* Geometry is shared across the whole stack so the decline path is exactly
    as large and as reachable as the rewarded offers above it. */
 .ovActs .btn{width:100%;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+/* Ad-unavailability notice. Quiet, inline, and never a popup. */
+.ovAdNote{
+  margin-top:calc(var(--u)*1.2);text-align:center;
+  font-size:max(10px,calc(var(--u)*1.25));line-height:1.45;color:rgba(255,177,61,.78);
+}
+.ovAdNote.hide{display:none}
+/* A disabled offer has to read as unavailable rather than as a live button
+   the player keeps hitting. */
+.ovActs .btn:disabled{opacity:.34;cursor:default;box-shadow:none}
 .ovFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.2)}
 .ovFoot .btn{flex:1;justify-content:center}
 
@@ -652,24 +665,24 @@ body{
 }
 .gId{display:flex;flex-direction:column;gap:calc(var(--u)*.3);min-width:0}
 .gKick{
-  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.3em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gId b{
-  font-size:calc(var(--u)*2.6);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.6));font-weight:800;color:#fff;
   letter-spacing:.14em;text-transform:uppercase;line-height:1;
 }
 .gBal{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:calc(var(--u)*.3)}
 .gBal span{
-  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gBal b{
-  font-size:calc(var(--u)*2.8);font-weight:800;line-height:1;
+  font-size:max(10px,calc(var(--u)*2.8));font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;
 }
 .gAct{display:flex;gap:calc(var(--u)*1);flex:0 0 auto}
-.gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:calc(var(--u)*1.5)}
+.gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:max(10px,calc(var(--u)*1.5))}
 
 /* hazard tape under the header — the one loud piece of shop furniture */
 .gTape{
@@ -706,7 +719,7 @@ body{
   padding:calc(var(--u)*1) calc(var(--u)*1.2);
 }
 .gpName{
-  font-size:calc(var(--u)*1.25);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:#fff;
   letter-spacing:.16em;text-transform:uppercase;margin-bottom:calc(var(--u)*.7);
 }
 .gpName em{font-style:normal;color:var(--dim);font-weight:700;letter-spacing:.1em}
@@ -716,7 +729,7 @@ body{
 }
 .gpRow span{
   flex:0 0 calc(var(--u)*5.4);
-  font-size:calc(var(--u)*.95);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gpRow i{display:flex;gap:2px;flex:1}
@@ -724,7 +737,7 @@ body{
 .gpRow i b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.6)}
 .gpRow em{
   flex:0 0 auto;font-style:normal;
-  font-size:calc(var(--u)*1);font-weight:800;color:var(--ice);
+  font-size:max(10px,calc(var(--u)*1));font-weight:800;color:var(--ice);
   font-variant-numeric:tabular-nums;min-width:calc(var(--u)*6);text-align:right;
 }
 /* legend for the render: what those extra shapes on the car are */
@@ -737,7 +750,7 @@ body{
 }
 .gFitted i{
   font-style:normal;
-  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
   border:1px solid rgba(61,232,255,.35);
   background:rgba(61,232,255,.08);
@@ -759,11 +772,11 @@ body{
 }
 .gwHead:first-child{margin-top:0}
 .gwHead h3{
-  margin:0;font-size:calc(var(--u)*1.4);font-weight:800;
+  margin:0;font-size:max(10px,calc(var(--u)*1.4));font-weight:800;
   letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);
 }
 .gwHead span{
-  font-size:calc(var(--u)*1.15);font-weight:800;color:var(--dim);
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;color:var(--dim);
   font-variant-numeric:tabular-nums;letter-spacing:.1em;
 }
 
@@ -780,12 +793,12 @@ body{
 .up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
 .up .nm{
   display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.18em;
   text-transform:uppercase;color:#fff;
 }
 .up .nm em{
   font-style:normal;letter-spacing:.04em;text-transform:none;
-  font-size:calc(var(--u)*1.2);color:var(--cyan);font-variant-numeric:tabular-nums;
+  font-size:max(10px,calc(var(--u)*1.2));color:var(--cyan);font-variant-numeric:tabular-nums;
 }
 .pips{display:flex;gap:2px}
 .pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
@@ -793,7 +806,7 @@ body{
 .up button{
   cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
   font-family:var(--sans);
-  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.1em;
+  font-size:max(10px,calc(var(--u)*1.2));font-weight:800;letter-spacing:.1em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
   border:none;border-radius:calc(var(--u)*.25);
@@ -820,26 +833,26 @@ body{
 .gear:hover{background:rgba(255,177,61,.10)}
 .gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .gear .nm{
-  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.14em;
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
-.gear .ds{font-size:calc(var(--u)*1.15);line-height:1.4;color:var(--ice);opacity:.75}
+.gear .ds{font-size:max(10px,calc(var(--u)*1.15));line-height:1.4;color:var(--ice);opacity:.75}
 .gear .pr{
   margin-top:auto;padding-top:calc(var(--u)*.4);
   display:flex;align-items:baseline;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.3);font-weight:800;
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;
   font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
 }
 /* the shortfall, so "too expensive" is a number rather than a dimmed card */
 .gear .pr em{
-  font-style:normal;font-size:calc(var(--u)*1);color:var(--dim);
+  font-style:normal;font-size:max(10px,calc(var(--u)*1));color:var(--dim);
   font-weight:700;letter-spacing:.14em;text-transform:uppercase;
 }
 .gear.owned{
   border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
 }
 .gear.owned:hover{background:rgba(61,232,255,.07)}
-.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:calc(var(--u)*1.1)}
+.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:max(10px,calc(var(--u)*1.1))}
 .gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
 .gear.broke:hover{background:rgba(255,255,255,.03)}
 .gear.broke .pr{color:var(--dim)}
@@ -853,7 +866,7 @@ body{
 #ad.on{display:grid}
 .adBox{width:100%;max-width:calc(var(--u)*46);text-align:center;padding:calc(var(--u)*3)}
 .adTag{
-  font-size:calc(var(--u)*1.15);letter-spacing:.4em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .adArt{
@@ -871,7 +884,7 @@ body{
   0%{transform:scale(.5);opacity:1}
   100%{transform:scale(1.9);opacity:0}
 }
-.adMsg{font-size:calc(var(--u)*2);font-weight:800;color:#fff;margin-bottom:calc(var(--u)*1.6)}
+.adMsg{font-size:max(10px,calc(var(--u)*2));font-weight:800;color:#fff;margin-bottom:calc(var(--u)*1.6)}
 .adBar{height:calc(var(--u)*.5);background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
 .adBar i{
   display:block;height:100%;width:0%;
@@ -879,7 +892,7 @@ body{
 }
 .adNote{
   margin-top:calc(var(--u)*1.6);
-  font-size:calc(var(--u)*1.05);letter-spacing:.14em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 
@@ -904,11 +917,11 @@ body{
 }
 .gsHint.on{opacity:1;transform:translate(-50%,0)}
 .gsHint b{
-  display:block;font-size:calc(var(--u)*1.8);font-weight:800;color:#fff;
+  display:block;font-size:max(10px,calc(var(--u)*1.8));font-weight:800;color:#fff;
   letter-spacing:.04em;margin-bottom:calc(var(--u)*.5);
 }
 .gsHint span{
-  font-size:calc(var(--u)*1.2);font-weight:700;color:var(--dim);
+  font-size:max(10px,calc(var(--u)*1.2));font-weight:700;color:var(--dim);
   letter-spacing:.1em;text-transform:uppercase;line-height:1.5;
 }
 
@@ -939,9 +952,9 @@ body{
   }
   .stat.right{justify-content:flex-end}
   .stat .lbl{margin-bottom:0}
-  .val{font-size:calc(var(--u)*3.4)}
+  .val{font-size:max(10px,calc(var(--u)*3.4))}
   .dchip{margin-bottom:0;order:-1}
-  .cmult{font-size:calc(var(--u)*3.6)}
+  .cmult{font-size:max(10px,calc(var(--u)*3.6))}
   .cnote{display:none}
 
   /* toasts sit mid-screen over empty road; at 20u they landed on the score */
@@ -953,35 +966,35 @@ body{
     flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*46);
     margin-top:0;gap:calc(var(--u)*.35);
   }
-  #hud .build i{font-size:calc(var(--u)*.95);padding:calc(var(--u)*.22) calc(var(--u)*.55)}
+  #hud .build i{font-size:max(10px,calc(var(--u)*.95));padding:calc(var(--u)*.22) calc(var(--u)*.55)}
 
   .hudBot{
     left:calc(var(--u)*2.2 + var(--sa-l));right:calc(var(--u)*2.2 + var(--sa-r));
     /* clears the touch buttons, which have themselves moved up by --sa-b */
     bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6 + var(--sa-b));
   }
-  .spdv{font-size:calc(var(--u)*4.4)}
+  .spdv{font-size:max(10px,calc(var(--u)*4.4))}
   .hudDrv{gap:calc(var(--u)*1.9)}
   .nbar{width:calc(var(--u)*16)}
 
   /* screens */
-  .title{font-size:calc(var(--u)*9)}
-  .tag{font-size:calc(var(--u)*1.6);margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
+  .title{font-size:max(10px,calc(var(--u)*9))}
+  .tag{font-size:max(10px,calc(var(--u)*1.6));margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
   .btns{flex-direction:column;align-items:stretch}
   .btn{justify-content:center}
   .hints{gap:calc(var(--u)*1.2)}
-  .bname{font-size:calc(var(--u)*5.6)}
-  .bobj{font-size:calc(var(--u)*1.7);margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
+  .bname{font-size:max(10px,calc(var(--u)*5.6))}
+  .bobj{font-size:max(10px,calc(var(--u)*1.7));margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
 
   .dcards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .dcard{padding:calc(var(--u)*1.5) calc(var(--u)*1.5) calc(var(--u)*1.4)}
-  .dname{font-size:calc(var(--u)*2)}
-  .ddesc{font-size:calc(var(--u)*1.35)}
-  .dtitle{font-size:calc(var(--u)*3.4)}
+  .dname{font-size:max(10px,calc(var(--u)*2))}
+  .ddesc{font-size:max(10px,calc(var(--u)*1.35))}
+  .dtitle{font-size:max(10px,calc(var(--u)*3.4))}
   .dhint{display:none}          /* no number row to press on a phone */
 
   .panel{padding:calc(var(--u)*2.4)}
-  .ovScore{font-size:calc(var(--u)*6.4)}
+  .ovScore{font-size:max(10px,calc(var(--u)*6.4))}
   .ovRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .ovRow div{flex-direction:row;justify-content:space-between;align-items:baseline}
   .ovFoot{flex-direction:column}
@@ -999,8 +1012,8 @@ body{
     flex-wrap:wrap;gap:calc(var(--u)*1.2);
     padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
   }
-  .gId b{font-size:calc(var(--u)*2.2)}
-  .gBal b{font-size:calc(var(--u)*2.4)}
+  .gId b{font-size:max(10px,calc(var(--u)*2.2))}
+  .gBal b{font-size:max(10px,calc(var(--u)*2.4))}
   .gAct{order:3;width:100%;flex-direction:row-reverse}
   .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
   .gAct #btnBack{flex:0 0 auto}
@@ -1022,12 +1035,12 @@ body{
   .cnote,.dhint{display:none}
   .build{max-width:calc(var(--u)*20)}
   .build i:nth-child(n+5){display:none}
-  .title{font-size:calc(var(--u)*9)}
+  .title{font-size:max(10px,calc(var(--u)*9))}
   .tag{margin:calc(var(--u)*1.4) 0 calc(var(--u)*2)}
   .hints{display:none}
-  .bname{font-size:calc(var(--u)*6)}
+  .bname{font-size:max(10px,calc(var(--u)*6))}
   .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
-  .ovScore{font-size:calc(var(--u)*7)}
+  .ovScore{font-size:max(10px,calc(var(--u)*7))}
   .hudBot{bottom:calc(var(--u)*2.4 + var(--sa-b))}
   /* keep the speedo clear of the left-hand steering pads, which sit one
      safe-area inset further right on a landscape phone with rounded corners */
@@ -1046,21 +1059,21 @@ body{
 }
 .mapHead{display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2)}
 .mkicker{
-  font-size:calc(var(--u)*1.2);letter-spacing:.32em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.32em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .mkicker b{color:#fff}
 .mtitle{
-  margin:calc(var(--u)*.6) 0 0;font-size:calc(var(--u)*4.2);font-weight:800;
+  margin:calc(var(--u)*.6) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
   text-transform:uppercase;letter-spacing:.02em;color:#fff;line-height:1;
 }
 .mstats{display:flex;gap:calc(var(--u)*2.4);text-align:right}
 .mstats div{display:flex;flex-direction:column;gap:calc(var(--u)*.4)}
 .mstats span{
-  font-size:calc(var(--u)*1);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
-.mstats b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.mstats b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 
 .mapBoard{
   position:relative;flex:1;min-height:0;overflow:hidden;
@@ -1108,17 +1121,17 @@ body{
 }
 .mnode .pin i{
   font-style:normal;line-height:1;
-  font-size:calc(var(--u)*2.3);
+  font-size:max(10px,calc(var(--u)*2.3));
   color:var(--dim);
 }
 .mnode .plabel{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.15)}
 .mnode .pname{
-  font-size:calc(var(--u)*1.25);font-weight:800;color:var(--ice);
+  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:var(--ice);
   letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
 }
 .mnode .pmeta{
   display:flex;align-items:center;gap:calc(var(--u)*.55);
-  font-size:calc(var(--u)*1);font-weight:800;white-space:nowrap;
+  font-size:max(10px,calc(var(--u)*1));font-weight:800;white-space:nowrap;
 }
 .mnode .pmeta b{color:var(--cyan);letter-spacing:.04em}
 /* the payout and the price need a visible divider or they read as one number */
@@ -1146,8 +1159,8 @@ body{
   width:calc(var(--u)*8);height:calc(var(--u)*8);
   border-color:var(--red);border-width:calc(var(--u)*.4);
 }
-.mnode.boss .pin i{color:var(--red);font-size:calc(var(--u)*3.4)}
-.mnode.boss .pname{color:var(--red);font-size:calc(var(--u)*1.5);letter-spacing:.14em}
+.mnode.boss .pin i{color:var(--red);font-size:max(10px,calc(var(--u)*3.4))}
+.mnode.boss .pname{color:var(--red);font-size:max(10px,calc(var(--u)*1.5));letter-spacing:.14em}
 .mnode.boss .pmeta b{color:var(--red)}
 
 /* reachable: full colour, lifted, and quietly breathing */
@@ -1165,7 +1178,7 @@ body{
 .mnode.done{opacity:.42;filter:saturate(.1)}
 .mnode.done .pin{background:#0B0F1A}
 .mnode.done .pin i::before{content:'✓'}
-.mnode.done .pin i{font-size:calc(var(--u)*2)}
+.mnode.done .pin i{font-size:max(10px,calc(var(--u)*2))}
 .mnode.done .pin i{color:rgba(198,210,232,.55)}
 .mnode.here{opacity:1;filter:none}
 .mnode.here .pin{
@@ -1187,7 +1200,7 @@ body{
 #mapBuild{flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*58);margin:0}
 .mapLegend{
   display:flex;align-items:center;gap:calc(var(--u)*.6);flex-wrap:wrap;
-  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .mapLegend .lg{
@@ -1202,7 +1215,7 @@ body{
 
 /* ---------- contract / depot cards ---------- */
 .ckicker{
-  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .ckicker.elitek{color:var(--magenta)}
@@ -1227,20 +1240,20 @@ body{
 .ccard.r2:hover{background:rgba(255,51,85,.08)}
 .crisk{
   display:flex;align-items:center;gap:calc(var(--u)*.4);
-  font-size:calc(var(--u)*1);letter-spacing:.22em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.22em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .crisk i{width:calc(var(--u)*1.6);height:calc(var(--u)*.4);border-radius:99px;background:rgba(255,255,255,.16)}
 .crisk i.on{background:var(--amber)}
 .ccard.r2 .crisk i.on{background:var(--red)}
 .cname{
-  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
   text-transform:uppercase;line-height:1.05;
 }
-.cline{display:flex;gap:calc(var(--u)*.9);font-size:calc(var(--u)*1.4);line-height:1.45}
+.cline{display:flex;gap:calc(var(--u)*.9);font-size:max(10px,calc(var(--u)*1.4));line-height:1.45}
 .cline b{
   flex:0 0 calc(var(--u)*4.2);
-  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;padding-top:calc(var(--u)*.25);
 }
 .cline.boon b{color:var(--cyan)}
@@ -1248,23 +1261,23 @@ body{
 .cline span{color:var(--ice);opacity:.86}
 .cpay{
   margin-top:auto;padding-top:calc(var(--u)*1);border-top:1px solid var(--edge);
-  font-size:calc(var(--u)*1.1);letter-spacing:.18em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.18em;text-transform:uppercase;
   font-weight:800;color:var(--amber);
 }
 
 @media (max-aspect-ratio:1/1){
   .ccards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .ccard{padding:calc(var(--u)*1.4)}
-  .cname{font-size:calc(var(--u)*2)}
-  .cline{font-size:calc(var(--u)*1.25)}
-  .mtitle{font-size:calc(var(--u)*3)}
+  .cname{font-size:max(10px,calc(var(--u)*2))}
+  .cline{font-size:max(10px,calc(var(--u)*1.25))}
+  .mtitle{font-size:max(10px,calc(var(--u)*3))}
   .mapFoot .mapLegend{display:none}
   .mnode{gap:calc(var(--u)*.4)}
   .mnode .pin{width:calc(var(--u)*4.8);height:calc(var(--u)*4.8)}
-  .mnode .pin i{font-size:calc(var(--u)*2)}
+  .mnode .pin i{font-size:max(10px,calc(var(--u)*2))}
   .mnode.boss .pin{width:calc(var(--u)*6.4);height:calc(var(--u)*6.4)}
-  .mnode .pname{font-size:calc(var(--u)*1.1);letter-spacing:.06em}
-  .mnode .pmeta{font-size:calc(var(--u)*.9);gap:calc(var(--u)*.35)}
+  .mnode .pname{font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.06em}
+  .mnode .pmeta{font-size:max(10px,calc(var(--u)*.9));gap:calc(var(--u)*.35)}
   .mapIn{gap:calc(var(--u)*1)}
   .mapHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.8)}
   .mstats{text-align:left}
@@ -1291,11 +1304,11 @@ body{
   margin-bottom:calc(var(--u)*.4);
 }
 .hullHead span{
-  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .hullHead b{
-  font-size:calc(var(--u)*1.5);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;
 }
 .hullBar{
@@ -1320,7 +1333,7 @@ body{
    objective, and it is amber because that is what the haulers are. */
 .convoy{
   display:flex;align-items:center;gap:calc(var(--u)*.8);
-  font-size:calc(var(--u)*1.35);font-weight:800;letter-spacing:.22em;
+  font-size:max(10px,calc(var(--u)*1.35));font-weight:800;letter-spacing:.22em;
   text-transform:uppercase;color:var(--amber);white-space:nowrap;
   border:1px solid rgba(255,177,61,.5);
   background:rgba(255,177,61,.10);
@@ -1341,7 +1354,7 @@ body{
    at a hand-picked offset — an absolutely positioned counter here collided
    with the hull bar and the toasts the moment all three were live at once. */
 .wreck{
-  font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.2em;
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;letter-spacing:.2em;
   text-transform:uppercase;color:var(--amber);white-space:nowrap;
   opacity:0;transition:opacity .15s;
   text-shadow:0 0 calc(var(--u)*2) rgba(255,177,61,.8);
@@ -1359,12 +1372,12 @@ body{
    ============================================================ */
 #daily .panel{max-width:calc(var(--u)*44);text-align:center}
 .dayKick{
-  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--amber);
 }
 .dayStreak{
   margin-top:calc(var(--u)*.8);
-  font-size:calc(var(--u)*2.2);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.2));font-weight:800;color:#fff;
   letter-spacing:.06em;
 }
 .dayAmt{
@@ -1372,15 +1385,15 @@ body{
   margin:calc(var(--u)*2.2) 0 calc(var(--u)*.8);
 }
 .dayAmt b{
-  font-size:calc(var(--u)*7);font-weight:800;line-height:1;
+  font-size:max(10px,calc(var(--u)*7));font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.03em;
 }
 .dayAmt span{
-  font-size:calc(var(--u)*1.4);letter-spacing:.24em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .dayNext{
-  font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
   padding-bottom:calc(var(--u)*2.2);
   border-bottom:1px solid var(--edge);
@@ -1402,17 +1415,26 @@ body{
   gap:calc(var(--u)*2);margin-bottom:calc(var(--u)*2);
   padding-bottom:calc(var(--u)*1.2);border-bottom:1px solid var(--edge);
 }
+/* The CrazyGames avatar, sized in UI units so it tracks the name beside it.
+   `margin-right:auto` keeps the note on the far right where it was. */
+.bdPic{
+  width:calc(var(--u)*5);height:calc(var(--u)*5);border-radius:50%;
+  object-fit:cover;flex:0 0 auto;align-self:center;
+  border:1px solid var(--edge);background:rgba(255,255,255,.04);
+}
+.bdPic.hide{display:none}
+.bdHead > div:first-of-type{margin-right:auto}
 .bdKick{
-  font-size:calc(var(--u)*1.15);letter-spacing:.4em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .bdWho{
   margin:calc(var(--u)*.6) 0 0;
-  font-size:calc(var(--u)*3);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*3));font-weight:800;color:#fff;
   letter-spacing:.04em;text-transform:uppercase;line-height:1;
 }
 .bdNote{
-  font-size:calc(var(--u)*1.1);letter-spacing:.16em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);text-align:right;
 }
 .bdRows{display:flex;flex-direction:column;gap:calc(var(--u)*.4);margin-bottom:calc(var(--u)*2.2)}
@@ -1431,30 +1453,30 @@ body{
 /* the run you just finished, so you can find yourself without counting */
 .bdRow.me{background:rgba(61,232,255,.09);border-color:rgba(61,232,255,.35)}
 .bdN{
-  font-size:calc(var(--u)*1.5);font-weight:800;color:var(--dim);
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:var(--dim);
   font-variant-numeric:tabular-nums;
 }
 .bdRow:nth-child(1) .bdN{color:var(--amber)}
 .bdS{
-  font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
+  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;
 }
 .bdD,.bdW,.bdT{
-  font-size:calc(var(--u)*1.15);font-weight:700;color:var(--dim);
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:700;color:var(--dim);
   letter-spacing:.12em;text-transform:uppercase;
   font-variant-numeric:tabular-nums;
 }
 .bdD{color:var(--cyan)}
 .bdEmpty{
   padding:calc(var(--u)*3) 0;text-align:center;
-  font-size:calc(var(--u)*1.4);color:var(--dim);font-weight:600;
+  font-size:max(10px,calc(var(--u)*1.4));color:var(--dim);font-weight:600;
 }
 #board .btn{width:100%;justify-content:center}
 
 /* the rank on the game-over panel */
 .ovPlace{
   margin-top:calc(var(--u)*.5);
-  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .ovPlace.in{color:var(--amber)}
@@ -1480,12 +1502,12 @@ body{
   margin-bottom:calc(var(--u)*.35);
 }
 .xpHead span{
-  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .xpHead b{color:#fff;font-variant-numeric:tabular-nums}
 .xpHead i{
-  font-style:normal;font-size:calc(var(--u)*1.05);font-weight:800;
+  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));font-weight:800;
   color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em;
 }
 .xpBar{
@@ -1501,7 +1523,7 @@ body{
 .xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
 
 .luKick{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:#7BF5B0;
 }
 .luKick b{color:#fff;font-variant-numeric:tabular-nums}
@@ -1512,11 +1534,11 @@ body{
 
 /* ---- district cleared ---- */
 .clKick{
-  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:#7BF5B0;
 }
 .clName{
-  margin:calc(var(--u)*.8) 0 0;font-size:calc(var(--u)*4.2);font-weight:800;
+  margin:calc(var(--u)*.8) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
   letter-spacing:-.01em;color:#fff;line-height:1;
 }
 .clRow{
@@ -1528,16 +1550,16 @@ body{
 }
 .clRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
 .clRow span{
-  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
   color:rgba(255,255,255,.42);font-weight:700;
 }
-.clRow b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.clRow b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .clRow b.mint{color:#7BF5B0}
 .clXpWrap{margin:0 0 calc(var(--u)*1.8)}
 .clXpHead{
   display:flex;justify-content:space-between;align-items:baseline;
   margin-bottom:calc(var(--u)*.7);
-  font-size:calc(var(--u)*1.05);letter-spacing:.22em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.22em;text-transform:uppercase;
   color:rgba(255,255,255,.42);font-weight:700;
 }
 .clXpHead b{color:#fff;font-variant-numeric:tabular-nums}
@@ -1553,7 +1575,7 @@ body{
   transition:width .5s cubic-bezier(.2,.8,.2,1);
 }
 .clLvl{
-  font-size:calc(var(--u)*1.25);letter-spacing:.2em;text-transform:uppercase;
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:#7BF5B0;margin-bottom:calc(var(--u)*1.8);
   animation:clPulse 1.6s ease-in-out infinite;
 }
@@ -1860,7 +1882,7 @@ body{overflow:auto;display:block}
       <div class="ovScore" id="ovScore">0</div>
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
-        <div><span>Top combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Combo</span><b id="ovCombo">&times;1.0</b></div>
         <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
         <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
       </div>
@@ -1870,9 +1892,16 @@ body{overflow:auto;display:block}
            the garage" cannot go back to being a third of a footer row. -->
       <div class="ovActs">
         <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
+        <!-- The paid route exists because their rewarded-ad rules require an
+             alternative to watching one. It is also the fallback that keeps
+             the screen useful when ads cannot serve at all. -->
+        <button class="btn rew ghost" id="btnReviveCoins">Revive for <b id="revivePrice">750</b> coins</button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
         <button class="btn primary" id="btnAgain">Spend it in the garage</button>
       </div>
+      <!-- A notice, not a popup: their adblock rules ask for the former and
+           explicitly forbid the latter, which would fight fullscreen. -->
+      <div class="ovAdNote hide" id="ovAdNote"></div>
       <div class="ovFoot">
         <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
@@ -1884,6 +1913,9 @@ body{overflow:auto;display:block}
   <div id="board" class="layer screen">
     <div class="panel wide">
       <div class="bdHead">
+        <!-- Username and avatar both come from the CrazyGames account; the
+             game never asks for an identity of its own. Hidden for guests. -->
+        <img class="bdPic hide" id="bdPic" alt="" width="48" height="48">
         <div>
           <div class="bdKick">Records</div>
           <h2 class="bdWho" id="bdWho">Your runs</h2>
@@ -2160,9 +2192,16 @@ function init(){
   tick();
 }
 
+/* iOS parks the AudioContext in `interrupted` when the tab is backgrounded or
+   a call arrives, and it usually surfaces as `suspended` on the way back —
+   but only a real user gesture is allowed to restart it, which is why this
+   hangs off input events rather than visibilitychange. Android keeps the
+   context running and silences it instead, so this is a no-op there. */
 function resume(){
   if (!ready) { init(); return; }
-  if (ac.state === 'suspended') ac.resume();
+  if (ac.state === 'suspended' || ac.state === 'interrupted') {
+    try { ac.resume(); } catch (e) {}
+  }
 }
 
 /* ---------------------------------------------------------- engine voice
@@ -3154,10 +3193,41 @@ const Ads = {
   async readUser(){
     try {
       const u = this.sdk && this.sdk.user && await this.sdk.user.getUser();
-      if (u && u.username) this.playerName = u.username;
+      if (u) this.applyUser(u);
     } catch (e) { /* not signed in, or no user module — anonymous is fine */ }
   },
   playing: false,      // mirrors gameplayStart/Stop so we never double-fire
+
+  /* ---- can an ad actually serve right now? ----
+     Their rules forbid a rewarded offer that is "clickable but without
+     effect", and say it twice: once for adblock users, and once for Basic
+     Launch, where monetization is off and every request comes back
+     `adsDisabledBasicLaunch`. Neither state is knowable from a button click
+     alone, so detect adblock up front and learn the rest from the first
+     error — then take the offers down rather than leaving dead buttons. */
+  blocked: false,      // adblocker present
+  suspended: false,    // platform is refusing ads this session
+  canServe(){ return !this.blocked && !this.suspended; },
+  blockedNote(){
+    if (this.blocked)   return 'Ad blocker detected — the ad bonuses are unavailable.';
+    if (this.suspended) return 'Ad bonuses are unavailable right now.';
+    return '';
+  },
+  /* `unfilled` and `adCooldown` are transient: the offer stays up and the
+     player is told to try again, which is what their docs ask for. */
+  noteAdError(err){
+    const code = (err && err.code) || '';
+    if (code === 'adblock') this.blocked = true;
+    else if (code === 'adsDisabledBasicLaunch') this.suspended = true;
+    return code;
+  },
+  async probeAdblock(){
+    try {
+      if (this.sdk && this.sdk.ad && this.sdk.ad.hasAdblock)
+        this.blocked = !!(await this.sdk.ad.hasAdblock());
+    } catch (e) { /* detection is best-effort; assume ads work */ }
+    try { refreshAdOffers(); } catch (e) {}
+  },
 
   async boot(){
     const SDK = window.CrazyGames && window.CrazyGames.SDK;
@@ -3171,7 +3241,14 @@ const Ads = {
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
       this.bindSettings(SDK);
+      this.readSystemInfo();
       this.readUser();
+      this.bindAuth();
+      this.probeAdblock();
+      this.flushContext();
+      /* a run already in progress by the time init lands still needs its
+         opening percentage reported */
+      try { reportProgress(); } catch (e) {}
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -3229,13 +3306,68 @@ const Ads = {
       this.sdk.ad.requestAd(type, {
         adStarted:  () => adPause(true),
         adFinished: () => finish(true),
-        adError:    () => finish(false)
+        adError:    err => { this.noteAdError(err); finish(false); }
       });
     } catch (e) { finish(false); }
   },
 
   rewarded(msg, done){ this.request('rewarded', msg, 3.2, done); },
-  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); }
+  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); },
+
+  /* ---- user module ----
+     A full integration is expected to show the CrazyGames username *and*
+     avatar rather than inventing its own identity, and to notice a guest
+     signing in mid-session instead of leaving them anonymous until reload. */
+  avatar: '',
+  applyUser(u){
+    this.playerName = (u && u.username) || '';
+    this.avatar     = (u && u.profilePictureUrl) || '';
+    try { refreshIdentity(); } catch (e) {}
+  },
+  bindAuth(){
+    try {
+      const us = this.sdk && this.sdk.user;
+      if (us && us.addAuthListener) us.addAuthListener(u => this.applyUser(u));
+    } catch (e) { /* older SDK without the listener — boot read still stands */ }
+  },
+
+  /* Their device detection is better than ours and they ask us to prefer it. */
+  systemInfo: null,
+  readSystemInfo(){
+    try { this.systemInfo = (this.sdk && this.sdk.user && this.sdk.user.systemInfo) || null; }
+    catch (e) { this.systemInfo = null; }
+    try { applyDeviceType(); } catch (e) {}
+  },
+  deviceType(){
+    const d = this.systemInfo && this.systemInfo.device;
+    return (d && d.type) || '';
+  },
+
+  /* Progress and context. NEON HEAT is endless, so "100%" is defined the way
+     their docs allow — our own consistent milestone — and set at the end of
+     the third act, which is the last authored content in the game. */
+  reported: -1,
+  progress(pct){
+    const v = clamp(Math.round(pct), 0, 100);
+    if (v <= this.reported) return;         // progression only moves forward
+    this.reported = v;
+    this.call(() => this.sdk.game.reportGameCompletedPercentage(v));
+  },
+  /* The first district now begins before init() resolves — that is the point
+     of the fast path — so a context set at that moment would be dropped on
+     the floor. Hold the latest one and send it when the SDK comes up. */
+  pendingContext: null,
+  context(o){
+    this.pendingContext = o;
+    this.call(() => this.sdk.game.setGameContext(o));
+  },
+  clearContext(){
+    this.pendingContext = null;
+    this.call(() => this.sdk.game.clearGameContext());
+  },
+  flushContext(){
+    if (this.pendingContext) this.call(() => this.sdk.game.setGameContext(this.pendingContext));
+  }
 };
 
 /* ---------------- pause ----------------
@@ -3429,7 +3561,12 @@ function resize(){
   /* In portrait the narrow axis governs legibility: height/100 on a 390x844
      phone gives 8.4px units inside a 390px-wide column, which overflows. */
   const portrait = W / H < 1.15;
-  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 3.2, 11);
+  /* The floors are a legibility requirement, not taste. Their QA checks text
+     at devicePixelRatio 1 in iframes as small as 821x462, where an unfloored
+     H/100 gives a 4.6px unit and captions render at about 5px — unreadable.
+     Every font-size also carries a 10px floor in the stylesheet; these keep
+     the boxes around that text growing with it instead of clipping it. */
+  const u = portrait ? clamp(W / 54, 5, 10) : clamp(H / 100, 6, 11);
   stage.style.setProperty('--u', u.toFixed(2) + 'px');
   /* plates are drawn at CSS size, so a resolution tweak must not rebuild
      them — that is three full-screen canvases of work */
@@ -3503,12 +3640,32 @@ addEventListener('keydown', e => {
   }
   if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
-  if (e.code === 'Escape' && ['play','brief','map','contract','depot'].includes(G.state)) toMenu();
+  /* Escape is deliberately unbound. It is on their restricted list because the
+     browser — and CrazyGames' own fullscreen control — already own it, and
+     this used to call toMenu(), which nulls the run. So a player in fullscreen
+     pressing Escape to get their cursor back also silently lost the run they
+     were driving. Quitting stays on the buttons, which no browser reserves. */
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
 
+/* pointerdown covers mouse and most touch, but WebKit is stricter about which
+   gesture may restart an interrupted AudioContext, and their docs name
+   touchend specifically. Cheap to listen for all three than to ship a game
+   that comes back from a phone call silent. */
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
+addEventListener('touchend',    () => NHAudio.resume(), { passive: true });
+addEventListener('click',       () => NHAudio.resume(), { passive: true });
+
+/* From their common-fixes list. A wheel event that escapes the game scrolls
+   the page embedding it, and a right-click drops a browser menu over the
+   canvas — on tablets a long press does the same. Both are suppressed, except
+   inside the garage work order, which is the one panel meant to scroll. */
+addEventListener('wheel', e => {
+  const t = e.target;
+  if (!(t && t.closest && t.closest('.gWork'))) e.preventDefault();
+}, { passive: false });
+addEventListener('contextmenu', e => e.preventDefault());
 stage.addEventListener('pointerdown', gsDown);
 stage.addEventListener('pointermove', gsMove);
 stage.addEventListener('pointerup', gsUp);
@@ -3516,7 +3673,19 @@ stage.addEventListener('pointercancel', gsUp);
 stage.addEventListener('lostpointercapture', gsUp);
 
 const touchEl = document.getElementById('touch');
-const hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
+/* A local guess, corrected later by the platform. CrazyGames strongly
+   recommend their own device detection over probes like this one, which
+   misreads touchscreen laptops as phones — but systemInfo only exists once
+   the SDK has initialised, which is after this file runs. So: guess now,
+   and let applyDeviceType() overrule it when the real answer arrives. */
+let hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
+function applyDeviceType(){
+  const t = Ads.deviceType();
+  if (!t) return;                       // SDK absent or older — keep the probe
+  hasTouch = (t === 'mobile' || t === 'tablet');
+  const b = $('btnCtrl');
+  if (b) b.classList.toggle('show', hasTouch);
+}
 touchEl.querySelectorAll('.tbtn').forEach(b => {
   const k = b.dataset.k;
   const on  = e => { e.preventDefault(); touch[k] = 1; b.classList.add('down'); };
@@ -3583,6 +3752,11 @@ function gsUp(e){
 function swipeMode(){ return hasTouch && Save.data.ctrl !== 'pads'; }
 
 function readInput(){
+  /* Already layout-adaptive, and deliberately so: KeyboardEvent.code names
+     physical positions after US QWERTY, so an AZERTY player reaching for ZQSD
+     presses the key labelled Q — which is physically KeyA and arrives here as
+     KeyA. Reading `code` rather than `key` is what satisfies their guidance
+     about not making French players rebind; don't "fix" this to `key`. */
   const l = keys.ArrowLeft  || keys.KeyA || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
@@ -6973,6 +7147,7 @@ function hide(el){ el.classList.add('hide'); }
 function toMenu(){
   G.state = 'menu';
   G.run = null;
+  Ads.clearContext();          // no district to blame once you are back out
   newWorld(true);
   show(UI.menu); hide(UI.over); hide(UI.garage);
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.cleared);
@@ -6989,6 +7164,30 @@ function startRun(){
   G.pendingLevels = 0; G.awaitingAdvance = false;
   shownScore = 0;
   showMap();
+}
+
+/* ---------------- first run ----------------
+   CrazyGames require new players to be in gameplay immediately, and allow at
+   most one click if that is not feasible. The full flow — menu, garage, route
+   board, dispatch, brief — is five clicks before the car moves, which is a
+   rejection on its own. A player with no completed run skips all of it and
+   starts driving the first district straight off the loading screen. Everyone
+   who has finished a run has seen the flow already and keeps it. */
+function startFirstRun(){
+  Hangar.grantStarter();
+  hide(UI.menu); hide(UI.over); hide(UI.garage);
+  G.run = newRun();
+  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  G.pendingLevels = 0; G.awaitingAdvance = false;
+  shownScore = 0;
+  /* the middle of the opening row: the plain Run, not an Elite */
+  const open = openNodes();
+  const pick = open[Math.floor(open.length / 2)] || open[0];
+  G.run.row = pick.row; G.run.col = pick.col;
+  G.run.node = G.run.route[pick.row][pick.col];
+  G.run.contract = null;          // no wager on a run you have not been taught yet
+  G.fastStart = true;
+  beginNode();
 }
 
 /* ============================================================
@@ -7275,7 +7474,9 @@ function beginNode(){
   G.tier = Math.min(3, Math.floor(G.heat));
   if (run.L.hazards) seedHazards();
 
-  showBrief();
+  /* the brief is a screen, and the first run is not allowed one */
+  if (G.fastStart) { G.fastStart = false; beginDistrict(); }
+  else showBrief();
 }
 
 /* Roadworks scatters strips across the district up front, so the bane is
@@ -7329,8 +7530,22 @@ function beginDistrict(){
   G.state = 'play';
   UI.hud.classList.remove('off');
   if (G.run.cfg.boss) addBoss();
-  if (swipeMode() && G.run.district === 1) {
+  /* Attached to any feedback the player sends from the platform, so a "stuck
+     here" report arrives with the district it was sent from. */
+  Ads.context({
+    act: String(G.run.act), district: String(G.run.district),
+    level: String(G.run.level), node: String(G.run.node && G.run.node.type)
+  });
+  /* The hint is now the entire onboarding: a first-time player lands here
+     without passing the menu that used to carry the "← → Steer" line, so it
+     has to cover the keyboard as well as the touchscreen. Visual, one line,
+     and it times itself out — their guidance asks for onboarding in gameplay
+     rather than a screen in front of it. */
+  if (G.run.district === 1) {
     const el = $('gsHint');
+    el.firstElementChild.textContent = swipeMode()
+      ? 'Drag anywhere to steer'
+      : 'Press ← → to steer';
     el.classList.add('on');
     clearTimeout(el._t);
     el._t = setTimeout(() => el.classList.remove('on'), 5200);
@@ -7407,6 +7622,7 @@ function endRun(won){
   if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
   const reached = G.run ? G.run.district : 1;
   if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
+  reportProgress();
   /* clearing districts is the achievement, so it pays on top of raw score */
   G.coinsRun = Math.floor((G.score / 80 + (G.run ? G.run.cleared * 90 : 0)) * G.spec.payout);
   Save.data.runs++;
@@ -7433,8 +7649,6 @@ function endRun(won){
   $('ovPlace').classList.toggle('in', !!rank);
   /* one revive per run, and only when the run was worth saving */
   const reviveOffered = !G.revived && G.score >= 400;
-  $('btnRevive').disabled = !reviveOffered;
-  $('btnDouble').disabled = false;
 
   /* Their ad policy forbids pairing a midgame ad with a "watch a rewarded ad
      to keep playing" offer at the same break: between two attempts you may
@@ -7443,9 +7657,21 @@ function endRun(won){
      is live. Double-your-coins is not affected — it rewards a run that is
      already over rather than continuing the current one, so it may sit
      alongside a midgame. */
-  const showOver = () => { show(UI.over); };
-  if (!reviveOffered && Save.data.runs % 3 === 0) Ads.midroll(showOver);
+  const showOver = () => { show(UI.over); refreshAdOffers(); };
+  /* no point pausing the game for a request we already know cannot fill */
+  if (!reviveOffered && Ads.canServe() && Save.data.runs % 3 === 0) Ads.midroll(showOver);
   else showOver();
+}
+
+/* ---- progress reporting ----
+   NEON HEAT is endless, which their docs explicitly allow for: a developer
+   may define their own 100% as long as it is applied consistently. Ours is
+   the far end of the last authored act — three acts of five rows — so a
+   player who has driven every district the game contains reads as complete.
+   Reported on every run end, and never allowed to move backwards. */
+const RUN_DISTRICTS = ROWS * THEMES.length;
+function reportProgress(){
+  Ads.progress((Save.data.deepest || 0) / RUN_DISTRICTS * 100);
 }
 
 function commitCoins(mult){
@@ -7499,9 +7725,72 @@ $('btnBdBack').onclick  = () => { NHAudio.ui(true); closeBoard(); };
 $('btnBack').onclick   = () => { hide(UI.garage); toMenu(); };
 $('btnRace').onclick   = () => { hide(UI.garage); startRun(); };
 
-$('btnRevive').onclick = () => {
-  Ads.rewarded('Reviving your run', ok => {
-    if (!ok) return;
+/* What a revive costs if you would rather not watch anything. Their rewarded
+   rules require an alternative to the ad, and coins are the currency the
+   player already earns, so the offer scales with how deep the run got. */
+function revivePrice(){
+  const d = (G.run && G.run.district) || 1;
+  return 500 + d * 250;
+}
+
+/* ---- ad offers ----
+   Rebuilt whenever the game-over screen opens, and again if adblock detection
+   lands late. Nothing here may leave a live-looking button that does nothing. */
+function refreshAdOffers(){
+  const over = UI.over && !UI.over.classList.contains('hide');
+  const price = revivePrice();
+  const serve = Ads.canServe();
+  const reviveOK = !G.revived && G.score >= 400;
+
+  const pEl = $('revivePrice');
+  if (pEl) pEl.textContent = fmt(price);
+
+  const bRev  = $('btnRevive');
+  const bCoin = $('btnReviveCoins');
+  const bDbl  = $('btnDouble');
+  if (!bRev || !bCoin || !bDbl) return;
+
+  /* the ad routes go away entirely when no ad can serve */
+  bRev.disabled = !reviveOK || !serve;
+  bDbl.disabled = !serve;
+  bRev.classList.toggle('hide', !serve);
+  bDbl.classList.toggle('hide', !serve);
+
+  /* the paid route survives an adblocker, which is what keeps the screen
+     playable rather than punishing the player for their extension */
+  bCoin.disabled = !reviveOK || Save.data.coins < price;
+  bCoin.classList.toggle('hide', !reviveOK);
+
+  const note = $('ovAdNote');
+  if (note) {
+    const msg = serve ? '' : Ads.blockedNote();
+    note.textContent = msg;
+    note.classList.toggle('hide', !msg || !over);
+  }
+}
+
+/* Username and avatar come from the platform account; a guest stays a guest
+   and nothing on screen asks them to sign in. */
+function refreshIdentity(){
+  const who = $('bdWho');
+  if (who) who.textContent = Ads.playerName || 'Your runs';
+  const pic = $('bdPic');
+  if (!pic) return;
+  /* A guest has neither, and is never asked for either. If the image itself
+     fails we drop it rather than leave a broken frame on the board. */
+  if (Ads.avatar) {
+    pic.onerror = () => pic.classList.add('hide');
+    pic.src = Ads.avatar;
+    pic.alt = Ads.playerName || '';
+    pic.classList.remove('hide');
+  } else {
+    pic.classList.add('hide');
+    pic.removeAttribute('src');
+  }
+}
+
+function doRevive(){
+  {
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
@@ -7534,12 +7823,33 @@ $('btnRevive').onclick = () => {
     G.heat = Math.max(0, G.heat - 1);
     G.slow = 1;
     toast('Back in the race', 'gold');
-  });
+  }
+}
+
+/* An ad that never filled must say so and leave the player somewhere to go —
+   their docs ask us to encourage a retry rather than fail silently. */
+function adUnavailable(){
+  refreshAdOffers();
+  toast(Ads.canServe() ? 'No ad available — try again in a moment'
+                       : Ads.blockedNote(), 'gold');
+}
+
+$('btnRevive').onclick = () => {
+  Ads.rewarded('Reviving your run', ok => ok ? doRevive() : adUnavailable());
+};
+
+$('btnReviveCoins').onclick = () => {
+  const price = revivePrice();
+  if (G.revived || Save.data.coins < price) return;
+  Save.data.coins -= price;
+  Save.flush();
+  NHAudio.ui(true);
+  doRevive();
 };
 
 $('btnDouble').onclick = () => {
   Ads.rewarded('Doubling your coins', ok => {
-    if (!ok) return;
+    if (!ok) { adUnavailable(); return; }
     commitCoins(2);
     $('btnDouble').disabled = true;
     $('ovCoins').textContent = '0';
@@ -7714,7 +8024,7 @@ function showBoard(from){
           '<span class="bdT">' + relDay(r.t) + '</span>' +
         '</div>').join('')
     : '<div class="bdEmpty">No runs on the board yet. Go and put one there.</div>';
-  $('bdWho').textContent = Ads.playerName ? Ads.playerName : 'Your runs';
+  refreshIdentity();          // name and avatar, whenever the board opens
   G.boardFrom = from;
   hide(UI.menu); hide(UI.over);
   show(UI.board);
@@ -8141,7 +8451,10 @@ setCtrlLabel();
 setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
-toMenu();
+/* Never played: straight into the first district, no clicks. Otherwise the
+   menu, which a returning player expects and which their rule is not about. */
+if (Save.data.runs > 0) toMenu();
+else { toMenu(); startFirstRun(); }
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */

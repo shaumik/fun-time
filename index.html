@@ -222,7 +222,7 @@
       <div class="ovScore" id="ovScore">0</div>
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
-        <div><span>Top combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Combo</span><b id="ovCombo">&times;1.0</b></div>
         <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
         <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
       </div>
@@ -232,9 +232,16 @@
            the garage" cannot go back to being a third of a footer row. -->
       <div class="ovActs">
         <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
+        <!-- The paid route exists because their rewarded-ad rules require an
+             alternative to watching one. It is also the fallback that keeps
+             the screen useful when ads cannot serve at all. -->
+        <button class="btn rew ghost" id="btnReviveCoins">Revive for <b id="revivePrice">750</b> coins</button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
         <button class="btn primary" id="btnAgain">Spend it in the garage</button>
       </div>
+      <!-- A notice, not a popup: their adblock rules ask for the former and
+           explicitly forbid the latter, which would fight fullscreen. -->
+      <div class="ovAdNote hide" id="ovAdNote"></div>
       <div class="ovFoot">
         <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
@@ -246,6 +253,9 @@
   <div id="board" class="layer screen">
     <div class="panel wide">
       <div class="bdHead">
+        <!-- Username and avatar both come from the CrazyGames account; the
+             game never asks for an identity of its own. Hidden for guests. -->
+        <img class="bdPic hide" id="bdPic" alt="" width="48" height="48">
         <div>
           <div class="bdKick">Records</div>
           <h2 class="bdWho" id="bdWho">Your runs</h2>
