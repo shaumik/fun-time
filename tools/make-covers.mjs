@@ -58,11 +58,11 @@ const launchOpts = fs.existsSync(PINNED) ? { executablePath: PINNED } : {};
    best at different points in a chain. */
 const COVERS = [
   { name: 'landscape-1920x1080.png', w: 1920, h: 1080, type: 10.5, top: '10%', lead: 5200,
-    zoom: 2.10, rot: 0.55, sx: 150, sy: 120, ahead: 22, step: 15 },
+    zoom: 1.72, rot: 0.40, sx: 90,  sy: 150, ahead: 2, step: 1 },
   { name: 'portrait-800x1200.png',   w: 800,  h: 1200, type: 13.5, top: '6%',  lead: 6100,
-    zoom: 1.75, rot: 0.20, sx: 0,   sy: 165, ahead: 14, step: 13 },
+    zoom: 1.75, rot: 0.20, sx: 0,   sy: 165, ahead: 2, step: 1 },
   { name: 'square-800x800.png',      w: 800,  h: 800,  type: 13.0, top: '6%',  lead: 5600,
-    zoom: 1.80, rot: 0.42, sx: 55,  sy: 105, ahead: 16, step: 13 },
+    zoom: 1.80, rot: 0.42, sx: 55,  sy: 105, ahead: 2, step: 1 },
 ];
 
 /* Freeze the run at a chosen instant and point the camera at it. The camera
@@ -81,15 +81,29 @@ const ART_DIRECT = ({ zoom, rot, sx, sy, ahead, step }) => `(() => {
   /* +10 rather than +0: the detonation happens at the car, so landing it
      exactly where it stood buries the hero in its own smoke. Moved a little
      up the road, the same debris reads as wreckage in its wake. */
-  const pos = G.track.at(G.car.idx + 10, 0);
+  const base = G.car.idx + 10;
+  const pos = G.track.at(base, 0);
   G.car.x = pos.x; G.car.y = pos.y; G.car.a = pos.a;
   /* Traffic is the ammunition, so the cover has to show some of it in front
      of the car rather than an empty road. These are the run's own vehicles
      moved onto the track ahead — arranged, not invented. */
   const lanes = [-95, 25, 115, -45, 70, -15];
-  G.traffic.slice(0, 6).forEach((v, i) => {
-    const q = G.track.at(G.car.idx + ${ahead} + i * ${step}, lanes[i]);
+  /* Five seconds of ramming leaves most of the traffic array wrecked, and a
+     wreck draws as debris rather than as a car — which is how a cover shot
+     ends up with an empty road. Prefer the survivors, and press wrecks back
+     into service as intact cars if there are not enough of them, so the
+     frame is composed rather than left to what happened to survive. */
+  const live = G.traffic.filter(v => !v.wrecked);
+  const pool = (live.length >= 6 ? live : G.traffic).slice(0, 6);
+  pool.forEach((v, i) => {
+    /* off base, not off car.idx — the hero was just moved ten segments up
+       the road and car.idx still says where it used to be, which put every
+       one of these behind the camera. In segments: SEG is 56 world units and
+       the visible radius at this zoom is under 500, so anything past six or
+       seven segments ahead is off frame entirely. */
+    const q = G.track.at(base + ${ahead} + i * ${step}, lanes[i]);
     v.x = q.x; v.y = q.y; v.a = q.a;
+    v.wrecked = 0; v.spin = 0; v.hitFlash = 0;
   });
   /* and bring the frozen camera with it */
   N.cam.x = G.car.x; N.cam.y = G.car.y;
@@ -183,9 +197,24 @@ for (const cover of COVERS) {
   await page.goto(GAME);
   await page.waitForTimeout(1200);
 
-  /* Push quality to its ceiling: these are stills, so the frame budget that
+  /* All three covers are shot in the same district. Their restrictions
+     require the set to share one identity, and a run now draws three of five
+     at random — so left to itself this would produce a magenta landscape and
+     an orange square. The Grid is the pick: it is the densest of them, and
+     it is the one whose cyan and magenta the wordmark is already built from.
+
+     Push quality to its ceiling too. These are stills; the frame budget that
      makes the game demote itself on a slow machine is irrelevant here. */
-  await page.evaluate(() => window.__NH.setQuality('high'));
+  await page.evaluate(() => {
+    const N = window.__NH;
+    N.setQuality('high');
+    N.startRun();
+    N.forceTheme(0);                    // The Grid — before the world is built
+    const n = N.openNodes()[0];
+    N.enterNode(n.row, n.col);
+    N.takeContract(0);                  // builds the world under the forced theme
+    N.beginDistrict();
+  });
   await drive(page, cover.lead);
 
   await page.evaluate(DETONATE);
