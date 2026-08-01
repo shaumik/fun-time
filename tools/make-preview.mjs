@@ -80,6 +80,26 @@ const VIRTUAL_CLOCK = `(() => {
    ahead is clear, so it never just grinds along a barrier. */
 const BOT = `(() => {
   const N = window.__NH, G = N.G;
+  /* Keep the run alive for the whole clip. Left to itself the bot wrecks
+     somewhere around the fifteenth second and the preview ends on the game
+     over screen — a menu, with two rewarded-ad buttons on it, which is the
+     last thing that should appear in a store preview. The hull is topped up
+     rather than the footage being faked: everything on screen is still the
+     game playing itself, just a run that does not end mid-sentence. */
+  if (G.hp < G.hpMax) G.hp = G.hpMax;
+  /* A bot that cannot die clears districts fast, and every screen between
+     districts — checkpoint, level up, route board, dispatch — is a menu that
+     the clip then sits on. Drive straight through all of them in the same
+     frame they appear, so the footage stays on the road. */
+  if (G.state !== 'play' && G.run) {
+    try {
+      if (G.state === 'cleared') N.leaveCleared();
+      if (G.state === 'levelup') N.takePerk(0);
+      if (G.state === 'over')    N.startRun();
+      const n = N.openNodes()[0];
+      if (n) { N.enterNode(n.row, n.col); N.takeContract(0); N.beginDistrict(); }
+    } catch (e) {}
+  }
   if (!G.car || G.state !== 'play') return 0;
   const car = G.car, ca = Math.cos(car.a), sa = Math.sin(car.a);
   let best = null, bd = 1e9;
@@ -172,7 +192,11 @@ for (const clip of CLIPS) {
     '-framerate', String(FPS),
     '-i', path.join(dir, 'f%05d.png'),
     '-an',                                   // no sound, as required
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', '20',
+    /* 19 Mbps for an 18s preview is absurd and lands 40MB against their 50MB
+       ceiling with no margin. 23 is visually indistinguishable here and
+       leaves room for the file to grow if the clip ever gets busier. */
+    '-c:v', 'libx264', '-preset', 'slow', '-crf', '23',
+    '-maxrate', '8M', '-bufsize', '16M',
     '-pix_fmt', 'yuv420p',                   // the format everything can decode
     '-movflags', '+faststart',
     out,

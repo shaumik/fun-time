@@ -30,6 +30,41 @@ handling for guests and signed-in players, and legibility at all ten iframe
 sizes they list. Needs `npm i` once for Playwright. A green run proves this
 side of the contract; it does **not** prove the handshake with the real SDK.
 
+## 1b. Covers and preview videos
+
+```
+node tools/make-covers.mjs      # covers/*.png
+node tools/make-preview.mjs     # covers/*.mp4
+```
+
+Everything the submission form asks for, generated from the running game:
+
+| File | Spec |
+|---|---|
+| `covers/landscape-1920x1080.png` | 16:9, mandatory |
+| `covers/portrait-800x1200.png` | 2:3, mandatory |
+| `covers/square-800x800.png` | 1:1, mandatory |
+| `covers/preview-landscape-1920x1080.mp4` | 16:9 1080p, 18s, ~17 MB |
+| `covers/preview-portrait-720x1080.mp4` | 2:3 1080p, 18s, ~8 MB |
+
+All five are shot in **The Grid**, so the set reads as one game — a run now
+draws three districts of five at random, and left alone that produced a
+magenta landscape next to an orange square.
+
+Against their restrictions: no borders, no text but the title, no icons or
+store logos, nothing copyrighted. The videos carry no sound, no black bars,
+no cursor and no promotional text, sit inside the 15–20s window and well
+under the 50 MB ceiling, and open on the matching static cover so the
+thumbnail dissolves into the preview. Nothing is pre-accelerated — their
+processing speeds it up at their end.
+
+The preview capture drives the game on a virtual clock (`requestAnimationFrame`
+and `performance.now` are replaced before the game loads), so a slow
+screenshot cannot become a hitch in the footage and every frame is exactly
+1/60s of game time. The bot's hull is topped up and it is walked through the
+between-district screens, because a preview that ends on a game over screen
+is a preview whose last frame is two rewarded-ad buttons.
+
 ## 2. Upload
 
 Developer portal → **Submit game** → upload `dist/neon-heat.zip`.
