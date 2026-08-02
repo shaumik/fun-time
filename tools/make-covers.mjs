@@ -63,6 +63,11 @@ const COVERS = [
     zoom: 1.75, rot: 0.20, sx: 0,   sy: 165, ahead: 2, step: 1, drift: 0.60, blast: 300 },
   { name: 'square-800x800.png',      w: 800,  h: 800,  type: 13.0, top: '6%',  lead: 5600,
     zoom: 1.80, rot: 0.42, sx: 55,  sy: 105, ahead: 2, step: 1, drift: 0.58, blast: 290 },
+  /* itch.io wants 630x500 — their own recommended size, and a 315:250 ratio
+     that matches none of the three CrazyGames require, so it is generated
+     rather than cropped down from one of them. */
+  { name: 'itch-630x500.png',        w: 630,  h: 500,  type: 12.5, top: '7%',  lead: 5600,
+    zoom: 1.70, rot: 0.45, sx: 40,  sy: 90,  ahead: 2, step: 1, drift: 0.58, blast: 290 },
 ];
 
 /* Freeze the run at a chosen instant and point the camera at it. The camera
