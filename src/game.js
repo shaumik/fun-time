@@ -5916,7 +5916,7 @@ window.__NH = {
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
   /* pin every act of the run to one district, for art passes and screenshots */
   forceTheme: i => { themeOrder = [i, i, i]; setTheme(1); },
-  THEMES,
+  THEMES, BOSSES, addBoss, skid, addTraffic,
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
