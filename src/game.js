@@ -970,6 +970,7 @@ class Vehicle {
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
     this.mods = null; this.topBonus = 0; this.spin = 0; this.wrecked = 0;
     this.inv = 0;
+    this.trail = []; this.trailT = 0;   // light ribbon samples, newest last
   }
   get speed(){ return hyp(this.vx, this.vy); }
 
@@ -1062,13 +1063,133 @@ class Vehicle {
         const rx = this.x - cs * back + rnd(-4, 4);
         const ry = this.y - sn * back + rnd(-4, 4);
         spawn(rx, ry, -cs * 260 + rnd(-70, 70), -sn * 260 + rnd(-70, 70),
-              rnd(0.13, 0.26), rnd(6, 13), k ? '255,150,60' : '255,225,170', true, -16);
+              /* sized against the streak it sits on: at r=13 the plume was
+                 wider than the light it is supposed to be coming out of */
+              rnd(0.13, 0.26), rnd(3.5, 8), k ? '255,150,60' : '255,225,170', true, -12);
       }
     }
+    trailStep(this, dt, cs, sn);
+
     this.hitFlash = Math.max(0, this.hitFlash - dt * 3);
     this.inv = Math.max(0, this.inv - dt);
     this.lamp += dt * 9;
   }
+}
+
+/* ============================================================
+   LIGHT STREAKS
+   The skid decals already glow, which covers the mark a slide leaves on the
+   road. This is the other half: the light a moving car leaves in the air
+   behind it, whether it is sliding or not.
+
+   The reference is a long-exposure photograph of a night road, so the streak
+   is thin, it runs a long way, and it is continuous — a hot filament inside a
+   faint halo, which is the same shape the barriers already use and the reason
+   they read as the most expensive thing on screen.
+
+   Sampled on a fixed clock rather than per frame, so the streak is the same
+   length at 30fps and at 144. Each sample carries its own lateral normal, so
+   it twists with the car and fans sideways in a slide. Drawn as tapered
+   polygons rather than a stroke per segment: a stroke per segment is thirty
+   draw calls a car, and this runs for every vehicle on screen.
+   ============================================================ */
+const TRAIL_LIFE = 1.5;
+const TRAIL_MAX  = 68;
+
+function trailStep(v, dt, cs, sn){
+  const t = v.trail;
+  for (let i = t.length - 1; i >= 0; i--) {
+    /* uniform decay, so the oldest always expires first and the array
+       stays ordered without a sort */
+    if ((t[i].life -= dt) <= 0) t.splice(i, 1);
+  }
+  if (v.speed < 40) return;
+  v.trailT -= dt;
+  if (v.trailT > 0) return;
+  /* Spacing is chosen so a full-length streak fits inside TRAIL_MAX samples.
+     The streak is only a few units wide, so the faceting a coarser interval
+     shows on a hard turn is well under a pixel — which is what buys the
+     length back at no cost in vertices. */
+  v.trailT = v.kind === 'traffic' || v.kind === 'convoy' ? 0.052 : 0.024;
+  const s = v.spec;
+  t.push({
+    x: v.x - cs * s.len * 0.46, y: v.y - sn * s.len * 0.46,
+    nx: -sn, ny: cs, life: TRAIL_LIFE
+  });
+  if (t.length > TRAIL_MAX) t.shift();
+}
+
+/* mul scales the whole streak: the player owns the road, traffic only hints
+   at it, or thirty of them wash the frame into a white smear. `rich` buys the
+   wide halo, the most expensive of the passes and the least missed on a car
+   you are not driving. */
+function drawTrail(v, mul, rich){
+  const t = v.trail;
+  if (t.length < 3 || !onScreen(v)) return;
+  const s = v.spec;
+  const drive = clamp(v.speed / 300, 0, 1);
+  if (drive < 0.08) return;
+  const hot = 0.66 + v.drift * 0.30 + (v.boost ? 0.34 : 0);
+  /* Half-width. A long-exposure streak is a line: this is the width of a
+     light, not of a vehicle. It still opens under drift, because a slide
+     smearing sideways is the one time you want to see width. */
+  const base = s.wid * (0.17 + v.drift * 0.13);
+  const col = s.col;
+  const n = t.length - 1;
+
+  /* Most of the alpha in the thinnest band, same as the barriers: that is
+     what makes a light read as a light and not as a painted stripe. */
+  const passes = rich
+    ? [[3.40, col,       0.11 * mul * drive * hot],
+       [1.70, col,       0.26 * mul * drive * hot],
+       [0.85, col,       0.88 * mul * drive * hot],
+       [0.30, '#FFFFFF', 0.48 * mul * drive * hot * (v.boost ? 1.3 : 1)]]
+    : [[2.40, col,       0.16 * mul * drive * hot],
+       [1.00, col,       0.75 * mul * drive * hot],
+       [0.36, '#FFFFFF', 0.30 * mul * drive * hot]];
+
+  /* Thin bands land under a pixel at the portrait camera, where a sub-pixel
+     line does not get thinner, it gets noisier. Floor every width in screen
+     space so the filament stays a clean hairline instead of a dotted one. */
+  const minHalf = 0.55 / Math.max(cam.zoom, 0.2);
+
+  /* Civilian streaks shorten rather than switch off when the budget tightens.
+     Twenty-six at full length is a lot of additive fill, but cutting them
+     breaks the effect — a long exposure where only the hero cars smear reads
+     as a bug, not as a lower setting. */
+  const from = (rich || QF.wide) ? 0 : Math.max(0, n - 18);
+  const head = t[n], tail = t[from];
+  const dx = head.x - tail.x, dy = head.y - tail.y;
+  if (dx * dx + dy * dy < 36) return;      // degenerate gradient, nothing to draw
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const [wm, c, al] of passes) {
+    const a = clamp(al, 0, 1);
+    if (a < 0.012) continue;
+    const w = Math.max(base * wm, minHalf);
+    ctx.beginPath();
+    for (let i = from; i <= n; i++) {
+      const q = t[i];
+      if (i === from) ctx.moveTo(q.x + q.nx * w, q.y + q.ny * w);
+      else ctx.lineTo(q.x + q.nx * w, q.y + q.ny * w);
+    }
+    for (let i = n; i >= from; i--) {
+      const q = t[i];
+      ctx.lineTo(q.x - q.nx * w, q.y - q.ny * w);
+    }
+    ctx.closePath();
+    /* Width is flat end to end and the fade lives entirely in the alpha.
+       Tapering the width instead makes a triangle, and it reads as one — a
+       cone stuck to the bumper rather than light left behind. */
+    const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+    g.addColorStop(0,    hexA(c, 0));
+    g.addColorStop(0.30, hexA(c, a * 0.34));
+    g.addColorStop(0.72, hexA(c, a * 0.82));
+    g.addColorStop(1,    hexA(c, a));
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* ============================================================
@@ -3490,15 +3611,39 @@ function drawSkids(){
   ctx.globalCompositeOperation = 'source-over';
 }
 
+/* Particles were flat-alpha circles, which is fine at two pixels and awful at
+   sixty: tyre smoke grows past r=40 and a hard-edged disc that size reads as a
+   bubble, not as smoke. A dozen overlapping read as a bubble bath. Soft radial
+   blobs instead, baked once per colour, so the cost is a drawImage rather than
+   a gradient per particle. */
+const softCache = new Map();
+function softSprite(col){
+  let s = softCache.get(col);
+  if (s) return s;
+  const R = 48;
+  s = document.createElement('canvas');
+  s.width = s.height = R * 2;
+  const g = s.getContext('2d');
+  const rg = g.createRadialGradient(R, R, 0, R, R, R);
+  rg.addColorStop(0,    'rgba(' + col + ',1)');
+  rg.addColorStop(0.35, 'rgba(' + col + ',0.62)');
+  rg.addColorStop(0.70, 'rgba(' + col + ',0.20)');
+  rg.addColorStop(1,    'rgba(' + col + ',0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, R * 2, R * 2);
+  softCache.set(col, s);
+  return s;
+}
+
 function drawParticles(){
   for (const p of P) {
     const t = clamp(p.life / p.max, 0, 1);
+    const r = Math.max(0.6, p.r);
     ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
-    ctx.fillStyle = 'rgba(' + p.col + ',' + (t * (p.add ? 0.85 : 0.30)).toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
-    ctx.fill();
+    ctx.globalAlpha = t * (p.add ? 0.90 : 0.26);
+    ctx.drawImage(softSprite(p.col), p.x - r, p.y - r, r * 2, r * 2);
   }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -3595,17 +3740,66 @@ function carPath(ctx, s){
   ctx.closePath();
 }
 
+/* Headlight beams were a trapezoid whose gradient faded along its length
+   only, which leaves both long sides as razor-hard straight edges. From a
+   top-down camera that is not a beam of light, it is a grey cardboard wedge —
+   the one shape in the frame that is neither emissive nor soft.
+
+   Baked once as a real beam: alpha falls off across the cone as well as along
+   it, so it has shoulders rather than edges, and the cone opens with distance.
+   Per-pixel is fine for something built one time and blitted thereafter. */
+let beamSprite = null;
+function makeBeamSprite(){
+  const N = 96;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  const img = g.createImageData(N, N), d = img.data;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const u = x / (N - 1);                    // along the beam
+      const vv = (y / (N - 1) - 0.5) * 2;       // across it
+      const hw = 0.22 + 0.78 * u;               // the cone opens with distance
+      const t = Math.min(1, Math.abs(vv) / hw);
+      const lat = 1 - t * t;                    // soft shoulders, no edge
+      const lon = Math.pow(1 - u, 1.6);         // and a soft end
+      const i = (y * N + x) * 4;
+      d[i] = 200; d[i + 1] = 232; d[i + 2] = 255;
+      d[i + 3] = Math.round(Math.max(0, lat) * lon * 255);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+/* Traffic is seeded up to ninety-six track points ahead of the player, which
+   at any sane zoom is well past the top of the screen, and every one of those
+   cars was being fully drawn into a clipped-away region. One radius test
+   covers the chassis and its streak both. */
+function onScreen(v){
+  const R = hyp(W, H) / cam.zoom * 0.72 + 260;
+  const dx = v.x - cam.x, dy = v.y - cam.y;
+  return dx * dx + dy * dy < R * R;
+}
+
 function drawVehicle(v, opt){
   const s = v.spec;
   const o = opt || {};
+  if (!onScreen(v)) return;
+  /* Strokes are authored in world units, so at the zoomed-out camera a 1.7
+     unit rim lands under one screen pixel and the car flattens into a
+     silhouette. Widths are floored in screen space. */
+  const px = 1 / Math.max(cam.zoom, 0.2);
   ctx.save();
   ctx.translate(v.x, v.y);
   ctx.rotate(v.a);
 
-  /* underglow — reads as ground contact and feeds the bloom */
+  /* Underglow — ground contact, and it feeds the bloom. Tighter than it was:
+     at len*0.9 by wid*1.4 it ballooned past the chassis and merged with the
+     head of the streak into a single blob with a tail. */
   if (o.glow !== false) {
     ctx.globalCompositeOperation = 'lighter';
-    blitGlow(s.col, 0, 0, s.len * 0.9, s.wid * 1.4, 0.30);
+    blitGlow(s.col, 0, 0, s.len * 0.72, s.wid * 1.0, v.kind === 'player' ? 0.30 : 0.22);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -3640,9 +3834,27 @@ function drawVehicle(v, opt){
   carPath(ctx, s);
   ctx.fillStyle = bg; ctx.fill();
 
-  /* rim light along the silhouette */
-  ctx.strokeStyle = hexA(s.col, 0.95);
-  ctx.lineWidth = 1.7; ctx.stroke();
+  /* Rim light along the silhouette: a soft outer bleed under a hard core,
+     which is what makes an edge read as emitting rather than as outlined. */
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineJoin = 'round';
+  carPath(ctx, s);
+  ctx.strokeStyle = hexA(s.col, 0.20);
+  ctx.lineWidth = Math.max(5 * px, 5.5); ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  carPath(ctx, s);
+  ctx.strokeStyle = hexA(s.col, 1);
+  ctx.lineWidth = Math.max(1.9 * px, 2.0); ctx.stroke();
+
+  /* flank light strips — a continuous line down the body catches the eye at
+     any zoom, unlike detail on the shell */
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = hexA(s.col, 0.72);
+  for (const sy of [-1, 1]) {
+    ctx.fillRect(-s.len * 0.34, sy * s.wid * 0.46 - s.wid * 0.035,
+                 s.len * 0.62, s.wid * 0.07);
+  }
+  ctx.globalCompositeOperation = 'source-over';
 
   /* cockpit — a canopy on a car, a glazed side on anything box-shaped.
      Without this a bus is just a very long coupe, and the silhouette work
@@ -3707,24 +3919,24 @@ function drawVehicle(v, opt){
     ctx.fillRect(s.len * 0.44, sy * s.wid * 0.30 - s.wid * 0.05, s.len * 0.06, s.wid * 0.11);
   }
   if (o.lights !== false) {
-    const lg = ctx.createLinearGradient(s.len * 0.5, 0, s.len * 2.6, 0);
-    lg.addColorStop(0, 'rgba(190,230,255,0.20)');
-    lg.addColorStop(1, 'rgba(190,230,255,0)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.moveTo(s.len * 0.5, -s.wid * 0.4);
-    ctx.lineTo(s.len * 2.6, -s.wid * 1.5);
-    ctx.lineTo(s.len * 2.6, s.wid * 1.5);
-    ctx.lineTo(s.len * 0.5, s.wid * 0.4);
-    ctx.closePath(); ctx.fill();
+    if (!beamSprite) beamSprite = makeBeamSprite();
+    const bl = s.len * 2.1, bw = s.wid * 3.0;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(beamSprite, s.len * 0.46, -bw * 0.5, bl, bw);
+    ctx.globalAlpha = 1;
   }
 
-  /* tail lights, brighter while sliding */
+  /* tail lights, brighter while sliding — a bar rather than two pips, with
+     its own bleed, because the rear of the car is what everything behind you
+     is actually looking at */
   const tb = 0.55 + v.drift * 0.45;
+  blitGlow('#FF3C46', -s.len * 0.52, 0, s.len * 0.22, s.wid * 0.45, tb * 0.45);
   ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
   for (const sy of [-1, 1]) {
-    ctx.fillRect(-s.len * 0.5, sy * s.wid * 0.28 - s.wid * 0.05, s.len * 0.05, s.wid * 0.11);
+    ctx.fillRect(-s.len * 0.52, sy * s.wid * 0.28 - s.wid * 0.07, s.len * 0.07, s.wid * 0.15);
   }
+  ctx.fillStyle = 'rgba(255,190,195,' + (tb * 0.7).toFixed(2) + ')';
+  ctx.fillRect(-s.len * 0.5, -s.wid * 0.30, s.len * 0.03, s.wid * 0.60);
 
   /* police bar */
   if (v.kind === 'police' || v.kind === 'boss') {
@@ -4357,6 +4569,14 @@ function render(){
   drawHazards();
   drawToys();
   drawPickups();
+
+  /* every streak before every car, so one never paints over a chassis */
+  for (const t of G.traffic) drawTrail(t, 0.60, false);
+  for (const v of G.convoy) drawTrail(v, 0.75, false);
+  for (const p of G.police) drawTrail(p, 0.85, true);
+  if (G.boss) drawTrail(G.boss, 1.05, true);
+  drawTrail(G.car, 1.25, true);
+
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const v of G.convoy) drawVehicle(v, { lights:true });
   for (const p of G.police) drawVehicle(p);
@@ -5810,7 +6030,13 @@ function toGarage(){
    LOOP
    ============================================================ */
 let last = performance.now();
-let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
+let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = 0;
+/* setQuality already defines three rungs, but the tuner only ever called
+   'low' — the middle one was dead code. These are the rungs, in order. */
+const TIERS = ['low', 'med', 'high'];
+let tierI = 2;        // index into TIERS
+let demotions = 0;    // how many times we have had to give a tier back
+let goodMs = 0;       // how long we have been comfortably inside budget
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
    lever because it is continuous and nearly invisible; dropping effects is
@@ -5821,10 +6047,21 @@ let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
    a perfect frame still reads 16.7ms, so it can never indicate headroom.
    Work time (what we actually spend in step + render) is vsync-independent
    and is what tells us it is safe to give resolution back. */
-function autoTune(now){
-  if (now < tuneAt) return;
+function autoTune(now, dt){
   const missing = ftAvg > 19.5;                    // below ~51fps
-  const roomy   = ftAvg < 18 && workAvg < 6.5;     // hitting vsync, cheaply
+  /* Headroom was `workAvg < 6.5`, an absolute figure from when the renderer
+     was cheaper. With the city drawing depth and the streaks in the air,
+     nothing reaches 6.5ms any more, so this test could never pass and the
+     climb back was dead code: a session that dipped once stayed dipped, often
+     holding a rock-solid 60fps at half resolution with milliseconds a frame
+     going spare. The budget is 16.7ms and the test is written against it. */
+  const roomy = ftAvg < 17.6 && workAvg < 10.5;
+
+  /* sustained, not instantaneous: one quiet second in a fight is not proof
+     the machine can hold the next minute */
+  goodMs = roomy ? goodMs + dt * 1000 : 0;
+
+  if (now < tuneAt) return;
 
   if (missing && renderScale > 0.5) {
     /* Come down in proportion to how far off budget we are, not in a fixed
@@ -5839,13 +6076,26 @@ function autoTune(now){
     renderScale = clamp(Math.min(stepped, want), 0.5, 1);
     applyBackingStore();
     tuneAt = now + (ftAvg > 28 ? 320 : 700);
-  } else if (missing && !demoted) {
-    setQuality('low'); demoted = true;
-    tuneAt = now + 1200;
+  } else if (missing && tierI > 0) {
+    /* out of resolution to give: step down one rung, not straight to the
+       floor. Demotion used to latch to 'low' for the rest of the session,
+       which meant the backing store and every optional pass went in the same
+       instant and never came back. */
+    setQuality(TIERS[--tierI]);
+    demotions++; goodMs = 0;
+    tuneAt = now + 1500;
   } else if (roomy && renderScale < 1) {
     renderScale = Math.min(1, renderScale + 0.05);
     applyBackingStore();
     tuneAt = now + 1400;              // creep back up slowly to avoid hunting
+  } else if (tierI < TIERS.length - 1 && goodMs > 5000 * (demotions + 1)) {
+    /* Give a rung back, but only after real sustained headroom, and demand
+       progressively more of it each time we have been wrong — effects
+       flickering on and off every few seconds is worse to look at than
+       simply staying on the lower tier. */
+    setQuality(TIERS[++tierI]);
+    goodMs = 0;
+    tuneAt = now + 3000;
   }
 }
 
@@ -5880,7 +6130,7 @@ function frame(now){
 
   workAvg = workAvg * 0.9 + (performance.now() - workT0) * 0.1;
   ftAvg   = ftAvg   * 0.9 + Math.min(ms, 120) * 0.1;
-  if (++ftN > 40) autoTune(now);
+  if (++ftN > 40) autoTune(now, raw);
 
   requestAnimationFrame(frame);
 }
