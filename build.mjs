@@ -250,10 +250,37 @@ const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
 execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 
+/* The itch.io artefact: the same game with the portal SDK removed.
+   Off-platform the SDK script still loads — it is a public CDN — so
+   `window.CrazyGames.SDK` exists and the `if (!SDK) return` guard in Ads.boot
+   does not catch it. Whether that matters comes down to whether init()
+   rejects on a foreign domain, and betting the revive prompt on that is a bad
+   bet: if init resolves and a later requestAd never calls back, the player
+   watches a frozen game until the 25-second guard fires. Stripping the tag
+   makes the fallback deterministic — Ads.ready stays false, every placement
+   runs its local simulation — and drops the only external request in the
+   build, which an offline or privacy-blocked itch player would have paid for
+   anyway. */
+const itchHtml = fs.readFileSync(path.join(dist, 'index.html'), 'utf8')
+  .replace(/<!--\s*CrazyGames SDK[\s\S]*?-->\s*/, '')
+  .replace(/<script src="https:\/\/sdk\.crazygames\.com\/[^"]*"><\/script>\s*/, '');
+fs.writeFileSync(path.join(dist, 'itch-index.html'), itchHtml);
+const itchZip = path.join(dist, 'neon-heat-itch.zip');
+fs.rmSync(itchZip, { force: true });
+/* itch.io serves whatever index.html sits at the archive root, so the file
+   has to be named index.html inside the zip regardless of what it is on disk */
+fs.copyFileSync(path.join(dist, 'itch-index.html'), path.join(dist, '.itch-stage-index.html'));
+execSync('mkdir -p .itchpkg && cp .itch-stage-index.html .itchpkg/index.html && ' +
+         'cd .itchpkg && zip -q -X ../neon-heat-itch.zip index.html', { cwd: dist });
+fs.rmSync(path.join(dist, '.itch-stage-index.html'), { force: true });
+fs.rmSync(path.join(dist, '.itchpkg'), { recursive: true, force: true });
+fs.rmSync(path.join(dist, 'itch-index.html'), { force: true });
+
 const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
 console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
 console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
 console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
+console.log('dist/neon-heat-itch.zip ' + kb(itchZip) + '   <- upload this to itch.io (no portal SDK)');
 
 /* guard the two things that would fail their review silently */
 const built = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
@@ -261,3 +288,5 @@ const ext = [...built.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m =
 const stray = ext.filter(u => !u.startsWith('sdk.crazygames.com'));
 if (stray.length) console.warn('WARNING external requests besides the SDK: ' + stray.join(', '));
 if (!built.includes('sdk.crazygames.com')) console.warn('WARNING the SDK script tag is missing from the build');
+if (itchHtml.includes('sdk.crazygames.com')) console.warn('WARNING the itch build still references the SDK');
+if (!/<canvas id="c">|<canvas id="c"><\/canvas>|id="c"/.test(itchHtml)) console.warn('WARNING the itch build lost the canvas');
