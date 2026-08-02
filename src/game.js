@@ -264,7 +264,10 @@ const THEMES = [
     h:[90, 280], size:[110, 240], gap:0.46, lit:0.45, back:[110, 520],
     air:{ rgb:'150,170,180', rate:0.14, size:[16, 38], life:[1.8, 3.2], drift:26 } },
   { id:'undercity', name:'The Undercity',
-    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#F2F6FF',
+    /* the right wall was near-white, which with four barrier passes and a
+       bloom on top stopped being a colour and became a blown-out band —
+       the one place in the game where more light read as less detail */
+    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#5FA8FF',
     bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
     /* close, tall and constant — it should read as a tunnel, not a skyline */
     h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
@@ -329,11 +332,11 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
-const QF = { bloom:1, wide:1, city:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
+const QF = { bloom:1, wide:1, city:1, windows:1, glow:1, grain:1, ca:1, dpr:1.5, tier:'high' };
 function setQuality(t){
   QF.tier = t;
   const high = t === 'high';
-  QF.wide = QF.windows = QF.grain = high ? 1 : 0;
+  QF.wide = QF.windows = QF.grain = QF.ca = high ? 1 : 0;
   QF.bloom = 1; QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
   QF.dpr = high ? 1.5 : 1;
@@ -349,6 +352,8 @@ let W = 1280, H = 720, DPR = 1;
 /* quarter-res buffers for the bloom chain */
 const bufA = document.createElement('canvas'), bA = bufA.getContext('2d');
 const bufB = document.createElement('canvas'), bB = bufB.getContext('2d');
+/* scratch for the aberration split — bufB is busy accumulating by then */
+const bufC = document.createElement('canvas'), bC = bufC.getContext('2d');
 let vignette = null, grain = null;
 
 /* ---------------- resolution ----------------
@@ -371,8 +376,8 @@ function applyBackingStore(){
   cv.width  = Math.max(1, Math.round(W * DPR));
   cv.height = Math.max(1, Math.round(H * DPR));
   /* the bloom buffers follow the real backing store, not the CSS size */
-  bufA.width  = bufB.width  = Math.max(1, Math.round(cv.width  / 4));
-  bufA.height = bufB.height = Math.max(1, Math.round(cv.height / 4));
+  bufA.width  = bufB.width  = bufC.width  = Math.max(1, Math.round(cv.width  / 4));
+  bufA.height = bufB.height = bufC.height = Math.max(1, Math.round(cv.height / 4));
 }
 
 function resize(){
@@ -681,6 +686,7 @@ class Vehicle {
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
     this.mods = null; this.topBonus = 0; this.spin = 0; this.wrecked = 0;
     this.inv = 0;
+    this.trail = []; this.trailT = 0;   // light ribbon samples, newest last
   }
   get speed(){ return hyp(this.vx, this.vy); }
 
@@ -760,9 +766,19 @@ class Vehicle {
       if (this.smokeT <= 0) {
         this.smokeT = 0.026;
         const rx = this.x - cs * s.len * 0.34, ry = this.y - sn * s.len * 0.34;
-        spawn(rx + rnd(-10,10), ry + rnd(-10,10),
+        /* Grey smoke in a city lit entirely in cyan and magenta was the one
+           uncoloured thing on screen, and it sat right where the eye is. It
+           is still smoke — dark, occluding, non-additive — but it takes the
+           colour of the light it is being lit by, and it no longer swells to
+           sixty units, which is where it stopped reading as smoke at all. */
+        spawn(rx + rnd(-9,9), ry + rnd(-9,9),
               -cs * 60 + rnd(-70,70), -sn * 60 + rnd(-70,70),
-              rnd(0.7, 1.25), rnd(9, 16), '190,205,235', false, 46);
+              rnd(0.55, 1.0), rnd(6, 11), rgbOf(s.accent || s.col), false, 26);
+        /* a hot spark at the contact patch, additive, so the tyre itself
+           glows where it is being scrubbed */
+        spawn(rx + rnd(-6,6), ry + rnd(-6,6),
+              -cs * 40 + rnd(-50,50), -sn * 40 + rnd(-50,50),
+              rnd(0.10, 0.22), rnd(2.5, 5), rgbOf(s.accent || s.col), true, -6);
       }
     }
     if (this.boost) {
@@ -775,11 +791,101 @@ class Vehicle {
               rnd(0.13, 0.26), rnd(6, 13), k ? '255,150,60' : '255,225,170', true, -16);
       }
     }
+    trailStep(this, dt, cs, sn);
+
     this.hitFlash = Math.max(0, this.hitFlash - dt * 3);
     this.inv = Math.max(0, this.inv - dt);
     this.lamp += dt * 9;
   }
 }
+
+/* ============================================================
+   LIGHT RIBBONS
+   The one thing a game called Neon Heat is expected to have and the one
+   thing it did not: a wall of light dragged behind every car. The scene had
+   emissive barriers and an emissive skyline, and then the only moving object
+   in it left no light at all — which is exactly the part that read as cheap,
+   because motion is where the eye actually looks.
+
+   Sampled on a fixed clock rather than per frame, so the ribbon is the same
+   length at 30fps and at 144. Each sample carries its own lateral normal, so
+   the ribbon twists with the car and fans out sideways in a slide — the
+   drift is legible from the shape of the light alone.
+
+   Drawn as tapered polygons rather than a stroke per segment: a stroke per
+   segment is thirty draw calls per car, and this runs for every vehicle on
+   screen, not just the player.
+   ============================================================ */
+const TRAIL_LIFE = 0.55;
+
+function trailStep(v, dt, cs, sn){
+  const t = v.trail;
+  for (let i = t.length - 1; i >= 0; i--) {
+    /* uniform decay, so the oldest always expires first and the array
+       stays ordered without a sort */
+    if ((t[i].life -= dt) <= 0) t.splice(i, 1);
+  }
+  if (v.speed < 40) return;
+  v.trailT -= dt;
+  if (v.trailT > 0) return;
+  /* Traffic samples at half the rate. The ribbon covers the same ground
+     either way — it just has half the vertices, and with thirty cars on
+     screen the vertex count is the whole cost of this feature. */
+  v.trailT = v.kind === 'traffic' || v.kind === 'convoy' ? 0.030 : 0.014;
+  const s = v.spec;
+  t.push({
+    x: v.x - cs * s.len * 0.46, y: v.y - sn * s.len * 0.46,
+    nx: -sn, ny: cs, life: TRAIL_LIFE
+  });
+  if (t.length > 40) t.shift();
+}
+
+/* mul scales the whole ribbon: the player owns the road, traffic only hints
+   at it, otherwise thirty ribbons wash the frame out into a white smear.
+   `rich` buys the wide atmospheric halo, which is by far the most expensive
+   of the three passes and the least missed on a car you are not driving. */
+function drawTrail(v, mul, rich){
+  const t = v.trail;
+  if (t.length < 3 || !onScreen(v)) return;
+  const s = v.spec;
+  const drive = clamp(v.speed / 300, 0, 1);
+  if (drive < 0.08) return;
+  const hot = 0.66 + v.drift * 0.30 + (v.boost ? 0.34 : 0);
+  const base = s.wid * (0.52 + v.drift * 0.40);
+  const col = s.accent || s.col;
+  const n = t.length - 1;
+
+  const passes = rich
+    ? [[2.90, col,       0.15 * mul * drive * hot],
+       [1.25, col,       0.46 * mul * drive * hot],
+       [0.30, '#FFFFFF', 0.34 * mul * drive * hot * (v.boost ? 1.5 : 1)]]
+    : [[1.45, col,       0.40 * mul * drive * hot],
+       [0.34, '#FFFFFF', 0.30 * mul * drive * hot]];
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (const [wm, c, al] of passes) {
+    const a = clamp(al, 0, 1);
+    if (a < 0.012) continue;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const p = t[i], w = base * wm * trailW(i / n) * (p.life / TRAIL_LIFE);
+      if (i === 0) ctx.moveTo(p.x + p.nx * w, p.y + p.ny * w);
+      else ctx.lineTo(p.x + p.nx * w, p.y + p.ny * w);
+    }
+    for (let i = n; i >= 0; i--) {
+      const p = t[i], w = base * wm * trailW(i / n) * (p.life / TRAIL_LIFE);
+      ctx.lineTo(p.x - p.nx * w, p.y - p.ny * w);
+    }
+    ctx.closePath();
+    ctx.fillStyle = hexA(c, a);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+/* A linear taper makes a spike, not a wall — the ribbon spends most of its
+   length being thin. This holds width across the body and only closes over
+   the last stretch, which is what a light wall actually looks like. */
+function trailW(u){ return Math.sqrt(u); }
 
 /* ============================================================
    GAME
@@ -1072,6 +1178,9 @@ const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults());
 
 const LANES = [-0.62, -0.21, 0.21, 0.62];
+/* strip colours for civilian traffic — cool and desaturated next to the
+   player's cyan so they never compete with it for attention */
+const TRAFFIC_HUES = ['#4FB8E8', '#7A6CFF', '#E85C9A', '#3FD9B0', '#FFA24A', '#9FB4D8'];
 
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
@@ -1082,8 +1191,14 @@ function addTraffic(ahead){
      gap to thread, which are the only two things you can do with a car. */
   const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
   const c = CARS[rint(0, CARS.length)];
+  /* Traffic used to be one flat grey-blue for every car on the road, which
+     is what made a neon city look like a parking lot. The bodies stay dark —
+     the player has to stay the brightest thing on screen — but each one now
+     carries its own strip colour, so the road reads as a river of lights
+     rather than a queue of lozenges. */
   const spec = Object.assign({}, c, {
-    col:'#7C8FBF', col2:'#181F33', power:300, grip:8, top:rnd(210, 330)
+    col:'#8FA4D8', col2:'#141A2B', power:300, grip:8, top:rnd(210, 330),
+    accent: TRAFFIC_HUES[rint(0, TRAFFIC_HUES.length)]
   });
   const v = new Vehicle(spec, 'traffic');
   const pos = G.track.at(idx, lat);
@@ -1096,7 +1211,10 @@ function addPolice(escort){
   const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
   const spec = Object.assign({}, CARS[2], {
-    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660
+    col:'#14203C', col2:'#080D1A', power:600, grip:7.0, top:660,
+    /* the cruiser's shell is deliberately near-black, so its light has to
+       come from somewhere other than the body colour */
+    accent:'#5A8CFF'
   });
   const v = new Vehicle(spec, 'police');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
@@ -1114,7 +1232,7 @@ function addBoss(){
   const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
   const spec = Object.assign({}, CARS[2], {
     len:62, wid:32, nose:0.9, tail:0.95,
-    col:'#FF3355', col2:'#3A0A14',
+    col:'#FF3355', col2:'#3A0A14', accent:'#FF3355',
     power: def.id === 'reaper' ? 660 : 600,
     grip:7.2, top: def.id === 'reaper' ? 720 : 665
   });
@@ -2815,17 +2933,23 @@ function drawGround(){
   ctx.fillStyle = TH.ground;
   ctx.fillRect(cam.x - 4000, cam.y - 4000, 8000, 8000);
 
-  /* world-aligned grid: cheap, and it reads as motion at speed */
+  /* World-aligned grid: cheap, and it reads as motion at speed. It was drawn
+     at 0.075 alpha in a fixed blue, which on anything but an OLED in a dark
+     room is not there at all — everything either side of the road was flat
+     black, and flat black is what "bland" looks like. Two densities now, lit
+     by the district rather than by a hardcoded blue, so the ground the city
+     stands on is visibly a grid. */
   const R = hyp(W, H) / cam.zoom * 0.62;
-  const S = 240;
-  ctx.strokeStyle = 'rgba(70,120,190,0.075)';
   ctx.lineWidth = 1.4 / cam.zoom;
-  ctx.beginPath();
-  const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
-  for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
-  const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
-  for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
-  ctx.stroke();
+  for (const [S, al] of (QF.grain ? [[240, 0.15], [60, 0.045]] : [[240, 0.15]])) {
+    ctx.strokeStyle = hexA(TH.left, al);
+    ctx.beginPath();
+    const x0 = Math.floor((cam.x - R) / S) * S, x1 = cam.x + R;
+    for (let x = x0; x <= x1; x += S) { ctx.moveTo(x, cam.y - R); ctx.lineTo(x, cam.y + R); }
+    const y0 = Math.floor((cam.y - R) / S) * S, y1 = cam.y + R;
+    for (let y = y0; y <= y1; y += S) { ctx.moveTo(cam.x - R, y); ctx.lineTo(cam.x + R, y); }
+    ctx.stroke();
+  }
 }
 
 function visibleRange(){
@@ -2855,23 +2979,51 @@ function drawRoad(){
   ctx.fillStyle = TH.asphalt;
   ctx.fill();
 
-  /* the barriers spill light onto the surface they enclose */
+  /* The barriers spill light onto the surface they enclose. This existed at
+     a tenth of an alpha and a single width, which at the zoomed-out camera
+     was indistinguishable from nothing — the road came out as a black void
+     between two bright lines, and a black void is the definition of bland.
+     Two passes now: a wide soft wash that reaches most of the way across,
+     and a tight hot band at the kerb where the light actually falls off. */
   ctx.save();
   ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'butt';
   for (const side of [-1, 1]) {
-    ctx.beginPath();
-    for (let i = a; i <= b; i++) {
-      const p = pts[i];
-      const hw = roadHalf(p) * side;
-      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-      if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+    const col = side < 0 ? TH.left : TH.right;
+    /* the wide wash covers most of the road surface twice over, so it is the
+       first thing to go when the frame budget is tight */
+    for (const [wd, al] of (QF.wide ? [[150, 0.10], [56, 0.15]] : [[96, 0.15]])) {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = roadHalf(p) * side;
+        const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+        if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+      }
+      ctx.strokeStyle = hexA(col, al);
+      ctx.lineWidth = wd;
+      ctx.stroke();
     }
-    ctx.strokeStyle = hexA(side < 0 ? TH.left : TH.right, 0.10);
-    ctx.lineWidth = 90;
-    ctx.stroke();
   }
+
+  /* Scrolling rungs across the asphalt. The surface had no features of its
+     own, so at 500km/h nothing on it moved and the road read as a still
+     photograph you were sliding a car around on. These are what sells the
+     speed — they are the only thing in the scene that passes under you. */
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = hexA(TH.left, 0.15);
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  for (let i = a; i < b; i++) {
+    if (i % 3) continue;                 // painted on the world, not scrolled
+    const p = pts[i];
+    const hw = roadHalf(p) * 0.94;
+    const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+    ctx.moveTo(p.x + nx, p.y + ny);
+    ctx.lineTo(p.x - nx, p.y - ny);
+  }
+  ctx.stroke();
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 
@@ -2899,9 +3051,11 @@ function drawRoad(){
     ctx.restore();
   }
 
-  /* lane divider + centre dashes */
-  ctx.strokeStyle = 'rgba(198,210,232,0.13)';
-  ctx.lineWidth = 2.5;
+  /* Lane dividers, lit from the side of the road they belong to rather than
+     painted in highway white — the same two colours everything else in the
+     district is lit by, so the surface belongs to the scene instead of
+     looking like a road with a neon frame bolted around it. */
+  ctx.globalCompositeOperation = 'lighter';
   for (const f of [-0.34, 0.34]) {
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
@@ -2909,19 +3063,29 @@ function drawRoad(){
       const nx = -Math.sin(p.a) * roadHalf(p) * f, ny = Math.cos(p.a) * roadHalf(p) * f;
       if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
     }
-    ctx.stroke();
+    ctx.strokeStyle = hexA(f < 0 ? TH.left : TH.right, 0.16);
+    ctx.lineWidth = 7; ctx.stroke();
+    ctx.strokeStyle = hexA(f < 0 ? TH.left : TH.right, 0.42);
+    ctx.lineWidth = 1.8; ctx.stroke();
   }
-  ctx.strokeStyle = 'rgba(210,225,245,0.38)';
-  ctx.lineWidth = 4.5;
+
+  /* centre dashes get a bleed of their own so they streak at speed */
   ctx.beginPath();
   for (let i = a; i < b; i++) {
     if (i % 4 > 1) continue;
     const p = pts[i], q = pts[i + 1];
     ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
   }
-  ctx.stroke();
+  ctx.strokeStyle = 'rgba(150,200,255,0.16)'; ctx.lineWidth = 13; ctx.stroke();
+  ctx.strokeStyle = 'rgba(226,240,255,0.72)'; ctx.lineWidth = 4.0; ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
 
-  /* neon barriers — the emissive layer the bloom pass feeds on */
+  /* Neon barriers — the emissive layer the bloom pass feeds on. Three
+     strokes made a bright line; five make a tube: a wide atmospheric halo
+     that the bloom can smear, the body, and a blown-out white filament
+     down the middle. The halo is the pass that stops the wall reading as a
+     sticker laid on top of the frame. */
+  ctx.globalCompositeOperation = 'lighter';
   for (const side of [-1, 1]) {
     ctx.beginPath();
     for (let i = a; i <= b; i++) {
@@ -2932,10 +3096,12 @@ function drawRoad(){
     }
     const col = side < 0 ? TH.left : TH.right;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = hexA(col, 0.30); ctx.lineWidth = 16; ctx.stroke();
-    ctx.strokeStyle = col;             ctx.lineWidth = 5;  ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (QF.wide) { ctx.strokeStyle = hexA(col, 0.11); ctx.lineWidth = 38; ctx.stroke(); }
+    ctx.strokeStyle = hexA(col, 0.26); ctx.lineWidth = 20; ctx.stroke();
+    ctx.strokeStyle = hexA(col, 0.92); ctx.lineWidth = 6.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.8; ctx.stroke();
   }
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* three alpha buckets, one path each — 600 decals in 3 draw calls */
@@ -2960,15 +3126,40 @@ function drawSkids(){
   }
 }
 
+/* Particles were flat-alpha circles, which is fine at two pixels and awful
+   at sixty: tyre smoke grows to r=60 and a hard-edged grey disc that size
+   reads as a bubble, not as smoke. Twelve of them overlapping read as a
+   bubble bath, and that — more than anything else in the scene — was what
+   looked cheap. Soft radial blobs instead, baked once per colour and
+   blitted, so the cost is a drawImage rather than a gradient per particle. */
+const softCache = new Map();
+function softSprite(col){
+  let s = softCache.get(col);
+  if (s) return s;
+  const R = 48;
+  s = document.createElement('canvas');
+  s.width = s.height = R * 2;
+  const g = s.getContext('2d');
+  const rg = g.createRadialGradient(R, R, 0, R, R, R);
+  rg.addColorStop(0,    'rgba(' + col + ',1)');
+  rg.addColorStop(0.35, 'rgba(' + col + ',0.62)');
+  rg.addColorStop(0.70, 'rgba(' + col + ',0.20)');
+  rg.addColorStop(1,    'rgba(' + col + ',0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, R * 2, R * 2);
+  softCache.set(col, s);
+  return s;
+}
+
 function drawParticles(){
   for (const p of P) {
     const t = clamp(p.life / p.max, 0, 1);
+    const r = Math.max(0.6, p.r);
     ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
-    ctx.fillStyle = 'rgba(' + p.col + ',' + (t * (p.add ? 0.85 : 0.30)).toFixed(3) + ')';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
-    ctx.fill();
+    ctx.globalAlpha = t * (p.add ? 0.90 : 0.26);
+    ctx.drawImage(softSprite(p.col), p.x - r, p.y - r, r * 2, r * 2);
   }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -3065,9 +3256,30 @@ function carPath(ctx, s){
   ctx.closePath();
 }
 
+/* Traffic is seeded up to ninety-six track points ahead of the player, which
+   at any sane zoom is well past the top of the screen, and every one of those
+   cars was being fully drawn — a dozen paths and strokes each — into a
+   clipped-away region. Nothing culled, because until the ribbons landed
+   nothing on a vehicle was expensive enough to notice. One radius test now
+   covers the chassis and its ribbon both. */
+function onScreen(v){
+  const R = hyp(W, H) / cam.zoom * 0.72 + 260;
+  const dx = v.x - cam.x, dy = v.y - cam.y;
+  return dx * dx + dy * dy < R * R;
+}
+
 function drawVehicle(v, opt){
   const s = v.spec;
   const o = opt || {};
+  if (!onScreen(v)) return;
+  /* Emissive colour is not always the body colour: traffic bodies stay dark
+     and only their strips light up, and the police car's body is near-black
+     by design. Everything below lights from `em`. */
+  const em = s.accent || s.col;
+  /* Strokes were authored in world units, so at the zoomed-out camera the
+     1.7px rim landed under one screen pixel and the car came out as a flat
+     silhouette. Widths are now floored in screen space. */
+  const px = 1 / Math.max(cam.zoom, 0.2);
   ctx.save();
   ctx.translate(v.x, v.y);
   ctx.rotate(v.a);
@@ -3075,7 +3287,7 @@ function drawVehicle(v, opt){
   /* underglow — reads as ground contact and feeds the bloom */
   if (o.glow !== false) {
     ctx.globalCompositeOperation = 'lighter';
-    blitGlow(s.col, 0, 0, s.len * 0.9, s.wid * 1.4, 0.30);
+    blitGlow(em, 0, 0, s.len * 1.05, s.wid * 1.7, v.kind === 'player' ? 0.42 : 0.26);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -3097,17 +3309,37 @@ function drawVehicle(v, opt){
     ctx.restore();
   }
 
-  /* body */
+  /* body — a dark shell, so every bright thing on the car is a light source
+     rather than paint. Lit panels sell "machine"; a mid-tone gradient fill
+     sells "sprite". */
   const bg = ctx.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
-  bg.addColorStop(0, s.col2);
-  bg.addColorStop(0.45, mix(s.col, s.col2, 0.55));
-  bg.addColorStop(1, s.col2);
+  bg.addColorStop(0, mix(s.col2, '#000308', 0.45));
+  bg.addColorStop(0.42, mix(s.col, s.col2, 0.72));
+  bg.addColorStop(1, mix(s.col2, '#000308', 0.55));
   carPath(ctx, s);
   ctx.fillStyle = bg; ctx.fill();
 
-  /* rim light along the silhouette */
-  ctx.strokeStyle = hexA(s.col, 0.95);
-  ctx.lineWidth = 1.7; ctx.stroke();
+  /* rim light along the silhouette: a soft outer bleed under a hard core,
+     which is what makes an edge read as emitting rather than as outlined */
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineJoin = 'round';
+  carPath(ctx, s);
+  ctx.strokeStyle = hexA(em, 0.20);
+  ctx.lineWidth = Math.max(5 * px, 5.5); ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  carPath(ctx, s);
+  ctx.strokeStyle = hexA(em, 1);
+  ctx.lineWidth = Math.max(1.9 * px, 2.0); ctx.stroke();
+
+  /* flank light strips — the Tron read: a continuous line down the body
+     that catches the eye at any zoom, unlike detail on the shell */
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = hexA(em, 0.85);
+  for (const sy of [-1, 1]) {
+    ctx.fillRect(-s.len * 0.34, sy * s.wid * 0.46 - s.wid * 0.035,
+                 s.len * 0.62, s.wid * 0.07);
+  }
+  ctx.globalCompositeOperation = 'source-over';
 
   /* cockpit */
   ctx.beginPath();
@@ -3123,11 +3355,13 @@ function drawVehicle(v, opt){
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
   ctx.fillStyle = cg; ctx.fill();
 
-  /* centre stripe */
-  ctx.fillStyle = hexA(s.col, 0.22);
-  ctx.fillRect(-s.len * 0.5, -s.wid * 0.055, s.len, s.wid * 0.11);
-
   ctx.globalCompositeOperation = 'lighter';
+
+  /* dorsal spine — brightens with the slide, so the car itself tells you how
+     sideways you are without looking at the tyres */
+  const spine = 0.30 + v.drift * 0.55 + (v.boost ? 0.30 : 0);
+  ctx.fillStyle = hexA(em, clamp(spine, 0, 1));
+  ctx.fillRect(-s.len * 0.42, -s.wid * 0.045, s.len * 0.84, s.wid * 0.09);
 
   /* exhaust flame — a drawn plume reads solid where particles alone stipple */
   if (v.boost) {
@@ -3163,12 +3397,17 @@ function drawVehicle(v, opt){
     ctx.closePath(); ctx.fill();
   }
 
-  /* tail lights, brighter while sliding */
+  /* tail lights, brighter while sliding — a bar rather than two pips, with
+     its own bleed, because at speed the rear of the car is what everything
+     behind you is actually looking at */
   const tb = 0.55 + v.drift * 0.45;
+  blitGlow('#FF3C46', -s.len * 0.52, 0, s.len * 0.34, s.wid * 0.7, tb * 0.5);
   ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
   for (const sy of [-1, 1]) {
-    ctx.fillRect(-s.len * 0.5, sy * s.wid * 0.28 - s.wid * 0.05, s.len * 0.05, s.wid * 0.11);
+    ctx.fillRect(-s.len * 0.52, sy * s.wid * 0.28 - s.wid * 0.07, s.len * 0.07, s.wid * 0.15);
   }
+  ctx.fillStyle = 'rgba(255,190,195,' + (tb * 0.7).toFixed(2) + ')';
+  ctx.fillRect(-s.len * 0.5, -s.wid * 0.30, s.len * 0.03, s.wid * 0.60);
 
   /* police bar */
   if (v.kind === 'police' || v.kind === 'boss') {
@@ -3243,8 +3482,11 @@ function drawCity(){
       if (bd.lit && QF.windows && !LVL().blackout) {
         ctx.save();
         ctx.clip();
-        /* dashed rows read as lit windows; solid rows read as wireframe */
-        ctx.strokeStyle = hexA(bd.hue, 0.34);
+        /* dashed rows read as lit windows; solid rows read as wireframe.
+           Additive, because a window is a light and a source-over line at a
+           third of an alpha is a scuff mark on a wall. */
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = hexA(bd.hue, 0.42);
         ctx.lineWidth = Math.max(0.8, 1.6 * cam.zoom);
         ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
         ctx.lineDashOffset = bd.seed;
@@ -3257,16 +3499,35 @@ function drawCity(){
         }
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.globalCompositeOperation = 'source-over';
         ctx.restore();
+      }
+
+      /* Corner columns. The skyline used to be a lit roofline sitting on an
+         unlit slab, which is why the blocks read as cardboard rectangles
+         floating over the ground rather than as buildings standing on it —
+         nothing tied the bright edge down to the footprint. A light running
+         the full height of each visible corner is what does it, and it is
+         the single most recognisable thing about this look. */
+      if (bd.lit && !LVL().blackout) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.beginPath();
+        ctx.moveTo(b0[0], b0[1]); ctx.lineTo(t0[0], t0[1]);
+        ctx.strokeStyle = hexA(bd.hue, 0.18);
+        ctx.lineWidth = Math.max(2, 7 * cam.zoom); ctx.stroke();
+        ctx.strokeStyle = hexA(bd.hue, 0.80);
+        ctx.lineWidth = Math.max(1, 1.8 * cam.zoom); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over';
       }
     }
 
-    /* roof */
+    /* roof — near-black, so the skyline is edges and windows rather than a
+       field of grey lids catching the eye above the horizon */
     ctx.beginPath();
     ctx.moveTo(top[0][0], top[0][1]);
     for (let i = 1; i < 4; i++) ctx.lineTo(top[i][0], top[i][1]);
     ctx.closePath();
-    ctx.fillStyle = '#1A2138';
+    ctx.fillStyle = '#090D18';
     ctx.fill();
 
     /* neon roofline — the city's whole read comes from this one stroke */
@@ -3275,8 +3536,11 @@ function drawCity(){
       ctx.lineWidth = Math.max(1.2, 2.4 * cam.zoom);
       ctx.stroke();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = hexA(bd.hue, 0.32);
+      ctx.strokeStyle = hexA(bd.hue, 0.34);
       ctx.lineWidth = Math.max(2, 9 * cam.zoom);
+      ctx.stroke();
+      ctx.strokeStyle = hexA(bd.hue, 0.12);
+      ctx.lineWidth = Math.max(5, 26 * cam.zoom);
       ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
     }
@@ -3348,10 +3612,57 @@ function bloom(){
     bA.globalCompositeOperation = 'source-over';
   }
 
+  /* Chromatic aberration, done on the bloom rather than on the frame.
+     Fringing is only ever visible on bright edges, which is exactly what
+     this buffer already isolates — so the effect that would otherwise cost
+     three full-resolution passes rides along on the one that was already
+     happening.
+
+     The split is assembled in bufB at quarter res and upscaled once, for the
+     same reason the wide tap is: the upscale to the main canvas is the
+     expensive part, and doing it three times instead of once was worth about
+     a millisecond and a half a frame on a soft renderer — enough to trip the
+     auto-demote on machines that used to hold high.
+
+     The copies are scaled about the centre rather than translated, so the
+     split is zero in the middle of the screen and widens toward the corners
+     the way a real lens does. Uniform translation reads as a printing
+     error; this reads as glass. */
+  let out = bufA;
+  if (QF.ca) {
+    bB.setTransform(1, 0, 0, 1, 0, 0);
+    bB.globalCompositeOperation = 'source-over';
+    bB.filter = 'none';
+    bB.clearRect(0, 0, bw, bh);
+    bB.globalAlpha = 0.86;
+    bB.drawImage(bufA, 0, 0);
+    bB.globalCompositeOperation = 'lighter';
+    for (const [tint, sc, al] of [['#FF5A6E', 1.007, 0.38], ['#5AB4FF', 0.993, 0.38]]) {
+      bC.setTransform(1, 0, 0, 1, 0, 0);
+      bC.globalCompositeOperation = 'source-over';
+      bC.clearRect(0, 0, bw, bh);
+      bC.drawImage(bufA, 0, 0);
+      bC.globalCompositeOperation = 'multiply';
+      bC.fillStyle = tint;
+      bC.fillRect(0, 0, bw, bh);
+      /* multiply floods the transparent regions with the tint, so the
+         original coverage has to be stencilled back in */
+      bC.globalCompositeOperation = 'destination-in';
+      bC.drawImage(bufA, 0, 0);
+
+      const dw = bw * sc, dh = bh * sc;
+      bB.globalAlpha = al;
+      bB.drawImage(bufC, (bw - dw) * 0.5, (bh - dh) * 0.5, dw, dh);
+    }
+    bB.globalAlpha = 1;
+    bB.globalCompositeOperation = 'source-over';
+    out = bufB;
+  }
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.95;
-  ctx.drawImage(bufA, 0, 0, cv.width, cv.height);
+  ctx.drawImage(out, 0, 0, cv.width, cv.height);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
@@ -3707,6 +4018,20 @@ function render(){
   drawHazards();
   drawToys();
   drawPickups();
+
+  /* Every ribbon before every car, so a trail never paints over a chassis.
+     Civilian ribbons are the first thing dropped when the frame budget goes:
+     fifty of them are half the cost of the feature and none of them are the
+     one the player is looking at. The player, the pursuit and the boss keep
+     theirs at every tier — that is the whole point of the change. */
+  if (QF.wide) {
+    for (const t of G.traffic) drawTrail(t, 0.44, false);
+    for (const v of G.convoy) drawTrail(v, 0.60, false);
+  }
+  for (const p of G.police) drawTrail(p, 0.85, true);
+  if (G.boss) drawTrail(G.boss, 1.05, true);
+  drawTrail(G.car, 1.25, true);
+
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const v of G.convoy) drawVehicle(v, { lights:true });
   for (const p of G.police) drawVehicle(p);
@@ -3749,6 +4074,18 @@ function blitGlow(col, x, y, rx, ry, alpha){
 }
 
 /* ---- small colour helpers ---- */
+/* particle colours are 'r,g,b' strings; this converts once per hex and
+   caches, because it is called from spawn sites that run every frame */
+const rgbCache = new Map();
+function rgbOf(hex){
+  let s = rgbCache.get(hex);
+  if (s) return s;
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  s = ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
+  rgbCache.set(hex, s);
+  return s;
+}
 function hexA(hex, a){
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -4521,7 +4858,20 @@ function previewCar(g, v, sc){
     g.fillRect(s.len * fx - wr, s.wid * fy - ww, wr * 2, ww * 2);
   carPath(g, s);
   g.fillStyle = bg; g.fill();
-  g.strokeStyle = hexA(s.col, 0.95); g.lineWidth = lw; g.stroke();
+  /* the same emissive rim the car wears on the road — the garage was showing
+     a flat outline of a vehicle that no longer looks like that in play */
+  g.globalCompositeOperation = 'lighter';
+  g.lineJoin = 'round';
+  carPath(g, s);
+  g.strokeStyle = hexA(s.col, 0.22); g.lineWidth = lw * 3.2; g.stroke();
+  g.globalCompositeOperation = 'source-over';
+  carPath(g, s);
+  g.strokeStyle = hexA(s.col, 1); g.lineWidth = lw; g.stroke();
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = hexA(s.col, 0.8);
+  for (const sy of [-1, 1])
+    g.fillRect(-s.len * 0.34, sy * s.wid * 0.46 - s.wid * 0.035, s.len * 0.62, s.wid * 0.07);
+  g.globalCompositeOperation = 'source-over';
   g.beginPath();
   g.moveTo(s.len * 0.14, -s.wid * 0.30);
   g.lineTo(-s.len * 0.06, -s.wid * 0.36);
@@ -4534,8 +4884,10 @@ function previewCar(g, v, sc){
   cg.addColorStop(0, 'rgba(200,235,255,0.32)');
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
   g.fillStyle = cg; g.fill();
-  g.fillStyle = hexA(s.col, 0.25);
-  g.fillRect(-s.len * 0.5, -s.wid * 0.055, s.len, s.wid * 0.11);
+  g.globalCompositeOperation = 'lighter';
+  g.fillStyle = hexA(s.col, 0.42);
+  g.fillRect(-s.len * 0.42, -s.wid * 0.045, s.len * 0.84, s.wid * 0.09);
+  g.globalCompositeOperation = 'source-over';
   g.restore();
 }
 
