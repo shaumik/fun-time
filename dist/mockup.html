@@ -3908,12 +3908,20 @@ function drawTrail(v, mul, rich){
   const col = s.accent || s.col;
   const n = t.length - 1;
 
+  /* Nested constant-width bands approximate a lateral falloff, and how many
+     you use is how soft the shoulder is. Three left a visible step where the
+     alpha jumped from 0.13 to 0.57 — a hard line running the length of the
+     ribbon. Four ramps it 0.06 / 0.16 / 0.54 / core, which reads as a glow
+     rather than as stacked rectangles. Traffic keeps three: at the size those
+     ribbons occupy the extra fill buys nothing. */
   const passes = rich
-    ? [[2.15, col,       0.13 * mul * drive * hot],
-       [1.15, col,       0.44 * mul * drive * hot],
+    ? [[2.60, col,       0.06 * mul * drive * hot],
+       [1.75, col,       0.10 * mul * drive * hot],
+       [1.12, col,       0.38 * mul * drive * hot],
        [0.30, '#FFFFFF', 0.34 * mul * drive * hot * (v.boost ? 1.5 : 1)]]
-    : [[1.45, col,       0.40 * mul * drive * hot],
-       [0.34, '#FFFFFF', 0.30 * mul * drive * hot]];
+    : [[1.55, col,       0.14 * mul * drive * hot],
+       [1.00, col,       0.32 * mul * drive * hot],
+       [0.32, '#FFFFFF', 0.26 * mul * drive * hot]];
 
   /* The ribbon is a constant-width wall. Tapering the width toward the tail
      is the obvious way to fade it and it is wrong: a shape that is full width
@@ -6335,6 +6343,39 @@ function onScreen(v){
   return dx * dx + dy * dy < R * R;
 }
 
+/* Headlight beams were a trapezoid whose gradient faded along its length
+   only, which leaves both long sides as razor-hard straight edges. Seen from
+   directly overhead that is not a beam of light, it is a grey cardboard
+   wedge — the one shape in the frame that was neither emissive nor soft, and
+   the thing the eye picks out as fake before it notices anything else.
+
+   Baked once as a real beam instead: alpha falls off across the cone as well
+   as along it, so it has shoulders rather than edges, and the cone opens with
+   distance. Per-pixel is fine for something built one time and then blitted. */
+let beamSprite = null;
+function makeBeamSprite(){
+  const N = 96;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const g = c.getContext('2d');
+  const img = g.createImageData(N, N), d = img.data;
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const u = x / (N - 1);                    // along the beam
+      const v = (y / (N - 1) - 0.5) * 2;        // across it
+      const hw = 0.22 + 0.78 * u;               // the cone opens with distance
+      const t = Math.min(1, Math.abs(v) / hw);
+      const lat = 1 - t * t;                    // soft shoulders, no edge
+      const lon = Math.pow(1 - u, 1.6);         // and a soft end
+      const i = (y * N + x) * 4;
+      d[i] = 200; d[i + 1] = 232; d[i + 2] = 255;
+      d[i + 3] = Math.round(Math.max(0, lat) * lon * 255);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
 function drawVehicle(v, opt){
   const s = v.spec;
   const o = opt || {};
@@ -6452,16 +6493,11 @@ function drawVehicle(v, opt){
     ctx.fillRect(s.len * 0.44, sy * s.wid * 0.30 - s.wid * 0.05, s.len * 0.06, s.wid * 0.11);
   }
   if (o.lights !== false) {
-    const lg = ctx.createLinearGradient(s.len * 0.5, 0, s.len * 2.6, 0);
-    lg.addColorStop(0, 'rgba(190,230,255,0.20)');
-    lg.addColorStop(1, 'rgba(190,230,255,0)');
-    ctx.fillStyle = lg;
-    ctx.beginPath();
-    ctx.moveTo(s.len * 0.5, -s.wid * 0.4);
-    ctx.lineTo(s.len * 2.6, -s.wid * 1.5);
-    ctx.lineTo(s.len * 2.6, s.wid * 1.5);
-    ctx.lineTo(s.len * 0.5, s.wid * 0.4);
-    ctx.closePath(); ctx.fill();
+    if (!beamSprite) beamSprite = makeBeamSprite();
+    const bl = s.len * 2.1, bw = s.wid * 3.0;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(beamSprite, s.len * 0.46, -bw * 0.5, bl, bw);
+    ctx.globalAlpha = 1;
   }
 
   /* tail lights, brighter while sliding — a bar rather than two pips, with
