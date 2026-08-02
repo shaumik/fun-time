@@ -3841,7 +3841,9 @@ class Vehicle {
         const rx = this.x - cs * back + rnd(-4, 4);
         const ry = this.y - sn * back + rnd(-4, 4);
         spawn(rx, ry, -cs * 260 + rnd(-70, 70), -sn * 260 + rnd(-70, 70),
-              rnd(0.13, 0.26), rnd(6, 13), k ? '255,150,60' : '255,225,170', true, -16);
+              /* sized against the streak it sits on: at r=13 the plume was
+                 wider than the light it was supposed to be coming out of */
+              rnd(0.13, 0.26), rnd(3.5, 8), k ? '255,150,60' : '255,225,170', true, -12);
       }
     }
     trailStep(this, dt, cs, sn);
@@ -3869,7 +3871,17 @@ class Vehicle {
    segment is thirty draw calls per car, and this runs for every vehicle on
    screen, not just the player.
    ============================================================ */
-const TRAIL_LIFE = 0.55;
+/* The reference is a long-exposure photograph of a night road: the streak is
+   thin, it runs a long way, and it is continuous. What was here was the
+   opposite of all three — 0.55s of it, a hair wider than the car itself, so
+   it read as a short fat lozenge bolted to the bumper rather than as light
+   left behind. The barrier running alongside it was the giveaway: a 6px core
+   inside a soft halo, and that is the thing in frame that actually looks
+   expensive.
+
+   So: nearly three times as long, and about a third as wide. */
+const TRAIL_LIFE = 1.5;
+const TRAIL_MAX  = 68;
 
 function trailStep(v, dt, cs, sn){
   const t = v.trail;
@@ -3881,16 +3893,17 @@ function trailStep(v, dt, cs, sn){
   if (v.speed < 40) return;
   v.trailT -= dt;
   if (v.trailT > 0) return;
-  /* Traffic samples at half the rate. The ribbon covers the same ground
-     either way — it just has half the vertices, and with thirty cars on
-     screen the vertex count is the whole cost of this feature. */
-  v.trailT = v.kind === 'traffic' || v.kind === 'convoy' ? 0.030 : 0.014;
+  /* Sample spacing is chosen so a full-length streak fits inside TRAIL_MAX
+     samples. The streak is only a few units wide now, so the faceting a
+     coarser interval would show at a hard turn is well under a pixel —
+     which is what buys the extra length back at no cost in vertices. */
+  v.trailT = v.kind === 'traffic' || v.kind === 'convoy' ? 0.052 : 0.024;
   const s = v.spec;
   t.push({
     x: v.x - cs * s.len * 0.46, y: v.y - sn * s.len * 0.46,
     nx: -sn, ny: cs, life: TRAIL_LIFE
   });
-  if (t.length > 40) t.shift();
+  if (t.length > TRAIL_MAX) t.shift();
 }
 
 /* mul scales the whole ribbon: the player owns the road, traffic only hints
@@ -3904,24 +3917,33 @@ function drawTrail(v, mul, rich){
   const drive = clamp(v.speed / 300, 0, 1);
   if (drive < 0.08) return;
   const hot = 0.66 + v.drift * 0.30 + (v.boost ? 0.34 : 0);
-  const base = s.wid * (0.52 + v.drift * 0.40);
+  /* Half-width. At 0.52 the streak was as wide as the car; a long-exposure
+     streak is a line, so this is the width of a light, not of a vehicle. It
+     still opens under drift, because a slide smearing sideways is the one
+     time you want to see the width. */
+  const base = s.wid * (0.17 + v.drift * 0.13);
   const col = s.accent || s.col;
   const n = t.length - 1;
 
-  /* Nested constant-width bands approximate a lateral falloff, and how many
-     you use is how soft the shoulder is. Three left a visible step where the
-     alpha jumped from 0.13 to 0.57 — a hard line running the length of the
-     ribbon. Four ramps it 0.06 / 0.16 / 0.54 / core, which reads as a glow
-     rather than as stacked rectangles. Traffic keeps three: at the size those
-     ribbons occupy the extra fill buys nothing. */
+  /* Nested constant-width bands approximate a lateral falloff. The shape to
+     copy is the barrier: a hot filament sitting inside a wide, faint halo,
+     with nothing much in between. Weighting it that way — most of the alpha
+     in the thinnest band — is what makes a light read as a light rather than
+     as a painted stripe. */
   const passes = rich
-    ? [[2.60, col,       0.06 * mul * drive * hot],
-       [1.75, col,       0.10 * mul * drive * hot],
-       [1.12, col,       0.38 * mul * drive * hot],
-       [0.30, '#FFFFFF', 0.34 * mul * drive * hot * (v.boost ? 1.5 : 1)]]
-    : [[1.55, col,       0.14 * mul * drive * hot],
-       [1.00, col,       0.32 * mul * drive * hot],
-       [0.32, '#FFFFFF', 0.26 * mul * drive * hot]];
+    ? [[3.40, col,       0.11 * mul * drive * hot],
+       [1.70, col,       0.26 * mul * drive * hot],
+       [0.85, col,       0.88 * mul * drive * hot],
+       [0.30, '#FFFFFF', 0.48 * mul * drive * hot * (v.boost ? 1.3 : 1)]]
+    : [[2.40, col,       0.16 * mul * drive * hot],
+       [1.00, col,       0.75 * mul * drive * hot],
+       [0.36, '#FFFFFF', 0.30 * mul * drive * hot]];
+
+  /* Thin bands land under a pixel at the portrait camera, where a sub-pixel
+     line does not get thinner, it gets noisier — it flickers as it crosses
+     the pixel grid. Floor every width in screen space so the filament stays
+     a clean hairline instead of a dotted one. */
+  const minHalf = 0.55 / Math.max(cam.zoom, 0.2);
 
   /* The ribbon is a constant-width wall. Tapering the width toward the tail
      is the obvious way to fade it and it is wrong: a shape that is full width
@@ -3938,7 +3960,7 @@ function drawTrail(v, mul, rich){
   for (const [wm, c, al] of passes) {
     const a = clamp(al, 0, 1);
     if (a < 0.012) continue;
-    const w = base * wm;
+    const w = Math.max(base * wm, minHalf);
     ctx.beginPath();
     for (let i = 0; i <= n; i++) {
       const p = t[i];
@@ -3954,7 +3976,8 @@ function drawTrail(v, mul, rich){
        instead of ending on a hard edge */
     const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
     g.addColorStop(0,    hexA(c, 0));
-    g.addColorStop(0.55, hexA(c, a * 0.62));
+    g.addColorStop(0.30, hexA(c, a * 0.34));
+    g.addColorStop(0.72, hexA(c, a * 0.82));
     g.addColorStop(1,    hexA(c, a));
     ctx.fillStyle = g;
     ctx.fill();
@@ -6395,7 +6418,11 @@ function drawVehicle(v, opt){
   /* underglow — reads as ground contact and feeds the bloom */
   if (o.glow !== false) {
     ctx.globalCompositeOperation = 'lighter';
-    blitGlow(em, 0, 0, s.len * 1.05, s.wid * 1.7, v.kind === 'player' ? 0.42 : 0.26);
+    /* Hugging the chassis, not ballooning around it. At len*1.05 by wid*1.7
+       this was a glowing lozenge half again the size of the car, sitting
+       right where the streak leaves the bumper — the two read as one fat
+       blob with a tail. */
+    blitGlow(em, 0, 0, s.len * 0.72, s.wid * 1.0, v.kind === 'player' ? 0.30 : 0.20);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -6504,7 +6531,7 @@ function drawVehicle(v, opt){
      its own bleed, because at speed the rear of the car is what everything
      behind you is actually looking at */
   const tb = 0.55 + v.drift * 0.45;
-  blitGlow('#FF3C46', -s.len * 0.52, 0, s.len * 0.34, s.wid * 0.7, tb * 0.5);
+  blitGlow('#FF3C46', -s.len * 0.52, 0, s.len * 0.22, s.wid * 0.45, tb * 0.45);
   ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
   for (const sy of [-1, 1]) {
     ctx.fillRect(-s.len * 0.52, sy * s.wid * 0.28 - s.wid * 0.07, s.len * 0.07, s.wid * 0.15);
@@ -7123,14 +7150,14 @@ function render(){
   drawPickups();
 
   /* Every ribbon before every car, so a trail never paints over a chassis.
-     Civilian ribbons are the first thing dropped when the frame budget goes:
-     fifty of them are half the cost of the feature and none of them are the
-     one the player is looking at. The player, the pursuit and the boss keep
-     theirs at every tier — that is the whole point of the change. */
-  if (QF.wide) {
-    for (const t of G.traffic) drawTrail(t, 0.44, false);
-    for (const v of G.convoy) drawTrail(v, 0.60, false);
-  }
+     Civilian streaks used to be gated to the high tier, on the grounds that
+     nobody looks at them. That was wrong once the look became long exposure:
+     a night-road photograph is every light streaking, and a frame where only
+     the hero cars smear and the traffic sits still reads as broken rather
+     than as cheap. At a third of the old width they cost a fraction of what
+     they did when the gate was written, so they stay on everywhere. */
+  for (const t of G.traffic) drawTrail(t, 0.60, false);
+  for (const v of G.convoy) drawTrail(v, 0.75, false);
   for (const p of G.police) drawTrail(p, 0.85, true);
   if (G.boss) drawTrail(G.boss, 1.05, true);
   drawTrail(G.car, 1.25, true);
