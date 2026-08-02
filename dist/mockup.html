@@ -3909,36 +3909,50 @@ function drawTrail(v, mul, rich){
   const n = t.length - 1;
 
   const passes = rich
-    ? [[2.90, col,       0.15 * mul * drive * hot],
-       [1.25, col,       0.46 * mul * drive * hot],
+    ? [[2.15, col,       0.13 * mul * drive * hot],
+       [1.15, col,       0.44 * mul * drive * hot],
        [0.30, '#FFFFFF', 0.34 * mul * drive * hot * (v.boost ? 1.5 : 1)]]
     : [[1.45, col,       0.40 * mul * drive * hot],
        [0.34, '#FFFFFF', 0.30 * mul * drive * hot]];
+
+  /* The ribbon is a constant-width wall. Tapering the width toward the tail
+     is the obvious way to fade it and it is wrong: a shape that is full width
+     at the car and a point behind it is a triangle, and it reads as one — a
+     cone stuck to the back of the car rather than a wall being laid down on
+     the road. The first cut did it twice over, tapering by position and by
+     remaining life, which is why it came out as a dart.
+     Width is now flat end to end and the fade is entirely in the alpha. */
+  const head = t[n], tail = t[0];
+  const dx = head.x - tail.x, dy = head.y - tail.y;
+  if (dx * dx + dy * dy < 36) return;        // degenerate gradient, nothing to draw
 
   ctx.globalCompositeOperation = 'lighter';
   for (const [wm, c, al] of passes) {
     const a = clamp(al, 0, 1);
     if (a < 0.012) continue;
+    const w = base * wm;
     ctx.beginPath();
     for (let i = 0; i <= n; i++) {
-      const p = t[i], w = base * wm * trailW(i / n) * (p.life / TRAIL_LIFE);
+      const p = t[i];
       if (i === 0) ctx.moveTo(p.x + p.nx * w, p.y + p.ny * w);
       else ctx.lineTo(p.x + p.nx * w, p.y + p.ny * w);
     }
     for (let i = n; i >= 0; i--) {
-      const p = t[i], w = base * wm * trailW(i / n) * (p.life / TRAIL_LIFE);
+      const p = t[i];
       ctx.lineTo(p.x - p.nx * w, p.y - p.ny * w);
     }
     ctx.closePath();
-    ctx.fillStyle = hexA(c, a);
+    /* tail to head, so the wall dissolves into the dark behind the car
+       instead of ending on a hard edge */
+    const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+    g.addColorStop(0,    hexA(c, 0));
+    g.addColorStop(0.55, hexA(c, a * 0.62));
+    g.addColorStop(1,    hexA(c, a));
+    ctx.fillStyle = g;
     ctx.fill();
   }
   ctx.globalCompositeOperation = 'source-over';
 }
-/* A linear taper makes a spike, not a wall — the ribbon spends most of its
-   length being thin. This holds width across the body and only closes over
-   the last stretch, which is what a light wall actually looks like. */
-function trailW(u){ return Math.sqrt(u); }
 
 /* ============================================================
    GAME
