@@ -76,8 +76,8 @@ Paste-ready. Edit to taste.
 **Title:** NEON HEAT
 
 **Short description**
-> A demolition roguelite you play with one axis. Steer, ram everything, and beat the chain
-> clock — then spend what you earned in the garage before the next run.
+> A demolition roguelite you play with one axis. Steer, ram everything, and bank the pile
+> before the chain clock runs out — then take what you earned into the next run.
 
 **Description**
 > Traffic is ammunition, not scenery. Steering is the only control — no handbrake, no boost
@@ -85,26 +85,32 @@ Paste-ready. Edit to taste.
 > to your chain and resets a three-second clock; when it runs out, the whole pile banks at
 > once. Wreck your hull before then and you lose the lot.
 >
-> Power-ups lie in the lanes and fire the instant you touch them: raw Boost, Repair, a Ram
-> Plate that makes wrecks free, and Surge, which stops the clock dead.
+> The road is not one car repeated. Coupes, wagons, pickups, panel vans, taxis and buses,
+> and the heavier the thing you go through, the more it pays and the harder it is to thread
+> past. Power-ups lie in the lanes and fire the instant you touch them: raw Boost, Repair, a
+> Ram Plate that makes wrecks free, and Surge, which stops the clock dead.
 >
-> Partway through every district, three armoured haulers are called in. They outrun normal
-> traffic and shrug off a bump at cruising speed, so taking them means committing — and they
-> pay a quarter of your quota if you crack all three before they get away.
+> Five districts, three of them drawn each run, so no two attempts are the same three rooms
+> in the same order — the neon grid downtown, fog over the sunken docks, a tunnel under the
+> undercity, a ribbon of road in open sky above the cloud deck, and the furnace of Redline.
 >
-> Coins from a failed run still buy something you keep. The garage sits between every run —
-> six tuning tracks and permanent hardware you can see bolted onto the car: a harpoon that
-> auto-fires into the nearest car, plating that detonates everything around you every fifth
-> link, a welder that repairs the hull between chains.
+> Coins from a failed run still buy something you keep. The garage holds six tuning tracks
+> and permanent hardware you can see bolted onto the car: a harpoon that auto-fires into the
+> nearest car, plating that detonates everything around you every fifth link, a welder that
+> repairs the hull between chains.
 >
 > Every district demands a points quota before the checkpoint, and you choose the route and
 > the event you drive under before each one — risk pays XP, and XP is the only thing that
 > levels you. Fifteen levels, three perks offered at each, drawn from fifty-eight — nine of
 > them weapons you own outright: a car you punt down the road that bowls through traffic,
-> wreckage that cooks off behind you, a burning wake. Some come
-> Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
-> traffic, a hotter start. Every third district sends a named pursuit unit after you, and
-> the only way to hurt it is to keep banking while it rams you.
+> wreckage that cooks off behind you, a burning wake. Some come Overclocked: stronger, but
+> welded to a permanent curse — narrower streets, heavier traffic, a hotter start.
+>
+> And five pursuit units, three drawn per run. WARDEN rams and salts the road behind it.
+> SIREN wipes a bank you have let grow too fat. REAPER is faster than you and brought
+> friends. BULWARK is too wide to go around. LANCE charges again before you have finished
+> dodging the last one. The only way to hurt any of them is to keep banking while it rams
+> you.
 >
 > Banking raises Heat. Heat puts more units behind you and multiplies every payout, so the
 > right line is always a little more dangerous than the comfortable one.
