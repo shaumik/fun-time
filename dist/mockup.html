@@ -3385,14 +3385,24 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
+/* Three tiers rather than two. High and low alone is a cliff: the step down
+   dropped the backing store from 1.5x to 1x and switched off every optional
+   pass in the same instant, which is a change you cannot miss. Medium keeps
+   the passes that carry the look — the wide bloom tap and the lit windows —
+   and gives up the two that are pure garnish, so the common case degrades to
+   something that still looks like the game. */
 const QF = { bloom:1, wide:1, city:1, windows:1, glow:1, grain:1, ca:1, dpr:1.5, tier:'high' };
+const TIERS = ['low', 'medium', 'high'];
 function setQuality(t){
   QF.tier = t;
-  const high = t === 'high';
-  QF.wide = QF.windows = QF.grain = QF.ca = high ? 1 : 0;
+  const high = t === 'high', mid = t === 'medium';
+  QF.ca      = high ? 1 : 0;
+  QF.grain   = high ? 1 : 0;
+  QF.wide    = high || mid ? 1 : 0;
+  QF.windows = high || mid ? 1 : 0;
   QF.bloom = 1; QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
-  QF.dpr = high ? 1.5 : 1;
+  QF.dpr = high ? 1.5 : mid ? 1.25 : 1;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -3952,7 +3962,13 @@ function drawTrail(v, mul, rich){
      the road. The first cut did it twice over, tapering by position and by
      remaining life, which is why it came out as a dart.
      Width is now flat end to end and the fade is entirely in the alpha. */
-  const head = t[n], tail = t[0];
+  /* Civilian streaks are shortened rather than switched off when the budget
+     tightens. Twenty-six of them at full length is a lot of additive fill,
+     but cutting them entirely breaks the effect — a long exposure where only
+     the hero cars smear reads as a bug. Half the length keeps every light in
+     the frame streaking at a fraction of the area. */
+  const from = (rich || QF.wide) ? 0 : Math.max(0, n - 18);
+  const head = t[n], tail = t[from];
   const dx = head.x - tail.x, dy = head.y - tail.y;
   if (dx * dx + dy * dy < 36) return;        // degenerate gradient, nothing to draw
 
@@ -3962,12 +3978,12 @@ function drawTrail(v, mul, rich){
     if (a < 0.012) continue;
     const w = Math.max(base * wm, minHalf);
     ctx.beginPath();
-    for (let i = 0; i <= n; i++) {
+    for (let i = from; i <= n; i++) {
       const p = t[i];
-      if (i === 0) ctx.moveTo(p.x + p.nx * w, p.y + p.ny * w);
+      if (i === from) ctx.moveTo(p.x + p.nx * w, p.y + p.ny * w);
       else ctx.lineTo(p.x + p.nx * w, p.y + p.ny * w);
     }
-    for (let i = n; i >= 0; i--) {
+    for (let i = n; i >= from; i--) {
       const p = t[i];
       ctx.lineTo(p.x - p.nx * w, p.y - p.ny * w);
     }
@@ -8490,7 +8506,10 @@ function toGarage(){
    LOOP
    ============================================================ */
 let last = performance.now();
-let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
+let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = 0;
+let tierI = 2;        // index into TIERS
+let demotions = 0;    // how many times we have had to give up a tier
+let goodMs = 0;       // how long we have been comfortably inside budget
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
    lever because it is continuous and nearly invisible; dropping effects is
@@ -8501,10 +8520,21 @@ let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
    a perfect frame still reads 16.7ms, so it can never indicate headroom.
    Work time (what we actually spend in step + render) is vsync-independent
    and is what tells us it is safe to give resolution back. */
-function autoTune(now){
-  if (now < tuneAt) return;
+function autoTune(now, dt){
   const missing = ftAvg > 19.5;                    // below ~51fps
-  const roomy   = ftAvg < 18 && workAvg < 6.5;     // hitting vsync, cheaply
+  /* Headroom was `workAvg < 6.5`, an absolute figure from when the renderer
+     was cheaper. Nothing about the scene hits 6.5ms any more, so the test
+     could never pass and the climb back up was dead code — a session that
+     dipped once stayed dipped, holding a rock-solid 60fps at half resolution
+     with six milliseconds a frame going spare. The budget is 16.7ms; spending
+     under two thirds of it is what "roomy" means. */
+  const roomy = ftAvg < 17.6 && workAvg < 10.5;
+
+  /* sustained, not instantaneous: one quiet second in a fight is not proof
+     the machine can hold the next minute */
+  goodMs = roomy ? goodMs + dt * 1000 : 0;
+
+  if (now < tuneAt) return;
 
   if (missing && renderScale > 0.5) {
     /* Come down in proportion to how far off budget we are, not in a fixed
@@ -8519,13 +8549,23 @@ function autoTune(now){
     renderScale = clamp(Math.min(stepped, want), 0.5, 1);
     applyBackingStore();
     tuneAt = now + (ftAvg > 28 ? 320 : 700);
-  } else if (missing && !demoted) {
-    setQuality('low'); demoted = true;
-    tuneAt = now + 1200;
+  } else if (missing && tierI > 0) {
+    /* out of resolution to give: step down one tier, not straight to the floor */
+    setQuality(TIERS[--tierI]);
+    demotions++; goodMs = 0;
+    tuneAt = now + 1500;
   } else if (roomy && renderScale < 1) {
     renderScale = Math.min(1, renderScale + 0.05);
     applyBackingStore();
     tuneAt = now + 1400;              // creep back up slowly to avoid hunting
+  } else if (tierI < TIERS.length - 1 && goodMs > 5000 * (demotions + 1)) {
+    /* Give a tier back, but only after real sustained headroom, and demand
+       progressively more of it each time we have been wrong — effects
+       flickering on and off every few seconds is worse to look at than
+       simply staying on the lower tier. */
+    setQuality(TIERS[++tierI]);
+    goodMs = 0;
+    tuneAt = now + 3000;
   }
 }
 
@@ -8560,7 +8600,7 @@ function frame(now){
 
   workAvg = workAvg * 0.9 + (performance.now() - workT0) * 0.1;
   ftAvg   = ftAvg   * 0.9 + Math.min(ms, 120) * 0.1;
-  if (++ftN > 40) autoTune(now);
+  if (++ftN > 40) autoTune(now, raw);
 
   requestAnimationFrame(frame);
 }
