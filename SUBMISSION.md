@@ -76,38 +76,23 @@ Paste-ready. Edit to taste.
 **Title:** NEON HEAT
 
 **Short description**
-> A demolition roguelite you play with one axis. Steer, ram everything, and beat the chain
-> clock — then spend what you earned in the garage before the next run.
+> Steer. That's the only control. Everything else is what you hit.
 
 **Description**
-> Traffic is ammunition, not scenery. Steering is the only control — no handbrake, no boost
-> button — and you drive straight through the cars in front of you. Every wreck adds a link
-> to your chain and resets a three-second clock; when it runs out, the whole pile banks at
-> once. Wreck your hull before then and you lose the lot.
+> Steer. That's the only control. No brake, no boost button — just a car doing 400km/h
+> through rush hour, and nothing gets out of the way.
 >
-> Power-ups lie in the lanes and fire the instant you touch them: raw Boost, Repair, a Ram
-> Plate that makes wrecks free, and Surge, which stops the clock dead.
+> Every car you smash joins the chain and the multiplier climbs. Bank it before the clock
+> runs out or you lose the lot. Buses pay more than coupes. Hit a Ram Plate and wrecks stop
+> costing you anything at all.
 >
-> Partway through every district, three armoured haulers are called in. They outrun normal
-> traffic and shrug off a bump at cruising speed, so taking them means committing — and they
-> pay a quarter of your quota if you crack all three before they get away.
+> Then the police turn up. Then something with a name — and the only way to hurt it is to
+> keep smashing while it rams you.
 >
-> Coins from a failed run still buy something you keep. The garage sits between every run —
-> six tuning tracks and permanent hardware you can see bolted onto the car: a harpoon that
-> auto-fires into the nearest car, plating that detonates everything around you every fifth
-> link, a welder that repairs the hull between chains.
+> Die and you keep the coins. Bolt on a harpoon that fires itself. Take a perk that cooks
+> the wreckage behind you. Roll a new set of streets and go again.
 >
-> Every district demands a points quota before the checkpoint, and you choose the route and
-> the event you drive under before each one — risk pays XP, and XP is the only thing that
-> levels you. Fifteen levels, three perks offered at each, drawn from fifty-eight — nine of
-> them weapons you own outright: a car you punt down the road that bowls through traffic,
-> wreckage that cooks off behind you, a burning wake. Some come
-> Overclocked: stronger, but welded to a permanent curse — narrower streets, heavier
-> traffic, a hotter start. Every third district sends a named pursuit unit after you, and
-> the only way to hurt it is to keep banking while it rams you.
->
-> Banking raises Heat. Heat puts more units behind you and multiplies every payout, so the
-> right line is always a little more dangerous than the comfortable one.
+> **58 perks · 9 weapons · 5 districts · 5 pursuit units · one axis**
 
 **Controls**
 > Desktop — Arrow keys or A/D to steer. That is the whole control. M to mute.
