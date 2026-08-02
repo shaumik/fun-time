@@ -1,3 +1,3026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>NEON HEAT — Drift Outlaw</title>
+<style>
+/* ============================================================
+   NEON HEAT — UI
+   Committed single-theme: this is an arcade screen, not a document.
+   No webfonts (host CSP blocks font CDNs; a silent fallback would
+   break the HUD grid). Weight + tracking carry the type instead.
+   ============================================================ */
+
+:root{
+  --void:#05060E;
+  --asphalt:#0D1120;
+  --cyan:#3DE8FF;
+  --magenta:#FF2E88;
+  --red:#FF3355;
+  --amber:#FFB13D;
+  --ice:#C6D2E8;
+  --dim:#6C7A96;
+
+  --panel:rgba(9,13,26,.82);
+  --edge:rgba(110,170,255,.16);
+  --edge2:rgba(110,170,255,.30);
+
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI Variable Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --u:8px; /* unit, set from JS to stage height / 100 */
+
+  /* Safe-area insets. The viewport is declared viewport-fit=cover so the
+     canvas can reach the physical edges of a notched phone — which also
+     means anything positioned at those edges lands under the notch, the
+     rounded corners or the home indicator unless it pays these back.
+     Every edge-anchored element below adds them; the canvas deliberately
+     does not, since artwork under the notch is the point. */
+  --sa-t:env(safe-area-inset-top,0px);
+  --sa-r:env(safe-area-inset-right,0px);
+  --sa-b:env(safe-area-inset-bottom,0px);
+  --sa-l:env(safe-area-inset-left,0px);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:#02030A;
+  color:var(--ice);
+  font-family:var(--sans);
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* Fill whatever viewport we are given. A hard 16:9 lock turned a 390x844
+   phone into a 390x219 letterbox strip using a quarter of the screen. */
+#stage{
+  position:relative;
+  width:100%;height:100%;
+  overflow:hidden;
+  background:var(--void);
+  user-select:none;
+  touch-action:none;
+  isolation:isolate;
+}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+.layer{position:absolute;inset:0;pointer-events:none}
+.layer.hide{display:none}
+
+/* ---------- shared type ---------- */
+.lbl{
+  font-size:max(10px,calc(var(--u)*1.35));
+  letter-spacing:.24em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.val{
+  font-size:max(10px,calc(var(--u)*5.2));
+  font-weight:800;line-height:.95;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  color:#fff;text-shadow:0 0 calc(var(--u)*2.4) rgba(61,232,255,.45);
+}
+.amber{color:var(--amber)!important;text-shadow:0 0 calc(var(--u)*2.4) rgba(255,177,61,.5)!important}
+.key{
+  display:inline-block;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+  border:1px solid var(--edge);border-radius:calc(var(--u)*.45);
+  padding:calc(var(--u)*.25) calc(var(--u)*.6);
+  margin-left:calc(var(--u)*.8);vertical-align:middle;
+}
+
+/* ============ HUD ============ */
+#hud{transition:opacity .3s}
+#hud.off{opacity:0}
+.hudTop{
+  position:absolute;
+  top:calc(var(--u)*3 + var(--sa-t));
+  left:calc(var(--u)*3.4 + var(--sa-l));
+  right:calc(var(--u)*3.4 + var(--sa-r));
+  display:flex;align-items:flex-start;justify-content:space-between;gap:calc(var(--u)*2);
+}
+.stat.right{text-align:right}
+.stat .lbl{margin-bottom:calc(var(--u)*.7)}
+
+/* combo — center of the screen's attention when it matters */
+.combo{
+  flex:0 0 auto;text-align:center;min-width:calc(var(--u)*26);
+  opacity:0;transform:translateY(calc(var(--u)*-1));
+  transition:opacity .18s,transform .18s;
+}
+.combo.on{opacity:1;transform:none}
+.cmult{
+  font-size:max(10px,calc(var(--u)*4.6));font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  color:var(--magenta);
+  text-shadow:0 0 calc(var(--u)*3) rgba(255,46,136,.75);
+}
+.combo.hot .cmult{color:var(--amber);text-shadow:0 0 calc(var(--u)*3.6) rgba(255,177,61,.9)}
+.cpts{
+  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;margin-top:calc(var(--u)*.2);
+}
+.cbar{
+  height:calc(var(--u)*.45);margin:calc(var(--u)*.9) auto 0;width:calc(var(--u)*22);
+  background:rgba(255,255,255,.10);border-radius:99px;overflow:hidden;
+}
+.cbar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,var(--magenta),var(--amber));
+  box-shadow:0 0 calc(var(--u)*1.4) rgba(255,46,136,.9);
+}
+.cnote{
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);margin-top:calc(var(--u)*.7);
+}
+
+.hudMid{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--u)*1.1);min-width:calc(var(--u)*30);
+}
+
+/* objective rail — quota progress, or the boss's integrity */
+.obj{width:calc(var(--u)*30)}
+.objHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.55);
+}
+.objHead span{
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.26em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.objHead b{
+  font-size:max(10px,calc(var(--u)*1.6));font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+.obj.boss .objHead span{color:var(--red)}
+.objBar{
+  height:calc(var(--u)*.8);background:rgba(255,255,255,.10);
+  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+}
+.objBar{position:relative}
+.objBar i{
+  position:absolute;left:0;top:0;
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,rgba(61,232,255,.6),var(--cyan));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.75);
+  transition:width .18s linear;
+}
+/* what the live chain would add if you banked it now — behind the real fill,
+   so you can see the quota moving while the clock is still running */
+.objBar i.objPend{
+  background:rgba(255,177,61,.42);box-shadow:none;
+  transition:width .1s linear;
+}
+.obj.pending .objBar{border-color:rgba(255,177,61,.45)}
+.obj.boss .objBar i{
+  background:linear-gradient(90deg,#8A1226,var(--red));
+  box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.8);
+}
+/* distance to the checkpoint, deliberately quieter than the quota */
+.objDist{
+  height:calc(var(--u)*.3);margin-top:calc(var(--u)*.4);
+  background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;
+}
+.objDist i{display:block;height:100%;width:0%;background:rgba(198,210,232,.4)}
+
+/* build rail — you cannot play a roguelite you cannot read */
+.build{
+  display:flex;flex-direction:column;gap:calc(var(--u)*.4);
+  margin-top:calc(var(--u)*1.4);max-width:calc(var(--u)*22);
+}
+.build i{
+  font-style:normal;
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.12em;text-transform:uppercase;
+  font-weight:800;color:var(--ice);
+  border-left:calc(var(--u)*.35) solid var(--cyan);
+  background:rgba(255,255,255,.05);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7);
+  border-radius:0 calc(var(--u)*.35) calc(var(--u)*.35) 0;
+  display:flex;justify-content:space-between;gap:calc(var(--u)*.6);
+}
+.build i b{color:var(--cyan)}
+.build i.uncommon{border-left-color:var(--magenta)}
+.build i.uncommon b{color:var(--magenta)}
+.build i.rare{border-left-color:var(--amber)}
+.build i.rare b{color:var(--amber)}
+.build i.curse{border-left-color:var(--red);color:var(--red);background:rgba(255,51,85,.09)}
+
+.dchip{
+  display:inline-block;
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:#04121A;background:var(--cyan);
+  border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1);
+  margin-bottom:calc(var(--u)*1);
+  box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.5);
+}
+
+/* heat tier pips */
+.heat{
+  display:flex;align-items:center;gap:calc(var(--u)*.7);
+  opacity:0;transition:opacity .25s;
+}
+.heat.on{opacity:1}
+.hlbl{
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.28em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);margin-right:calc(var(--u)*.5);
+}
+.heat i{
+  width:calc(var(--u)*2.6);height:calc(var(--u)*.5);border-radius:99px;
+  background:rgba(255,255,255,.13);transition:background .2s,box-shadow .2s;
+}
+.heat i.lit{background:var(--red);box-shadow:0 0 calc(var(--u)*1.6) rgba(255,51,85,.95)}
+.heat.max i.lit{animation:pip .7s steps(2,end) infinite}
+@keyframes pip{50%{opacity:.35}}
+
+.hudBot{
+  position:absolute;
+  left:calc(var(--u)*3.4 + var(--sa-l));
+  right:calc(var(--u)*3.4 + var(--sa-r));
+  bottom:calc(var(--u)*3 + var(--sa-b));
+  display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2);
+}
+.speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
+.spdv{
+  font-size:max(10px,calc(var(--u)*6.4));font-weight:800;line-height:.85;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-.04em;
+  text-shadow:0 0 calc(var(--u)*2.6) rgba(61,232,255,.5);
+}
+.spdu{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.22em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+/* Active power-ups. Nothing here is a resource you meter out any more, so
+   these are countdowns, not bars: what is running and how long is left. */
+.powers{display:flex;flex-direction:column;align-items:flex-end;gap:calc(var(--u)*.6)}
+.pwr{
+  display:flex;align-items:center;gap:calc(var(--u)*.8);
+  padding:calc(var(--u)*.45) calc(var(--u)*1);
+  border:1px solid currentColor;border-radius:99px;
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;
+  background:rgba(4,8,18,.5);
+  animation:pwrIn .18s cubic-bezier(.2,.9,.25,1) both;
+}
+.pwr b{font-variant-numeric:tabular-nums;font-weight:800;opacity:.75;letter-spacing:.04em}
+.pwr.boost{color:var(--amber)}
+.pwr.shield{color:var(--cyan)}
+.pwr.surge{color:var(--magenta)}
+.pwr.magnet{color:#8CF3FF}
+.pwr.rockets{color:#FF6B4A}
+.pwr.frenzy{color:#FFD166}
+.pwr.slowmo{color:#DCF6FF}
+.pwr.emp{color:#9CE3FF}
+.pwr.ghost{color:#9AA6BF}
+.pwr.ball{color:#FF8A3D}
+.pwr.arc{color:#7FE9FF}
+.pwr.drones{color:#5BFFC9}
+.pwr.rack{color:var(--ice);opacity:.75}
+/* the ones that run to the end of the district read as fitted, not ticking */
+.pwr.plating,.pwr.clock,.pwr.payday,.pwr.scav{background:rgba(123,245,176,.10);border-style:solid}
+.pwr.plating{color:#7BF5B0}
+.pwr.clock{color:#C6A8FF;background:rgba(198,168,255,.10)}
+.pwr.payday{color:#FFC53D;background:rgba(255,197,61,.10)}
+.pwr.scav{color:#FF9ED2;background:rgba(255,158,210,.10)}
+.pwr.plating b,.pwr.clock b,.pwr.payday b,.pwr.scav b{letter-spacing:.2em;text-transform:uppercase;opacity:.9}
+@keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
+
+/* toasts */
+#toasts{
+  position:absolute;left:50%;top:calc(var(--u)*24);transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
+}
+.toast{
+  font-size:max(10px,calc(var(--u)*1.9));font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+  color:#fff;text-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.8);
+  animation:toast 1.1s cubic-bezier(.2,.9,.2,1) forwards;
+}
+.toast.pink{color:var(--magenta);text-shadow:0 0 calc(var(--u)*2) rgba(255,46,136,.9)}
+.toast.gold{color:var(--amber);text-shadow:0 0 calc(var(--u)*2) rgba(255,177,61,.9)}
+.toast.red{color:var(--red);text-shadow:0 0 calc(var(--u)*2) rgba(255,51,85,.9)}
+@keyframes toast{
+  0%{opacity:0;transform:translateY(calc(var(--u)*1.4)) scale(.86)}
+  16%{opacity:1;transform:none}
+  70%{opacity:1}
+  100%{opacity:0;transform:translateY(calc(var(--u)*-2.4))}
+}
+
+/* ============ touch ============ */
+#touch{display:none}
+#touch.on{display:block}
+.tbtn{
+  position:absolute;pointer-events:auto;
+  border:1px solid var(--edge2);background:rgba(10,16,32,.5);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  color:var(--ice);border-radius:50%;
+  /* 56px floor: proportional sizing alone produced 24px targets on a phone */
+  width:max(60px,calc(var(--u)*11));height:max(60px,calc(var(--u)*11));
+  display:grid;place-items:center;
+  font:800 max(11px,calc(var(--u)*1.5))/1 var(--sans);letter-spacing:.14em;
+  transition:background .1s,transform .1s;
+}
+.tbtn svg{width:45%;height:45%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tbtn:active,.tbtn.down{background:rgba(61,232,255,.24);transform:scale(.94)}
+/* These are the steering controls and they sit in the bottom-left corner —
+   the same place iOS puts the home indicator, and the corner a landscape
+   phone rounds off. Both offsets clear the inset before applying their own. */
+.tl{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l));
+    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
+.tr{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
+    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
+
+/* ============ screens ============ */
+.screen{
+  pointer-events:auto;
+  display:grid;place-items:center;
+  padding:
+    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
+    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));
+  /* the attract driver runs live behind these screens, so the scrim has to
+     hold contrast for the copy no matter what is on screen underneath */
+  background:radial-gradient(115% 85% at 50% 45%,rgba(5,6,14,.86) 0%,rgba(3,4,10,.96) 68%);
+  animation:fade .28s ease both;
+}
+.screen.hide{display:none}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* menu */
+.menuIn{text-align:center;max-width:calc(var(--u)*82)}
+.eyebrow{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);opacity:.85;
+  margin-bottom:calc(var(--u)*2);
+}
+.title{
+  margin:0;line-height:.82;
+  font-size:max(10px,calc(var(--u)*13));font-weight:800;
+  text-transform:uppercase;letter-spacing:-.03em;
+  display:flex;flex-direction:column;align-items:center;
+}
+.title .t1{
+  color:transparent;-webkit-text-stroke:calc(var(--u)*.16) var(--cyan);
+  letter-spacing:.06em;
+  filter:drop-shadow(0 0 calc(var(--u)*1.6) rgba(61,232,255,.6));
+}
+.title .t2{
+  background:linear-gradient(180deg,#fff 8%,var(--magenta) 96%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 calc(var(--u)*2.4) rgba(255,46,136,.65));
+}
+.tag{
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*3.4);
+  font-size:max(10px,calc(var(--u)*1.75));font-weight:600;color:var(--ice);opacity:.72;
+  letter-spacing:.02em;
+}
+.btns{display:flex;gap:calc(var(--u)*1.4);justify-content:center;flex-wrap:wrap}
+.hints{
+  display:flex;gap:calc(var(--u)*2.6);justify-content:center;flex-wrap:wrap;
+  margin-top:calc(var(--u)*3.4);
+}
+.hint{
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.hint b{
+  color:var(--ice);font-weight:800;
+  border:1px solid var(--edge);border-radius:calc(var(--u)*.45);
+  padding:calc(var(--u)*.3) calc(var(--u)*.7);margin-right:calc(var(--u)*.7);
+}
+.best{
+  margin-top:calc(var(--u)*2.6);
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.24em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.best b{color:var(--cyan);font-variant-numeric:tabular-nums;margin-left:calc(var(--u)*.6)}
+
+/* buttons */
+.btn{
+  pointer-events:auto;cursor:pointer;
+  font-family:var(--sans);
+  font-size:max(10px,calc(var(--u)*1.65));font-weight:800;
+  letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ice);
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--edge2);
+  border-radius:calc(var(--u)*.7);
+  padding:calc(var(--u)*1.5) calc(var(--u)*3);
+  display:inline-flex;align-items:center;gap:calc(var(--u)*.4);
+  transition:background .14s,border-color .14s,transform .08s,box-shadow .14s;
+}
+.btn:hover{background:rgba(61,232,255,.12);border-color:var(--cyan);color:#fff}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn.primary{
+  color:#04121A;border-color:transparent;
+  background:linear-gradient(180deg,#8CF3FF,var(--cyan) 55%,#00B9DE);
+  box-shadow:0 0 calc(var(--u)*3) rgba(61,232,255,.4),inset 0 1px 0 rgba(255,255,255,.6);
+}
+.btn.primary:hover{color:#04121A;box-shadow:0 0 calc(var(--u)*4.4) rgba(61,232,255,.65),inset 0 1px 0 rgba(255,255,255,.7)}
+/* rewarded-ad buttons read as offers, not as the default path */
+.btn.rew{
+  width:100%;justify-content:center;position:relative;
+  color:#1A0C04;border-color:transparent;
+  background:linear-gradient(180deg,#FFD790,var(--amber) 58%,#E08A12);
+  box-shadow:0 0 calc(var(--u)*3) rgba(255,177,61,.36),inset 0 1px 0 rgba(255,255,255,.55);
+}
+.btn.rew:hover{color:#1A0C04;box-shadow:0 0 calc(var(--u)*4.6) rgba(255,177,61,.6),inset 0 1px 0 rgba(255,255,255,.7)}
+.btn.rew.ghost{
+  background:rgba(255,177,61,.09);color:var(--amber);
+  border:1px solid rgba(255,177,61,.42);box-shadow:none;
+}
+.btn.rew.ghost:hover{background:rgba(255,177,61,.18);color:var(--amber)}
+.btn .play{
+  width:0;height:0;flex:0 0 auto;
+  border-left:calc(var(--u)*1.1) solid currentColor;
+  border-top:calc(var(--u)*.65) solid transparent;
+  border-bottom:calc(var(--u)*.65) solid transparent;
+  margin-right:calc(var(--u)*.9);
+}
+.btn em{
+  position:absolute;right:calc(var(--u)*1.4);
+  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.18em;
+  opacity:.62;border:1px solid currentColor;border-radius:calc(var(--u)*.35);
+  padding:calc(var(--u)*.15) calc(var(--u)*.55);
+}
+
+/* ---------- district brief ---------- */
+.briefIn{text-align:center;max-width:calc(var(--u)*62)}
+.bkicker{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.bname{
+  margin:calc(var(--u)*1.4) 0 calc(var(--u)*.8);
+  font-size:max(10px,calc(var(--u)*8));font-weight:800;line-height:.9;
+  text-transform:uppercase;letter-spacing:-.02em;color:#fff;
+  text-shadow:0 0 calc(var(--u)*3.5) rgba(61,232,255,.5);
+}
+.bsub{
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.28em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.bobj{
+  margin:calc(var(--u)*2.6) 0 calc(var(--u)*3.2);
+  font-size:max(10px,calc(var(--u)*2));font-weight:600;color:var(--ice);line-height:1.5;
+}
+.bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
+/* boss briefs commit to red so the shift in stakes is instant */
+#brief.bossBrief .bkicker{color:var(--red)}
+#brief.bossBrief .bname{color:var(--red);text-shadow:0 0 calc(var(--u)*4) rgba(255,51,85,.6)}
+#brief.bossBrief .bobj b{color:var(--red)}
+#brief .build{
+  flex-direction:row;flex-wrap:wrap;justify-content:center;
+  max-width:none;margin:0 0 calc(var(--u)*2.6);
+}
+
+/* ---------- card screens: events, level-up ---------- */
+.draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
+.dtitle{
+  margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
+  font-size:max(10px,calc(var(--u)*4.4));font-weight:800;
+  text-transform:uppercase;letter-spacing:.02em;color:#fff;
+}
+.dsub{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);margin-bottom:calc(var(--u)*2.8);
+}
+.dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
+.dcard{
+  cursor:pointer;text-align:left;position:relative;overflow:hidden;
+  font-family:var(--sans);color:var(--ice);
+  background:var(--panel);
+  border:1px solid var(--edge);border-top:calc(var(--u)*.4) solid var(--cyan);
+  border-radius:calc(var(--u)*1);
+  padding:calc(var(--u)*2.2) calc(var(--u)*1.8) calc(var(--u)*2);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.7);
+  transition:transform .12s,border-color .12s,background .12s,box-shadow .12s;
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+}
+.dcard:nth-child(2){animation-delay:.06s}
+.dcard:nth-child(3){animation-delay:.12s}
+.dcard:hover{transform:translateY(calc(var(--u)*-.6));background:rgba(61,232,255,.09)}
+.dcard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.dcard.uncommon{border-top-color:var(--magenta)}
+.dcard.uncommon:hover{background:rgba(255,46,136,.09)}
+.dcard.rare{border-top-color:var(--amber)}
+.dcard.rare:hover{background:rgba(255,177,61,.09)}
+.drar{
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dcard.uncommon .drar{color:var(--magenta)}
+.dcard.rare .drar{color:var(--amber)}
+.dname{
+  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
+  text-transform:uppercase;letter-spacing:.01em;line-height:1.05;
+}
+.ddesc{font-size:max(10px,calc(var(--u)*1.5));line-height:1.45;color:var(--ice);opacity:.82}
+/* the drawback is never buried — an unreadable cost is not a choice */
+.dcard.oc{border-top-color:var(--red)}
+.octag{
+  position:absolute;top:0;right:0;
+  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  color:#1A0407;background:var(--red);
+  padding:calc(var(--u)*.3) calc(var(--u)*.9);
+  border-radius:0 0 0 calc(var(--u)*.6);
+}
+.dcurse{
+  margin-top:auto;padding-top:calc(var(--u)*1);
+  border-top:1px dashed rgba(255,51,85,.42);
+  font-size:max(10px,calc(var(--u)*1.3));line-height:1.4;color:rgba(255,150,165,.9);
+}
+.dcurse span{
+  display:block;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
+  font-size:max(10px,calc(var(--u)*1.05));color:var(--red);margin-bottom:calc(var(--u)*.35);
+}
+.dhint{
+  margin-top:calc(var(--u)*2.4);
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.dhint b{
+  color:var(--ice);border:1px solid var(--edge);border-radius:calc(var(--u)*.35);
+  padding:calc(var(--u)*.2) calc(var(--u)*.6);margin:0 calc(var(--u)*.15);
+}
+
+.ovRank{
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
+}
+
+.opts{
+  position:absolute;
+  right:calc(var(--u)*3 + var(--sa-r));
+  bottom:calc(var(--u)*3 + var(--sa-b));
+  display:flex;gap:calc(var(--u)*.8);
+}
+#btnCtrl{display:none}
+#btnCtrl.show{display:block}
+.mute{
+  pointer-events:auto;cursor:pointer;font-family:var(--sans);
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+  background:none;border:1px solid var(--edge);border-radius:calc(var(--u)*.5);
+  padding:calc(var(--u)*.6) calc(var(--u)*1.2);
+  transition:color .14s,border-color .14s;
+}
+.mute:hover{color:var(--ice);border-color:var(--edge2)}
+.mute[disabled]{opacity:.45;cursor:not-allowed}
+.mute[disabled]:hover{color:var(--dim);border-color:var(--edge)}
+.mute:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+
+/* panels */
+.panel{
+  width:100%;max-width:calc(var(--u)*54);
+  background:var(--panel);
+  backdrop-filter:blur(20px) saturate(1.3);-webkit-backdrop-filter:blur(20px) saturate(1.3);
+  border:1px solid var(--edge);
+  border-radius:calc(var(--u)*1.4);
+  padding:calc(var(--u)*3.4);
+  box-shadow:0 calc(var(--u)*3) calc(var(--u)*8) rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.07);
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+}
+.panel.wide{max-width:calc(var(--u)*86)}
+@keyframes pop{from{opacity:0;transform:translateY(calc(var(--u)*2)) scale(.97)}to{opacity:1;transform:none}}
+
+.ovHead{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.4)}
+.ovKicker{
+  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.34em;text-transform:uppercase;
+  font-weight:800;color:var(--red);
+}
+.ovBadge{
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  color:#04121A;background:var(--cyan);border-radius:99px;
+  padding:calc(var(--u)*.35) calc(var(--u)*1.1);
+  box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
+}
+.ovBadge.hide{display:none}
+.ovScore{
+  font-size:max(10px,calc(var(--u)*9));font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;
+  margin:calc(var(--u)*1.2) 0 calc(var(--u)*2.4);
+  text-shadow:0 0 calc(var(--u)*3.4) rgba(61,232,255,.5);
+}
+.ovRow{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:calc(var(--u)*1.4);
+  padding:calc(var(--u)*1.8) 0;
+  border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);
+  margin-bottom:calc(var(--u)*2.4);
+}
+.ovRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+/* These labels sit above their values in a four-column grid, so a label that
+   wraps drops its own value half a line below the other three. Below the font
+   floor the columns are narrow enough for that to happen, so keep them on one
+   line and let the tracking give a little instead. */
+.ovRow span{
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);white-space:nowrap;
+}
+.ovRow b{font-size:max(10px,calc(var(--u)*2.1));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.ovActs{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
+/* Geometry is shared across the whole stack so the decline path is exactly
+   as large and as reachable as the rewarded offers above it. */
+.ovActs .btn{width:100%;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+/* The key hint must not change the button's box. These four buttons are
+   measured against each other — their rules require the continue-without-
+   watching path to match the ad offers in size exactly — and an inline hint
+   adds four pixels of height to the one button that has it. Pulled out of
+   flow, the same way the AD badge already is. */
+.ovActs .btn .key{
+  position:absolute;right:calc(var(--u)*1.4);top:50%;
+  transform:translateY(-50%);margin-left:0;
+}
+
+/* Ad-unavailability notice. Quiet, inline, and never a popup. */
+.ovAdNote{
+  margin-top:calc(var(--u)*1.2);text-align:center;
+  font-size:max(10px,calc(var(--u)*1.25));line-height:1.45;color:rgba(255,177,61,.78);
+}
+.ovAdNote.hide{display:none}
+/* A disabled offer has to read as unavailable rather than as a live button
+   the player keeps hitting. */
+.ovActs .btn:disabled{opacity:.34;cursor:default;box-shadow:none}
+.ovFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.2)}
+.ovFoot .btn{flex:1;justify-content:center}
+
+/* ============================================================
+   GARAGE
+   A workshop bay, not a settings panel: a rendered deck with your actual car
+   on it wearing everything you have bolted on, and a work order beside it.
+   Steel edges, hazard tape and printed dockets rather than rounded web cards.
+   ============================================================ */
+#garage.screen{align-items:flex-start;
+  padding:
+    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
+    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));}
+.gPanel{
+  width:100%;max-width:calc(var(--u)*116);
+  height:auto;max-height:100%;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#0E131E,#080B12);
+  border:1px solid rgba(150,175,215,.16);
+  border-top:1px solid rgba(180,215,255,.30);   /* light catching the top edge */
+  border-radius:calc(var(--u)*.6);
+  box-shadow:0 calc(var(--u)*3) calc(var(--u)*9) rgba(0,0,0,.75),
+             inset 0 1px 0 rgba(255,255,255,.06);
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+  overflow:hidden;
+}
+
+/* --- pinned action bar --- */
+.gTop{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:calc(var(--u)*2.4);
+  padding:calc(var(--u)*1.8) calc(var(--u)*2.4);
+  background:linear-gradient(180deg,rgba(150,190,255,.06),transparent);
+}
+.gId{display:flex;flex-direction:column;gap:calc(var(--u)*.3);min-width:0}
+.gKick{
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.3em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.gId b{
+  font-size:max(10px,calc(var(--u)*2.6));font-weight:800;color:#fff;
+  letter-spacing:.14em;text-transform:uppercase;line-height:1;
+}
+.gBal{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:calc(var(--u)*.3)}
+.gBal span{
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.gBal b{
+  font-size:max(10px,calc(var(--u)*2.8));font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+}
+.gAct{display:flex;gap:calc(var(--u)*1);flex:0 0 auto}
+.gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:max(10px,calc(var(--u)*1.5))}
+
+/* hazard tape under the header — the one loud piece of shop furniture */
+.gTape{
+  flex:0 0 auto;height:calc(var(--u)*1);
+  background:repeating-linear-gradient(-45deg,
+    rgba(255,177,61,.62) 0 calc(var(--u)*1.1),
+    rgba(10,13,20,.85) calc(var(--u)*1.1) calc(var(--u)*2.2));
+  border-top:1px solid rgba(255,177,61,.28);
+  border-bottom:1px solid rgba(0,0,0,.6);
+}
+
+.gFloor{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:minmax(0,0.86fr) minmax(0,1fr);
+}
+
+/* --- the bay --- */
+.gBay{
+  position:relative;min-width:0;min-height:calc(var(--u)*46);
+  border-right:1px solid rgba(150,175,215,.14);
+  display:flex;flex-direction:column;
+}
+/* The deck fills the column and the backing store is sized from the element,
+   the same way the game canvas is. A fixed aspect either letterboxed the car
+   down to a thumbnail or left a third of the bay empty below it. */
+.gBay canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* stencilled onto the deck rather than floated over it */
+.gPlate{
+  position:absolute;z-index:1;left:calc(var(--u)*1.8);top:calc(var(--u)*1.8);
+  width:calc(var(--u)*23);
+  background:rgba(6,9,15,.62);
+  border:1px solid rgba(150,175,215,.18);
+  border-left:calc(var(--u)*.3) solid var(--cyan);
+  padding:calc(var(--u)*1) calc(var(--u)*1.2);
+}
+.gpName{
+  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:#fff;
+  letter-spacing:.16em;text-transform:uppercase;margin-bottom:calc(var(--u)*.7);
+}
+.gpName em{font-style:normal;color:var(--dim);font-weight:700;letter-spacing:.1em}
+.gpRow{
+  display:flex;align-items:center;gap:calc(var(--u)*.6);
+  padding:calc(var(--u)*.22) 0;
+}
+.gpRow span{
+  flex:0 0 calc(var(--u)*5.4);
+  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.gpRow i{display:flex;gap:2px;flex:1}
+.gpRow i b{flex:1;height:calc(var(--u)*.38);background:rgba(255,255,255,.13)}
+.gpRow i b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.6)}
+.gpRow em{
+  flex:0 0 auto;font-style:normal;
+  font-size:max(10px,calc(var(--u)*1));font-weight:800;color:var(--ice);
+  font-variant-numeric:tabular-nums;min-width:calc(var(--u)*6);text-align:right;
+}
+/* legend for the render: what those extra shapes on the car are */
+.gFitted{
+  position:relative;z-index:1;margin-top:auto;
+  background:linear-gradient(0deg,rgba(6,9,15,.92),rgba(6,9,15,.25));
+  display:flex;flex-wrap:wrap;gap:calc(var(--u)*.5);
+  padding:calc(var(--u)*1.2) calc(var(--u)*1.8) calc(var(--u)*1.6);
+  border-top:1px solid rgba(150,175,215,.10);
+}
+.gFitted i{
+  font-style:normal;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+  border:1px solid rgba(61,232,255,.35);
+  background:rgba(61,232,255,.08);
+  padding:calc(var(--u)*.28) calc(var(--u)*.8);
+}
+.gFitted i.none{color:var(--dim);border-color:rgba(150,175,215,.18);background:none}
+
+/* --- the work order --- */
+.gWork{
+  min-width:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--u)*1.6) calc(var(--u)*2) calc(var(--u)*2.2);
+}
+.gwHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:calc(var(--u)*1);
+  margin:calc(var(--u)*1.6) 0 calc(var(--u)*1);
+  padding-bottom:calc(var(--u)*.6);
+  border-bottom:1px dashed rgba(150,175,215,.22);
+}
+.gwHead:first-child{margin-top:0}
+.gwHead h3{
+  margin:0;font-size:max(10px,calc(var(--u)*1.4));font-weight:800;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);
+}
+.gwHead span{
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;color:var(--dim);
+  font-variant-numeric:tabular-nums;letter-spacing:.1em;
+}
+
+/* tuning: docket rows, flat and square */
+.gUps{display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
+.up{
+  display:flex;align-items:center;gap:calc(var(--u)*1.2);
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.12);
+  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.28);
+  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+}
+.up.maxed{border-left-color:var(--cyan);background:rgba(61,232,255,.05)}
+.up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.45)}
+.up .nm{
+  display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.18em;
+  text-transform:uppercase;color:#fff;
+}
+.up .nm em{
+  font-style:normal;letter-spacing:.04em;text-transform:none;
+  font-size:max(10px,calc(var(--u)*1.2));color:var(--cyan);font-variant-numeric:tabular-nums;
+}
+.pips{display:flex;gap:2px}
+.pips i{flex:1;height:calc(var(--u)*.42);background:rgba(255,255,255,.13)}
+.pips i.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*1) rgba(61,232,255,.6)}
+.up button{
+  cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*8.5);
+  font-family:var(--sans);
+  font-size:max(10px,calc(var(--u)*1.2));font-weight:800;letter-spacing:.1em;
+  font-variant-numeric:tabular-nums;
+  color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
+  border:none;border-radius:calc(var(--u)*.25);
+  padding:calc(var(--u)*.8) calc(var(--u)*1.1);
+  transition:filter .14s,transform .08s;
+}
+.up button:hover{filter:brightness(1.12)}
+.up button:active{transform:translateY(1px)}
+.up button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.up button[disabled]{background:rgba(255,255,255,.07);color:var(--dim);cursor:not-allowed}
+.up.maxed button[disabled]{color:var(--cyan);background:rgba(61,232,255,.10)}
+
+/* hardware: parts on a rack — the reason a lost run still moves you forward */
+.gGear{display:grid;grid-template-columns:repeat(2,1fr);gap:calc(var(--u)*.6)}
+.gear{
+  position:relative;text-align:left;cursor:pointer;font-family:var(--sans);
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.12);
+  border-left:calc(var(--u)*.28) solid var(--amber);
+  padding:calc(var(--u)*1) calc(var(--u)*1.1);
+  display:flex;flex-direction:column;gap:calc(var(--u)*.45);
+  transition:background .14s,border-color .14s;
+}
+.gear:hover{background:rgba(255,177,61,.10)}
+.gear:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.gear .nm{
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;color:#fff;
+}
+.gear .ds{font-size:max(10px,calc(var(--u)*1.15));line-height:1.4;color:var(--ice);opacity:.75}
+.gear .pr{
+  margin-top:auto;padding-top:calc(var(--u)*.4);
+  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
+  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;
+  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
+}
+/* the shortfall, so "too expensive" is a number rather than a dimmed card */
+.gear .pr em{
+  font-style:normal;font-size:max(10px,calc(var(--u)*1));color:var(--dim);
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+}
+.gear.owned{
+  border-left-color:var(--cyan);background:rgba(61,232,255,.07);cursor:default;
+}
+.gear.owned:hover{background:rgba(61,232,255,.07)}
+.gear.owned .pr{color:var(--cyan);letter-spacing:.2em;text-transform:uppercase;font-size:max(10px,calc(var(--u)*1.1))}
+.gear.broke{opacity:.5;border-left-color:rgba(150,175,215,.28)}
+.gear.broke:hover{background:rgba(255,255,255,.03)}
+.gear.broke .pr{color:var(--dim)}
+
+/* ============ simulated ad ============ */
+#ad{
+  pointer-events:auto;display:none;
+  place-items:center;background:rgba(2,3,8,.94);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+#ad.on{display:grid}
+.adBox{width:100%;max-width:calc(var(--u)*46);text-align:center;padding:calc(var(--u)*3)}
+.adTag{
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.adArt{
+  height:calc(var(--u)*20);margin:calc(var(--u)*2) 0;
+  border:1px solid var(--edge);border-radius:calc(var(--u)*1);
+  background:linear-gradient(140deg,rgba(61,232,255,.10),rgba(255,46,136,.10));
+  display:grid;place-items:center;overflow:hidden;
+}
+.adPulse{
+  width:calc(var(--u)*7);height:calc(var(--u)*7);border-radius:50%;
+  border:calc(var(--u)*.35) solid var(--cyan);
+  animation:ping 1.4s ease-out infinite;
+}
+@keyframes ping{
+  0%{transform:scale(.5);opacity:1}
+  100%{transform:scale(1.9);opacity:0}
+}
+.adMsg{font-size:max(10px,calc(var(--u)*2));font-weight:800;color:#fff;margin-bottom:calc(var(--u)*1.6)}
+.adBar{height:calc(var(--u)*.5);background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.adBar i{
+  display:block;height:100%;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--magenta));
+}
+.adNote{
+  margin-top:calc(var(--u)*1.6);
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+
+/* Keyboard hints are noise on a touch device — and actively misleading,
+   since there is no Shift key to press. */
+@media (hover:none){
+  .hudBot .key,.hints,.dhint{display:none}
+  .btn .key{display:none}
+}
+
+/* gesture hint — shown once at the start of a run, then it gets out of the way */
+.gsHint{
+  /* sits above the car and clear of the thumb zone it is describing */
+  position:absolute;left:50%;top:30%;transform:translate(-50%,calc(var(--u)*1.2));
+  text-align:center;opacity:0;pointer-events:none;
+  transition:opacity .4s,transform .4s;
+  padding:calc(var(--u)*1.4) calc(var(--u)*2);
+  background:rgba(6,9,18,.72);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid var(--edge);border-radius:calc(var(--u)*.9);
+  max-width:80vw;
+}
+.gsHint.on{opacity:1;transform:translate(-50%,0)}
+.gsHint b{
+  display:block;font-size:max(10px,calc(var(--u)*1.8));font-weight:800;color:#fff;
+  letter-spacing:.04em;margin-bottom:calc(var(--u)*.5);
+}
+.gsHint span{
+  font-size:max(10px,calc(var(--u)*1.2));font-weight:700;color:var(--dim);
+  letter-spacing:.1em;text-transform:uppercase;line-height:1.5;
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* ============================================================
+   PORTRAIT / SMALL VIEWPORTS
+   The HUD is a three-column rail designed for a wide screen. On a
+   phone held upright there is no room for it, so the rails stack and
+   card screens become a single column. Sizing is driven by --u, which
+   JS derives from the narrow axis in portrait.
+   ============================================================ */
+@media (max-aspect-ratio:1/1){
+  .hudTop{
+    top:calc(var(--u)*2.2 + var(--sa-t));
+    left:calc(var(--u)*2.2 + var(--sa-l));
+    right:calc(var(--u)*2.2 + var(--sa-r));
+    flex-direction:column;align-items:stretch;gap:calc(var(--u)*1.4);
+  }
+  /* objective first: it is the thing you are actually playing against */
+  .hudMid{order:-1;min-width:0;gap:calc(var(--u)*.9)}
+  .obj{width:100%}
+  .stat,.stat.right{
+    display:flex;align-items:baseline;gap:calc(var(--u)*.9);
+    text-align:left;
+  }
+  .stat.right{justify-content:flex-end}
+  .stat .lbl{margin-bottom:0}
+  .val{font-size:max(10px,calc(var(--u)*3.4))}
+  .dchip{margin-bottom:0;order:-1}
+  .cmult{font-size:max(10px,calc(var(--u)*3.6))}
+  .cnote{display:none}
+
+  /* toasts sit mid-screen over empty road; at 20u they landed on the score */
+  #toasts{top:38%}
+
+  /* the build rail would eat the play area; float it under the score */
+  #hud .build{
+    position:absolute;top:calc(var(--u)*13);left:0;
+    flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*46);
+    margin-top:0;gap:calc(var(--u)*.35);
+  }
+  #hud .build i{font-size:max(10px,calc(var(--u)*.95));padding:calc(var(--u)*.22) calc(var(--u)*.55)}
+
+  .hudBot{
+    left:calc(var(--u)*2.2 + var(--sa-l));right:calc(var(--u)*2.2 + var(--sa-r));
+    /* clears the touch buttons, which have themselves moved up by --sa-b */
+    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6 + var(--sa-b));
+  }
+  .spdv{font-size:max(10px,calc(var(--u)*4.4))}
+  .hudDrv{gap:calc(var(--u)*1.9)}
+  .nbar{width:calc(var(--u)*16)}
+
+  /* screens */
+  .title{font-size:max(10px,calc(var(--u)*9))}
+  .tag{font-size:max(10px,calc(var(--u)*1.6));margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
+  .btns{flex-direction:column;align-items:stretch}
+  .btn{justify-content:center}
+  .hints{gap:calc(var(--u)*1.2)}
+  .bname{font-size:max(10px,calc(var(--u)*5.6))}
+  .bobj{font-size:max(10px,calc(var(--u)*1.7));margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
+
+  .dcards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .dcard{padding:calc(var(--u)*1.5) calc(var(--u)*1.5) calc(var(--u)*1.4)}
+  .dname{font-size:max(10px,calc(var(--u)*2))}
+  .ddesc{font-size:max(10px,calc(var(--u)*1.35))}
+  .dtitle{font-size:max(10px,calc(var(--u)*3.4))}
+  .dhint{display:none}          /* no number row to press on a phone */
+
+  .panel{padding:calc(var(--u)*2.4)}
+  .ovScore{font-size:max(10px,calc(var(--u)*6.4))}
+  .ovRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .ovRow div{flex-direction:row;justify-content:space-between;align-items:baseline}
+  .ovFoot{flex-direction:column}
+
+  .powers{flex-direction:row;flex-wrap:wrap;justify-content:flex-end}
+
+  /* Garage on a phone: the action bar wraps so Roll out stays full width and
+     thumb-sized, and the bay sits above the work order rather than beside it. */
+  #garage.screen{align-items:flex-start;
+    padding:
+      calc(var(--u)*1.2 + var(--sa-t)) calc(var(--u)*1.2 + var(--sa-r))
+      calc(var(--u)*1.2 + var(--sa-b)) calc(var(--u)*1.2 + var(--sa-l));}
+  .gPanel{max-height:100%}
+  .gTop{
+    flex-wrap:wrap;gap:calc(var(--u)*1.2);
+    padding:calc(var(--u)*1.4) calc(var(--u)*1.6);
+  }
+  .gId b{font-size:max(10px,calc(var(--u)*2.2))}
+  .gBal b{font-size:max(10px,calc(var(--u)*2.4))}
+  .gAct{order:3;width:100%;flex-direction:row-reverse}
+  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
+  .gAct #btnBack{flex:0 0 auto}
+  .gFloor{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);min-height:0}
+  .gBay{border-right:none;border-bottom:1px solid rgba(150,175,215,.14)}
+
+  .gBay{min-height:calc(var(--u)*34)}
+  /* The plate would sit across the car's nose at this width, and the tuning
+     rows directly below already carry the same numbers. */
+  .gPlate{display:none}
+  .gFitted{padding:calc(var(--u)*1) calc(var(--u)*1.4) calc(var(--u)*1.2);border-top:none}
+  .gWork{padding:calc(var(--u)*1.4) calc(var(--u)*1.6) calc(var(--u)*2)}
+  .gGear{grid-template-columns:1fr}
+}
+
+/* Short landscape (a phone turned sideways) — vertical room is the
+   scarce axis, so trim the tall stacks rather than the columns. */
+@media (max-height:460px) and (min-aspect-ratio:1/1){
+  .cnote,.dhint{display:none}
+  .build{max-width:calc(var(--u)*20)}
+  .build i:nth-child(n+5){display:none}
+  .title{font-size:max(10px,calc(var(--u)*9))}
+  .tag{margin:calc(var(--u)*1.4) 0 calc(var(--u)*2)}
+  .hints{display:none}
+  .bname{font-size:max(10px,calc(var(--u)*6))}
+  .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
+  .ovScore{font-size:max(10px,calc(var(--u)*7))}
+  .hudBot{bottom:calc(var(--u)*2.4 + var(--sa-b))}
+  /* keep the speedo clear of the left-hand steering pads, which sit one
+     safe-area inset further right on a landscape phone with rounded corners */
+  .hudDrv{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
+}
+
+/* ============================================================
+   ROUTE MAP
+   The run's shape has to be visible or none of the choices mean
+   anything. Bottom-to-top so the boss reads as the summit.
+   ============================================================ */
+.mapIn{
+  width:100%;max-width:calc(var(--u)*96);height:100%;
+  display:flex;flex-direction:column;gap:calc(var(--u)*1.6);
+  padding:calc(var(--u)*1);
+}
+.mapHead{display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2)}
+.mkicker{
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.32em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.mkicker b{color:#fff}
+.mtitle{
+  margin:calc(var(--u)*.6) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
+  text-transform:uppercase;letter-spacing:.02em;color:#fff;line-height:1;
+}
+.mstats{display:flex;gap:calc(var(--u)*2.4);text-align:right}
+.mstats div{display:flex;flex-direction:column;gap:calc(var(--u)*.4)}
+.mstats span{
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.mstats b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+
+.mapBoard{
+  position:relative;flex:1;min-height:0;overflow:hidden;
+  border:1px solid var(--edge);border-radius:calc(var(--u)*1.2);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  /* a faint street plan under the routes — this is a city, not a flowchart */
+  background:
+    radial-gradient(120% 80% at 50% 100%,rgba(61,232,255,.07),transparent 60%),
+    repeating-linear-gradient(0deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
+    repeating-linear-gradient(90deg,rgba(110,170,255,.05) 0 1px,transparent 1px calc(var(--u)*5)),
+    rgba(6,9,18,.72);
+}
+.mapLines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.mapLines path{
+  fill:none;stroke:rgba(96,132,190,.30);
+  stroke-width:5;stroke-linecap:round;stroke-linejoin:round;
+}
+.mapLines path.open{
+  stroke:var(--cyan);stroke-width:6;
+  filter:drop-shadow(0 0 7px rgba(61,232,255,.75));
+}
+.mapLines path.taken{stroke:rgba(198,210,232,.5);stroke-width:5}
+.mapNodes{position:absolute;inset:0}
+
+.mnode{
+  position:absolute;transform:translate(-50%,-50%);
+  pointer-events:auto;cursor:default;font-family:var(--sans);
+  display:flex;flex-direction:column;align-items:center;
+  gap:calc(var(--u)*.55);
+  background:none;border:none;padding:0;
+  opacity:.5;filter:saturate(.35);
+  transition:opacity .2s,transform .14s,filter .2s;
+}
+
+/* the pin: a station on a transit map. Size and colour both carry meaning,
+   because an icon alone is what makes these boards hard to read. */
+.mnode .pin{
+  position:relative;
+  width:calc(var(--u)*5.6);height:calc(var(--u)*5.6);
+  border-radius:50%;
+  display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 38%,#141C31,#080C16 70%);
+  border:calc(var(--u)*.3) solid var(--dim);
+  box-shadow:inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8);
+}
+.mnode .pin i{
+  font-style:normal;line-height:1;
+  font-size:max(10px,calc(var(--u)*2.3));
+  color:var(--dim);
+}
+.mnode .plabel{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.15)}
+.mnode .pname{
+  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:var(--ice);
+  letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
+}
+.mnode .pmeta{
+  display:flex;align-items:center;gap:calc(var(--u)*.55);
+  font-size:max(10px,calc(var(--u)*1));font-weight:800;white-space:nowrap;
+}
+.mnode .pmeta b{color:var(--cyan);letter-spacing:.04em}
+/* the payout and the price need a visible divider or they read as one number */
+.mnode .pmeta b::after{
+  content:'';display:inline-block;vertical-align:middle;
+  width:1px;height:calc(var(--u)*1.1);
+  background:currentColor;opacity:.4;
+  margin-left:calc(var(--u)*.55);
+}
+.mnode .pmeta em{
+  font-style:normal;color:var(--dim);font-weight:700;
+  font-variant-numeric:tabular-nums;letter-spacing:.04em;
+}
+
+/* kind reads from the ring and the icon together */
+.mnode.run .pin{border-color:var(--cyan)}
+.mnode.run .pin i{color:var(--cyan)}
+.mnode.elite .pin{border-color:var(--magenta)}
+.mnode.elite .pin i{color:var(--magenta)}
+.mnode.elite .pmeta b{color:var(--magenta)}
+.mnode.depot .pin{border-color:var(--amber)}
+.mnode.depot .pin i{color:var(--amber)}
+.mnode.depot .pmeta b{color:var(--amber)}
+.mnode.boss .pin{
+  width:calc(var(--u)*8);height:calc(var(--u)*8);
+  border-color:var(--red);border-width:calc(var(--u)*.4);
+}
+.mnode.boss .pin i{color:var(--red);font-size:max(10px,calc(var(--u)*3.4))}
+.mnode.boss .pname{color:var(--red);font-size:max(10px,calc(var(--u)*1.5));letter-spacing:.14em}
+.mnode.boss .pmeta b{color:var(--red)}
+
+/* reachable: full colour, lifted, and quietly breathing */
+.mnode.open{opacity:1;filter:none;cursor:pointer}
+.mnode.run.open .pin{box-shadow:0 0 calc(var(--u)*2.8) rgba(61,232,255,.55),inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8)}
+.mnode.elite.open .pin{box-shadow:0 0 calc(var(--u)*2.8) rgba(255,46,136,.55),inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8)}
+.mnode.depot.open .pin{box-shadow:0 0 calc(var(--u)*2.8) rgba(255,177,61,.55),inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8)}
+.mnode.boss.open .pin{box-shadow:0 0 calc(var(--u)*3.6) rgba(255,51,85,.6),inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8)}
+.mnode.open .pin{animation:pinPulse 2.4s ease-in-out infinite}
+@keyframes pinPulse{50%{transform:translateY(calc(var(--u)*-.35))}}
+.mnode.open:hover{transform:translate(-50%,-50%) scale(1.07)}
+.mnode.open:focus-visible{outline:2px solid var(--cyan);outline-offset:6px;border-radius:calc(var(--u)*1)}
+
+/* spent, and where you stand */
+.mnode.done{opacity:.42;filter:saturate(.1)}
+.mnode.done .pin{background:#0B0F1A}
+.mnode.done .pin i::before{content:'✓'}
+.mnode.done .pin i{font-size:max(10px,calc(var(--u)*2))}
+.mnode.done .pin i{color:rgba(198,210,232,.55)}
+.mnode.here{opacity:1;filter:none}
+.mnode.here .pin{
+  border-color:#fff;
+  box-shadow:0 0 calc(var(--u)*3) rgba(255,255,255,.55),inset 0 0 calc(var(--u)*1.4) rgba(0,0,0,.8);
+}
+.mnode.here .pin i{color:#fff}
+.mnode.here .pin::after{
+  content:'';position:absolute;inset:calc(var(--u)*-.9);
+  border:2px solid rgba(255,255,255,.35);border-radius:50%;
+  animation:hereRing 2s ease-out infinite;
+}
+@keyframes hereRing{
+  0%{transform:scale(.85);opacity:.9}
+  100%{transform:scale(1.35);opacity:0}
+}
+
+.mapFoot{display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2)}
+#mapBuild{flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*58);margin:0}
+.mapLegend{
+  display:flex;align-items:center;gap:calc(var(--u)*.6);flex-wrap:wrap;
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+}
+.mapLegend .lg{
+  width:calc(var(--u)*1);height:calc(var(--u)*1);border-radius:50%;
+  margin-left:calc(var(--u)*1.2);
+}
+.mapLegend .lg:first-child{margin-left:0}
+.lg.run{background:var(--cyan)}
+.lg.elite{background:var(--magenta)}
+.lg.depot{background:var(--amber)}
+.lg.boss{background:var(--red)}
+
+/* ---------- contract / depot cards ---------- */
+.ckicker{
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.ckicker.elitek{color:var(--magenta)}
+.ckicker.depotk{color:var(--amber)}
+.ccards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
+.ccard{
+  cursor:pointer;text-align:left;font-family:var(--sans);color:var(--ice);
+  background:var(--panel);
+  border:1px solid var(--edge);border-top:calc(var(--u)*.4) solid var(--cyan);
+  border-radius:calc(var(--u)*1);
+  padding:calc(var(--u)*2) calc(var(--u)*1.8);
+  display:flex;flex-direction:column;gap:calc(var(--u)*1.1);
+  transition:transform .12s,background .12s;
+  animation:pop .3s cubic-bezier(.2,.9,.25,1) both;
+}
+.ccard:nth-child(2){animation-delay:.06s}
+.ccard:nth-child(3){animation-delay:.12s}
+.ccard:hover{transform:translateY(calc(var(--u)*-.6));background:rgba(61,232,255,.08)}
+.ccard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.ccard.r1{border-top-color:var(--amber)}
+.ccard.r2{border-top-color:var(--red)}
+.ccard.r2:hover{background:rgba(255,51,85,.08)}
+.crisk{
+  display:flex;align-items:center;gap:calc(var(--u)*.4);
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.22em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.crisk i{width:calc(var(--u)*1.6);height:calc(var(--u)*.4);border-radius:99px;background:rgba(255,255,255,.16)}
+.crisk i.on{background:var(--amber)}
+.ccard.r2 .crisk i.on{background:var(--red)}
+.cname{
+  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
+  text-transform:uppercase;line-height:1.05;
+}
+.cline{display:flex;gap:calc(var(--u)*.9);font-size:max(10px,calc(var(--u)*1.4));line-height:1.45}
+.cline b{
+  flex:0 0 calc(var(--u)*4.2);
+  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:800;padding-top:calc(var(--u)*.25);
+}
+.cline.boon b{color:var(--cyan)}
+.cline.bane b{color:var(--red)}
+.cline span{color:var(--ice);opacity:.86}
+.cpay{
+  margin-top:auto;padding-top:calc(var(--u)*1);border-top:1px solid var(--edge);
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.18em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+
+@media (max-aspect-ratio:1/1){
+  .ccards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .ccard{padding:calc(var(--u)*1.4)}
+  .cname{font-size:max(10px,calc(var(--u)*2))}
+  .cline{font-size:max(10px,calc(var(--u)*1.25))}
+  .mtitle{font-size:max(10px,calc(var(--u)*3))}
+  .mapFoot .mapLegend{display:none}
+  .mnode{gap:calc(var(--u)*.4)}
+  .mnode .pin{width:calc(var(--u)*4.8);height:calc(var(--u)*4.8)}
+  .mnode .pin i{font-size:max(10px,calc(var(--u)*2))}
+  .mnode.boss .pin{width:calc(var(--u)*6.4);height:calc(var(--u)*6.4)}
+  .mnode .pname{font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.06em}
+  .mnode .pmeta{font-size:max(10px,calc(var(--u)*.9));gap:calc(var(--u)*.35)}
+  .mapIn{gap:calc(var(--u)*1)}
+  .mapHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.8)}
+  .mstats{text-align:left}
+  #mapBuild{max-width:100%}
+}
+
+/* ============================================================
+   HULL
+   The resource you spend to score, so it sits under the objective
+   rail rather than in a corner — you must be able to read it without
+   taking your eyes off the road.
+   ============================================================ */
+.hudDrv{
+  display:flex;flex-direction:column;align-items:flex-start;
+  gap:calc(var(--u)*1.5);
+}
+.hull{
+  width:calc(var(--u)*22);
+  opacity:0;transition:opacity .25s;
+}
+.hull.on{opacity:1}
+.hullHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.4);
+}
+.hullHead span{
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.hullHead b{
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;
+}
+.hullBar{
+  height:calc(var(--u)*.7);background:rgba(255,255,255,.10);
+  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+}
+.hullBar i{
+  display:block;height:100%;width:100%;border-radius:99px;
+  background:linear-gradient(90deg,#2FE08A,#7BF5B0);
+  box-shadow:0 0 calc(var(--u)*1.4) rgba(47,224,138,.65);
+  transition:width .16s linear,background .3s;
+}
+.hull.warn .hullBar i{background:linear-gradient(90deg,#E0A32F,var(--amber));
+  box-shadow:0 0 calc(var(--u)*1.4) rgba(255,177,61,.7)}
+.hull.crit .hullBar i{background:linear-gradient(90deg,#B01226,var(--red));
+  box-shadow:0 0 calc(var(--u)*1.8) rgba(255,51,85,.85)}
+.hull.crit .hullHead b{color:var(--red)}
+.hull.crit{animation:hullPulse .8s ease-in-out infinite}
+@keyframes hullPulse{50%{opacity:.62}}
+
+/* The convoy banner. It sits in the objective column because it is a second
+   objective, and it is amber because that is what the haulers are. */
+.convoy{
+  display:flex;align-items:center;gap:calc(var(--u)*.8);
+  font-size:max(10px,calc(var(--u)*1.35));font-weight:800;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--amber);white-space:nowrap;
+  border:1px solid rgba(255,177,61,.5);
+  background:rgba(255,177,61,.10);
+  padding:calc(var(--u)*.3) calc(var(--u)*1);
+  border-radius:99px;
+  opacity:0;transform:translateY(calc(var(--u)*-.6));
+  transition:opacity .2s,transform .2s;
+}
+.convoy.on{opacity:1;transform:none;animation:convoyPulse 1.1s ease-in-out infinite}
+.convoy span::before{content:'Convoy'}
+.convoy b{
+  font-variant-numeric:tabular-nums;color:#1A0C04;background:var(--amber);
+  border-radius:99px;padding:0 calc(var(--u)*.7);letter-spacing:.06em;
+}
+@keyframes convoyPulse{50%{border-color:rgba(255,177,61,.95)}}
+
+/* The wrecking chain sits in the objective column's normal flow rather than
+   at a hand-picked offset — an absolutely positioned counter here collided
+   with the hull bar and the toasts the moment all three were live at once. */
+.wreck{
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--amber);white-space:nowrap;
+  opacity:0;transition:opacity .15s;
+  text-shadow:0 0 calc(var(--u)*2) rgba(255,177,61,.8);
+}
+.wreck.on{opacity:1}
+
+@media (max-aspect-ratio:1/1){
+  .hull{width:calc(var(--u)*20)}
+}
+
+
+/* ============================================================
+   DAILY DROP
+   One screen, one number, one button. It is a gift, not a decision.
+   ============================================================ */
+#daily .panel{max-width:calc(var(--u)*44);text-align:center}
+.dayKick{
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:var(--amber);
+}
+.dayStreak{
+  margin-top:calc(var(--u)*.8);
+  font-size:max(10px,calc(var(--u)*2.2));font-weight:800;color:#fff;
+  letter-spacing:.06em;
+}
+.dayAmt{
+  display:flex;align-items:baseline;justify-content:center;gap:calc(var(--u)*.9);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*.8);
+}
+.dayAmt b{
+  font-size:max(10px,calc(var(--u)*7));font-weight:800;line-height:1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;
+}
+.dayAmt span{
+  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.dayNext{
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
+  padding-bottom:calc(var(--u)*2.2);
+  border-bottom:1px solid var(--edge);
+  margin-bottom:calc(var(--u)*2.2);
+}
+#daily .btn{width:100%;justify-content:center}
+
+
+/* ============================================================
+   RECORDS
+   A ladder of your own runs. There is no global board — CrazyGames'
+   leaderboard is server-to-server and this build has no server — so this
+   has to carry the "beat that" job on its own, which means the row you are
+   chasing has to be legible at a glance.
+   ============================================================ */
+#board .panel{max-width:calc(var(--u)*76)}
+.bdHead{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:calc(var(--u)*2);margin-bottom:calc(var(--u)*2);
+  padding-bottom:calc(var(--u)*1.2);border-bottom:1px solid var(--edge);
+}
+/* The CrazyGames avatar, sized in UI units so it tracks the name beside it.
+   `margin-right:auto` keeps the note on the far right where it was. */
+.bdPic{
+  width:calc(var(--u)*5);height:calc(var(--u)*5);border-radius:50%;
+  object-fit:cover;flex:0 0 auto;align-self:center;
+  border:1px solid var(--edge);background:rgba(255,255,255,.04);
+}
+.bdPic.hide{display:none}
+.bdHead > div:first-of-type{margin-right:auto}
+.bdKick{
+  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);
+}
+.bdWho{
+  margin:calc(var(--u)*.6) 0 0;
+  font-size:max(10px,calc(var(--u)*3));font-weight:800;color:#fff;
+  letter-spacing:.04em;text-transform:uppercase;line-height:1;
+}
+.bdNote{
+  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);text-align:right;
+}
+.bdRows{display:flex;flex-direction:column;gap:calc(var(--u)*.4);margin-bottom:calc(var(--u)*2.2)}
+.bdRow{
+  display:grid;
+  grid-template-columns:calc(var(--u)*4) 1fr auto auto auto;
+  align-items:baseline;gap:calc(var(--u)*1.2);
+  padding:calc(var(--u)*.85) calc(var(--u)*1.2);
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(150,175,215,.10);
+  border-left:calc(var(--u)*.28) solid rgba(150,175,215,.26);
+}
+.bdRow:nth-child(1){border-left-color:var(--amber)}
+.bdRow:nth-child(2){border-left-color:rgba(198,210,232,.7)}
+.bdRow:nth-child(3){border-left-color:#9C5A1E}
+/* the run you just finished, so you can find yourself without counting */
+.bdRow.me{background:rgba(61,232,255,.09);border-color:rgba(61,232,255,.35)}
+.bdN{
+  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:var(--dim);
+  font-variant-numeric:tabular-nums;
+}
+.bdRow:nth-child(1) .bdN{color:var(--amber)}
+.bdS{
+  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+}
+.bdD,.bdW,.bdT{
+  font-size:max(10px,calc(var(--u)*1.15));font-weight:700;color:var(--dim);
+  letter-spacing:.12em;text-transform:uppercase;
+  font-variant-numeric:tabular-nums;
+}
+.bdD{color:var(--cyan)}
+.bdEmpty{
+  padding:calc(var(--u)*3) 0;text-align:center;
+  font-size:max(10px,calc(var(--u)*1.4));color:var(--dim);font-weight:600;
+}
+#board .btn{width:100%;justify-content:center}
+
+/* the rank on the game-over panel */
+.ovPlace{
+  margin-top:calc(var(--u)*.5);
+  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.ovPlace.in{color:var(--amber)}
+
+@media (max-aspect-ratio:1/1){
+  .bdHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.6)}
+  .bdNote{text-align:left}
+  .bdRow{grid-template-columns:calc(var(--u)*3.4) 1fr auto;row-gap:calc(var(--u)*.3)}
+  .bdW,.bdT{display:none}
+  .ovFoot{flex-direction:column}
+}
+
+
+/* ============================================================
+   LEVELS
+   The bar lives directly under the quota because it is the other thing
+   filling up, and the level-up screen shares the card language used by the
+   event screen so both read as the same class of object.
+   ============================================================ */
+.xp{width:calc(var(--u)*30)}
+.xpHead{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:calc(var(--u)*.35);
+}
+.xpHead span{
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--dim);
+}
+.xpHead b{color:#fff;font-variant-numeric:tabular-nums}
+.xpHead i{
+  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));font-weight:800;
+  color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em;
+}
+.xpBar{
+  height:calc(var(--u)*.42);background:rgba(255,255,255,.10);
+  border-radius:99px;overflow:hidden;
+}
+.xpBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7BF5B0,#3DE8FF);
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(123,245,176,.7);
+  transition:width .2s linear;
+}
+.xp.max .xpBar i{background:linear-gradient(90deg,var(--amber),#FFD790)}
+
+.luKick{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;
+}
+.luKick b{color:#fff;font-variant-numeric:tabular-nums}
+#levelup .dcard{border-top-color:#7BF5B0}
+#levelup .dcard:hover{background:rgba(123,245,176,.09)}
+#levelup .dcard.uncommon{border-top-color:var(--magenta)}
+#levelup .dcard.rare{border-top-color:var(--amber)}
+
+/* ---- district cleared ---- */
+.clKick{
+  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;
+}
+.clName{
+  margin:calc(var(--u)*.8) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
+  letter-spacing:-.01em;color:#fff;line-height:1;
+}
+.clRow{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.4);
+  margin:calc(var(--u)*2.2) 0 calc(var(--u)*1.6);
+  padding:calc(var(--u)*1.4) 0;
+  border-top:1px solid rgba(255,255,255,.10);
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.clRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
+.clRow span{
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
+  color:rgba(255,255,255,.42);font-weight:700;
+}
+.clRow b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.clRow b.mint{color:#7BF5B0}
+.clXpWrap{margin:0 0 calc(var(--u)*1.8)}
+.clXpHead{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:calc(var(--u)*.7);
+  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(255,255,255,.42);font-weight:700;
+}
+.clXpHead b{color:#fff;font-variant-numeric:tabular-nums}
+.clXpHead i{font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.clXpBar{
+  height:calc(var(--u)*.85);border-radius:99px;overflow:hidden;
+  background:rgba(255,255,255,.09);
+}
+.clXpBar i{
+  display:block;height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7BF5B0,#3DE8FF);
+  box-shadow:0 0 calc(var(--u)*1.2) rgba(123,245,176,.7);
+  transition:width .5s cubic-bezier(.2,.8,.2,1);
+}
+.clLvl{
+  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
+  font-weight:800;color:#7BF5B0;margin-bottom:calc(var(--u)*1.8);
+  animation:clPulse 1.6s ease-in-out infinite;
+}
+@keyframes clPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.clLvl.off{display:none}
+@media (max-width:760px){ .clRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
+  .clRow div{flex-direction:row;justify-content:space-between;align-items:baseline} }
+
+</style>
+<script>
+/* GameMonetize adapter.
+   ------------------------------------------------------------------
+   Presents the platform seam's shape — see the contract on Ads.resolve()
+   in game.js — over the GameMonetize HTML5 SDK.
+
+   Verified against https://github.com/GameMonetize/GameMonetize.com-SDK:
+
+     script   https://api.gamemonetize.com/sdk.js
+     config   window.SDK_OPTIONS = { gameId, onEvent }
+     events   SDK_READY, SDK_GAME_PAUSE, SDK_GAME_START
+     ads      sdk.showBanner()          — despite the name, the interstitial
+
+   The thing to know before choosing this network: **there are no rewarded
+   ads.** Their SDK documents showBanner() and nothing else. This game's
+   monetization leans on rewarded placements — revive, and double your coins
+   — and neither can exist here.
+
+   So this adapter declares `caps.rewarded = false`, and the game removes
+   both offers rather than showing buttons that cannot pay out. That is the
+   same rule CrazyGames enforce and it is worth honouring everywhere: a
+   rewarded button that does nothing is worse than no button.
+
+   What survives is the interstitial between runs, and the coin-priced
+   revive, which never needed an ad in the first place.
+
+   Self-hosting with GameMonetize additionally requires contacting them
+   (info@gamemonetize.com) — the gameId alone is not enough.
+   ------------------------------------------------------------------ */
+(() => {
+  const GAME_ID = window.__NH_GAME_ID || '[SET YOUR GAMEMONETIZE GAME ID]';
+
+  let ready = false, readyWaiters = [];
+  let pending = null;
+
+  const settle = (ok, err) => {
+    if (!pending) return;
+    const p = pending; pending = null;
+    if (ok) p.adFinished && p.adFinished();
+    else p.adError && p.adError(err || { code: 'other', message: 'ad failed' });
+  };
+
+  window.SDK_OPTIONS = {
+    gameId: GAME_ID,
+    onEvent(a){
+      const n = a && a.name;
+      if (n === 'SDK_READY') {
+        ready = true;
+        readyWaiters.splice(0).forEach(fn => fn());
+      } else if (n === 'SDK_GAME_PAUSE') {
+        /* the ad is on screen */
+        if (pending && pending.adStarted) pending.adStarted();
+      } else if (n === 'SDK_GAME_START') {
+        /* their only "ad is over" signal, and it fires whether the ad played
+           or was skipped for lack of fill — so it resolves the request but
+           must never be read as a reward, which is moot here since this
+           network has no rewarded placements at all */
+        settle(true);
+      }
+    }
+  };
+
+  window.__NH_PROVIDER = {
+    name: 'gamemonetize',
+    caps: { rewarded: false, midgame: true },
+
+    init(){
+      return new Promise(resolve => {
+        if (ready) return resolve();
+        readyWaiters.push(resolve);
+        setTimeout(resolve, 8000);      // never hang the boot on the portal
+      });
+    },
+
+    ad: {
+      requestAd(type, cb){
+        if (type === 'rewarded') {
+          /* declared unavailable in caps, so the game should never ask —
+             answered honestly rather than silently if it somehow does */
+          cb.adError && cb.adError({ code: 'other', message: 'no rewarded ads on this network' });
+          return;
+        }
+        const s = window.sdk;
+        if (!s || typeof s.showBanner !== 'function') {
+          cb.adError && cb.adError({ code: 'other', message: 'sdk unavailable' });
+          return;
+        }
+        pending = cb;
+        /* resolution arrives on SDK_GAME_START; guard in case it never does */
+        setTimeout(() => settle(false, { code: 'unfilled', message: 'no ad available' }), 20000);
+        try { s.showBanner(); } catch (e) { settle(false, { code: 'other', message: 'request threw' }); }
+      },
+      hasAdblock(){ return Promise.resolve(false); }
+    },
+
+    game: {
+      settings: { muteAudio: false, disableChat: false }
+    }
+  };
+
+  const js = document.createElement('script');
+  js.src = 'https://api.gamemonetize.com/sdk.js';
+  js.id = 'gamemonetize-sdk';
+  document.head.appendChild(js);
+})();
+
+</script>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+
+  <!-- ============ in-run HUD ============ -->
+  <div id="hud" class="layer">
+    <div class="hudTop">
+      <div class="stat">
+        <div class="lbl">Score</div>
+        <div class="val" id="score">0</div>
+        <div class="build" id="build"></div>
+      </div>
+
+      <div class="hudMid">
+        <div class="obj" id="obj">
+          <div class="objHead"><span id="objLbl">Quota</span><b id="objVal">0 / 0</b></div>
+          <div class="objBar"><i class="objPend" id="objPend"></i><i id="objFill"></i></div>
+          <div class="objDist"><i id="objDist"></i></div>
+        </div>
+
+        <div class="combo" id="combo">
+          <div class="cmult" id="cmult">&times;1.0</div>
+          <div class="cpts" id="cpts">0</div>
+          <div class="cbar"><i id="cfill"></i></div>
+          <div class="cnote">Chain</div>
+        </div>
+
+        <div class="xp" id="xp">
+          <div class="xpHead"><span>Level <b id="xpLvl">1</b></span><i id="xpNext">0 / 20</i></div>
+          <div class="xpBar"><i id="xpFill"></i></div>
+        </div>
+
+        <div class="wreck" id="wreckChain"></div>
+
+        <div class="convoy" id="convoy"><span></span><b id="convoyLeft">3</b></div>
+
+        <div class="heat" id="heat">
+          <span class="hlbl">Heat</span>
+          <i></i><i></i><i></i>
+        </div>
+      </div>
+
+      <div class="stat right">
+        <div class="dchip" id="dchip">District 1</div>
+        <div class="lbl">Coins</div>
+        <div class="val amber" id="coins">0</div>
+      </div>
+    </div>
+
+    <div class="hudBot">
+      <div class="hudDrv">
+        <div class="hull" id="hull">
+          <div class="hullHead"><span>Hull</span><b id="hullVal">100</b></div>
+          <div class="hullBar"><i id="hullFill"></i></div>
+        </div>
+        <div class="speedo">
+          <div class="spdv" id="spd">0</div>
+          <div class="spdu">km/h</div>
+        </div>
+      </div>
+      <div class="powers" id="powers"></div>
+    </div>
+
+    <div id="toasts"></div>
+    <div id="gsHint" class="gsHint">
+      <b>Drag anywhere to steer</b>
+      <span>Ram traffic to build the chain &middot; grab power-ups &middot; it banks itself</span>
+    </div>
+  </div>
+
+  <!-- ============ touch controls ============ -->
+  <div id="touch" class="layer">
+    <button class="tbtn tl" data-k="left" aria-label="Steer left"><svg viewBox="0 0 24 24"><path d="M15 4 7 12l8 8"/></svg></button>
+    <button class="tbtn tr" data-k="right" aria-label="Steer right"><svg viewBox="0 0 24 24"><path d="m9 4 8 8-8 8"/></svg></button>
+  </div>
+
+  <!-- ============ menu ============ -->
+  <div id="menu" class="layer screen">
+    <div class="menuIn">
+      <div class="eyebrow">Arcade drift · Outrun division</div>
+      <h1 class="title"><span class="t1">Neon</span><span class="t2">Heat</span></h1>
+      <p class="tag">Steer. Ram everything. Bank it before the chain dies.</p>
+      <div class="btns">
+        <button class="btn primary" id="btnPlay">Start Run<span class="key">Enter</span></button>
+        <button class="btn" id="btnGarage">Garage</button>
+      </div>
+      <div class="hints">
+        <div class="hint"><b>&#8592; &#8594;</b> Steer &mdash; that is the whole control</div>
+      </div>
+      <div class="best">Deepest run <b id="menuBest">District 1</b></div>
+      <div class="opts">
+        <button class="mute" id="btnRecords" aria-label="Your records">Records</button>
+        <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
+        <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
+        <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ route map ============ -->
+  <div id="map" class="layer screen">
+    <div class="mapIn">
+      <div class="mapHead">
+        <div>
+          <div class="mkicker">Act <b id="mAct">1</b> of 3 &middot; choose your route</div>
+          <h2 class="mtitle" id="mTitle">The Grid</h2>
+        </div>
+        <div class="mstats">
+          <div><span>Score</span><b id="mScore">0</b></div>
+          <div><span>Cleared</span><b id="mCleared">0</b></div>
+        </div>
+      </div>
+      <div class="mapBoard" id="mapBoard">
+        <svg class="mapLines" id="mapLines" preserveAspectRatio="none"></svg>
+        <div class="mapNodes" id="mapNodes"></div>
+      </div>
+      <div class="mapFoot">
+        <div class="build" id="mapBuild"></div>
+        <div class="mapLegend">
+          <i class="lg run"></i>Run
+          <i class="lg elite"></i>Elite
+          <i class="lg depot"></i>Depot
+          <i class="lg boss"></i>Pursuit
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ event choice ============ -->
+  <div id="contract" class="layer screen">
+    <div class="draftIn">
+      <div class="ckicker" id="cKicker">Dispatch</div>
+      <h2 class="dtitle">Pick tonight's event</h2>
+      <div class="dsub" id="cSub">Risk buys levels &mdash; the safe run pays none</div>
+      <div class="ccards" id="cCards"></div>
+    </div>
+  </div>
+
+  <!-- ============ depot ============ -->
+  <div id="depot" class="layer screen">
+    <div class="draftIn">
+      <div class="ckicker depotk">Depot</div>
+      <h2 class="dtitle">Off the street</h2>
+      <div class="dsub">One service, then back out there</div>
+      <div class="ccards" id="depotCards"></div>
+    </div>
+  </div>
+
+  <!-- ============ daily reward ============ -->
+  <div id="daily" class="layer screen">
+    <div class="panel">
+      <div class="dayKick">Daily drop</div>
+      <div class="dayStreak" id="dayStreak">Day one</div>
+      <div class="dayAmt"><b class="amber" id="dayAmount">900</b><span>coins</span></div>
+      <div class="dayNext" id="dayNext">Tomorrow: 1,800</div>
+      <button class="btn primary" id="btnDaily">Take it<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ district brief ============ -->
+  <div id="brief" class="layer screen">
+    <div class="briefIn">
+      <div class="bkicker" id="bkicker">District 1</div>
+      <h2 class="bname" id="bname">Dockside</h2>
+      <div class="bsub" id="bsub">Heat floor 0</div>
+      <p class="bobj" id="bobj">Bank <b>4,200</b> before the checkpoint.</p>
+      <button class="btn primary" id="btnGo">Roll out<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ level up ============ -->
+  <div id="levelup" class="layer screen">
+    <div class="draftIn">
+      <div class="luKick">Level <b id="luLevel">2</b></div>
+      <h2 class="dtitle">Take a perk</h2>
+      <div class="dsub">It stays with you for the rest of the run</div>
+      <div class="dcards" id="luCards"></div>
+      <div class="dhint">Press <b>1</b> <b>2</b> <b>3</b> to choose</div>
+    </div>
+  </div>
+
+  <!-- ============ district cleared ============ -->
+  <div id="cleared" class="layer screen">
+    <div class="panel">
+      <div class="clKick">Checkpoint clear</div>
+      <h2 class="clName" id="clDistrict">Dockside</h2>
+      <div class="clRow">
+        <div><span>Banked</span><b id="clBanked">0</b></div>
+        <div><span>Earned</span><b class="amber" id="clCoins">0</b></div>
+        <div><span>Experience</span><b class="mint" id="clXp">+0</b></div>
+      </div>
+      <div class="clXpWrap">
+        <div class="clXpHead"><span>Level <b id="clLevel">1</b></span><i id="clNext">0 / 35</i></div>
+        <div class="clXpBar"><i id="clXpFill"></i></div>
+      </div>
+      <div class="clLvl" id="clLvl">Level up &mdash; take a perk</div>
+      <button class="btn primary" id="btnCleared">Keep going<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ game over ============ -->
+  <div id="over" class="layer screen">
+    <div class="panel">
+      <div class="ovHead">
+        <span class="ovKicker" id="ovKicker">Wrecked</span>
+        <span class="ovBadge" id="ovBadge">New best</span>
+      </div>
+      <div class="ovRank" id="ovRank">Reached district 1</div>
+      <div class="ovPlace" id="ovPlace">Personal best #1</div>
+      <div class="ovScore" id="ovScore">0</div>
+      <div class="ovRow">
+        <div><span>Best</span><b id="ovBest">0</b></div>
+        <div><span>Combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
+        <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
+      </div>
+      <!-- The two rewarded offers and the way past them sit in one stack at
+           one width. CrazyGames requires the continue-without-watching path
+           to match the ad offer in size, font and weight, so "Spend it in
+           the garage" cannot go back to being a third of a footer row. -->
+      <div class="ovActs">
+        <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
+        <!-- The paid route exists because their rewarded-ad rules require an
+             alternative to watching one. It is also the fallback that keeps
+             the screen useful when ads cannot serve at all. -->
+        <button class="btn rew ghost" id="btnReviveCoins">Revive for <b id="revivePrice">750</b> coins</button>
+        <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
+        <!-- One click back onto the road. The route board, the dispatch and
+             the brief are all still there behind Garage for anyone who wants
+             them, but they are no longer the toll on every retry. -->
+        <button class="btn primary" id="btnAgain">Run it again<span class="key">Enter</span></button>
+      </div>
+      <!-- A notice, not a popup: their adblock rules ask for the former and
+           explicitly forbid the latter, which would fight fullscreen. -->
+      <div class="ovAdNote hide" id="ovAdNote"></div>
+      <div class="ovFoot">
+        <button class="btn" id="btnOvGarage">Garage</button>
+        <button class="btn" id="btnOvBoard">Records</button>
+        <button class="btn" id="btnMenu">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ records ============ -->
+  <div id="board" class="layer screen">
+    <div class="panel wide">
+      <div class="bdHead">
+        <!-- Username and avatar both come from the CrazyGames account; the
+             game never asks for an identity of its own. Hidden for guests. -->
+        <img class="bdPic hide" id="bdPic" alt="" width="48" height="48">
+        <div>
+          <div class="bdKick">Records</div>
+          <h2 class="bdWho" id="bdWho">Your runs</h2>
+        </div>
+        <div class="bdNote">Best ten runs &middot; saved on this account</div>
+      </div>
+      <div class="bdRows" id="bdRows"></div>
+      <button class="btn primary" id="btnBdBack">Back<span class="key">Enter</span></button>
+    </div>
+  </div>
+
+  <!-- ============ garage ============ -->
+  <div id="garage" class="layer screen">
+    <div class="gPanel">
+      <!-- pinned: the way out and the number you are spending never scroll away -->
+      <div class="gTop">
+        <div class="gId">
+          <span class="gKick">Bay 07 &middot; Night shift</span>
+          <b>Garage</b>
+        </div>
+        <div class="gBal">
+          <span>Balance</span>
+          <b class="amber" id="gCoins">0</b>
+        </div>
+        <div class="gAct">
+          <button class="btn" id="btnBack">Menu</button>
+          <button class="btn primary" id="btnRace">Roll out<span class="key">Enter</span></button>
+        </div>
+      </div>
+      <div class="gTape"></div>
+
+      <div class="gFloor">
+        <!-- the bay: your actual car, on the deck, wearing what you have fitted -->
+        <div class="gBay">
+          <canvas id="gCanvas" width="640" height="520"></canvas>
+          <div class="gPlate">
+            <div class="gpName">Viper <em>&mdash; unit 07</em></div>
+            <div class="gpRows" id="gPlate"></div>
+          </div>
+          <div class="gFitted" id="gFitted"></div>
+        </div>
+
+        <!-- the work order -->
+        <div class="gWork" id="gWork">
+          <div class="gwHead"><h3>Tuning</h3><span id="gwUps">0 / 30</span></div>
+          <div class="gUps" id="gUps"></div>
+          <div class="gwHead"><h3>Hardware</h3><span id="gwGear">0 / 6</span></div>
+          <div class="gGear" id="gGear"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ simulated ad ============ -->
+  <div id="ad" class="layer">
+    <div class="adBox">
+      <div class="adTag">Advertisement</div>
+      <div class="adArt"><div class="adPulse"></div></div>
+      <div class="adMsg" id="adMsg">Your reward is on the way</div>
+      <div class="adBar"><i id="adFill"></i></div>
+      <div class="adNote">Simulated placement — wired to the CrazyGames SDK in production</div>
+    </div>
+  </div>
+</div>
+<script>
+/* ============================================================
+   NEON HEAT — audio
+   Fully synthesised. Same principle as the renderer: no asset files,
+   so nothing to license, nothing to download, nothing to sound cheap.
+   A four-layer synthwave bed whose arrangement tracks run intensity,
+   plus a small SFX set driven off gameplay state.
+   ============================================================ */
+window.NHAudio = (() => {
+'use strict';
+
+let ac = null, master = null, musicBus = null, sfxBus = null;
+let ready = false, muted = false, engineOff = false;
+/* Ducking is separate from the user's mute so an ad can silence the game
+   without destroying the setting they chose. */
+let ducked = false;
+/* The portal can mute us, and its setting outranks the in-game toggle —
+   a player who muted on the CrazyGames page must stay muted even if they
+   then hit the sound button in here. */
+let siteMuted = false;
+const MASTER = 0.9;
+function applyMaster(){
+  if (!master) return;
+  const silent = muted || ducked || siteMuted;
+  master.gain.setTargetAtTime(silent ? 0 : MASTER, ac.currentTime, 0.04);
+}
+
+/* ---- musical material ---------------------------------------------------
+   A natural-minor vamp: i - VI - III - VII. Bright enough to drive to,
+   dark enough to read as a police chase.                                   */
+const PROG = [
+  { root: 55.00, chord: [55.00, 65.41, 82.41] },   // Am
+  { root: 43.65, chord: [43.65, 65.41, 87.31] },   // F
+  { root: 65.41, chord: [65.41, 82.41, 98.00] },   // C
+  { root: 49.00, chord: [49.00, 61.74, 73.42] }    // G
+];
+const BASS_STEPS = [0, 0, 7, 0, 0, 12, 0, 7, 0, 0, 7, 0, 12, 0, 7, 3];
+const ARP_STEPS  = [0, 4, 7, 12, 7, 4, 7, 12, 0, 4, 7, 12, 14, 12, 7, 4];
+const semi = (f, n) => f * Math.pow(2, n / 12);
+
+const BPM = 126;
+const STEP = 60 / BPM / 4;          // sixteenth notes
+let step = 0, nextTime = 0, timer = null;
+let intensity = 0, targetInt = 0;
+
+/* persistent voices */
+let engOsc1, engOsc2, engFilt, engGain, engSub, engHi, engHiGain, engVib;
+let sqNoise, sqFilt, sqGain;
+let sirOsc, sirGain, sirLfo;
+
+/* ---------------------------------------------------------------- helpers */
+function noiseBuffer(secs){
+  const n = Math.floor(ac.sampleRate * secs);
+  const b = ac.createBuffer(1, n, ac.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+let NOISE = null;
+function noiseSource(loop){
+  const s = ac.createBufferSource();
+  s.buffer = NOISE;
+  s.loop = !!loop;
+  return s;
+}
+/* one-shot envelope helper: returns the gain node to route through */
+function env(dest, peak, attack, decay, at){
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), at + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + attack + decay);
+  g.connect(dest);
+  return g;
+}
+
+/* ------------------------------------------------------------------- init */
+function init(){
+  if (ready) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  ac = new AC();
+  NOISE = noiseBuffer(2);
+
+  master = ac.createGain();
+  master.gain.value = (muted || ducked || siteMuted) ? 0 : MASTER;
+  master.connect(ac.destination);
+
+  /* a touch of compression keeps the bed from fighting the SFX */
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 3.2; comp.attack.value = 0.004;
+  comp.connect(master);
+
+  musicBus = ac.createGain(); musicBus.gain.value = 0.55; musicBus.connect(comp);
+  sfxBus   = ac.createGain(); sfxBus.gain.value   = 0.85; sfxBus.connect(comp);
+
+  buildEngine();
+  buildSqueal();
+  buildSiren();
+
+  ready = true;
+  nextTime = ac.currentTime + 0.08;
+  tick();
+}
+
+/* iOS parks the AudioContext in `interrupted` when the tab is backgrounded or
+   a call arrives, and it usually surfaces as `suspended` on the way back —
+   but only a real user gesture is allowed to restart it, which is why this
+   hangs off input events rather than visibilitychange. Android keeps the
+   context running and silences it instead, so this is a no-op there. */
+function resume(){
+  /* Do NOT return after init(). Chrome hands back a running context when it
+     is constructed inside a gesture, but WebKit routinely hands back a
+     suspended one even then — so an early return here spent the player's
+     first gesture creating a context and left it silent until they happened
+     to produce a second. Build it and start it in the same gesture. */
+  if (!ready) init();
+  if (!ready || !ac) return;
+  if (ac.state === 'suspended' || ac.state === 'interrupted') {
+    try { ac.resume(); } catch (e) {}
+  }
+}
+
+/* ---------------------------------------------------------- engine voice
+   An electric drivetrain, not a combustion one. The first version was two
+   detuned sawtooths through a Q=6 resonant lowpass, which is a growl with a
+   honk sitting in it — fine for one lap and grating for twenty. This is a
+   motor whine instead: smooth triangles rising with speed, a quiet inverter
+   overtone above them, a sine hum underneath, and no resonance anywhere.
+   It is also mixed far lower, so the music carries the scene and the car
+   sits under it rather than in front of it. */
+function buildEngine(){
+  engFilt = ac.createBiquadFilter();
+  engFilt.type = 'lowpass';
+  engFilt.frequency.value = 260;
+  engFilt.Q.value = 0.7;                       // no resonant peak to honk
+
+  engGain = ac.createGain();
+  engGain.gain.value = 0;
+
+  engOsc1 = ac.createOscillator(); engOsc1.type = 'triangle'; engOsc1.frequency.value = 50;
+  engOsc2 = ac.createOscillator(); engOsc2.type = 'triangle'; engOsc2.frequency.value = 50;
+  engOsc2.detune.value = 8;                    // slow beating, so it breathes
+  engSub  = ac.createOscillator(); engSub.type  = 'sine';     engSub.frequency.value  = 25;
+
+  /* the inverter: a quiet octave-and-a-bit above, which is what makes an EV
+     read as electric rather than as a flute */
+  engHi = ac.createOscillator(); engHi.type = 'sine'; engHi.frequency.value = 100;
+  engHiGain = ac.createGain(); engHiGain.gain.value = 0.08;
+  engHi.connect(engHiGain); engHiGain.connect(engFilt);
+
+  /* a touch of vibrato keeps it from reading as a test tone */
+  engVib = ac.createOscillator(); engVib.type = 'sine'; engVib.frequency.value = 0.32;
+  const vibAmt = ac.createGain(); vibAmt.gain.value = 4;      // cents
+  engVib.connect(vibAmt); vibAmt.connect(engOsc1.detune); vibAmt.connect(engOsc2.detune);
+
+  engOsc1.connect(engFilt); engOsc2.connect(engFilt); engSub.connect(engFilt);
+  engFilt.connect(engGain); engGain.connect(sfxBus);
+  engOsc1.start(); engOsc2.start(); engSub.start(); engHi.start(); engVib.start();
+}
+
+function buildSqueal(){
+  sqFilt = ac.createBiquadFilter();
+  sqFilt.type = 'bandpass';
+  sqFilt.frequency.value = 2300;
+  sqFilt.Q.value = 7;
+  sqGain = ac.createGain();
+  sqGain.gain.value = 0;
+  sqNoise = noiseSource(true);
+  sqNoise.connect(sqFilt); sqFilt.connect(sqGain); sqGain.connect(sfxBus);
+  sqNoise.start();
+}
+
+function buildSiren(){
+  sirGain = ac.createGain(); sirGain.gain.value = 0;
+  sirOsc = ac.createOscillator(); sirOsc.type = 'square'; sirOsc.frequency.value = 620;
+  const sirFilt = ac.createBiquadFilter();
+  sirFilt.type = 'lowpass'; sirFilt.frequency.value = 1400;
+  /* the classic two-tone wail is just a slow LFO on pitch */
+  sirLfo = ac.createOscillator(); sirLfo.type = 'sine'; sirLfo.frequency.value = 1.1;
+  const lfoAmt = ac.createGain(); lfoAmt.gain.value = 150;
+  sirLfo.connect(lfoAmt); lfoAmt.connect(sirOsc.frequency);
+  sirOsc.connect(sirFilt); sirFilt.connect(sirGain); sirGain.connect(sfxBus);
+  sirOsc.start(); sirLfo.start();
+}
+
+/* --------------------------------------------------------------- drum kit */
+function kick(at, vel){
+  const o = ac.createOscillator(); o.type = 'sine';
+  o.frequency.setValueAtTime(150, at);
+  o.frequency.exponentialRampToValueAtTime(44, at + 0.11);
+  const g = env(musicBus, 0.50 * vel, 0.005, 0.20, at);
+  o.connect(g); o.start(at); o.stop(at + 0.3);
+}
+function snare(at, vel){
+  const n = noiseSource(false);
+  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1600;
+  const g = env(musicBus, 0.15 * vel, 0.003, 0.15, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.25);
+
+  const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = 190;
+  const g2 = env(musicBus, 0.10 * vel, 0.003, 0.09, at);
+  o.connect(g2); o.start(at); o.stop(at + 0.16);
+}
+function hat(at, vel){
+  const n = noiseSource(false);
+  const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7200;
+  const g = env(musicBus, 0.032 * vel, 0.002, 0.030, at);
+  n.connect(f); f.connect(g); n.start(at); n.stop(at + 0.08);
+}
+function bassNote(at, freq){
+  const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq;
+  const f = ac.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.setValueAtTime(220 + intensity * 260, at);
+  f.frequency.exponentialRampToValueAtTime(120, at + 0.16);
+  f.Q.value = 9;
+  const g = env(musicBus, 0.30, 0.006, 0.15, at);
+  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.24);
+}
+function arpNote(at, freq, vel){
+  const o = ac.createOscillator(); o.type = 'square'; o.frequency.value = freq;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2600; f.Q.value = 3;
+  const g = env(musicBus, 0.085 * vel, 0.004, 0.13, at);
+  o.connect(f); f.connect(g); o.start(at); o.stop(at + 0.2);
+}
+let padVoices = [];
+function setPad(chord, at){
+  padVoices.forEach(v => { try { v.g.gain.cancelScheduledValues(at); v.g.gain.setTargetAtTime(0.0001, at, 0.25); v.o.stop(at + 1.6); } catch (e) {} });
+  padVoices = [];
+  if (intensity < 1) return;
+  for (const f0 of chord) {
+    for (const det of [-6, 6]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = f0 * 4; o.detune.value = det;
+      const flt = ac.createBiquadFilter();
+      flt.type = 'lowpass'; flt.frequency.value = 500 + intensity * 700; flt.Q.value = 1;
+      const g = ac.createGain(); g.gain.value = 0.0001;
+      g.gain.setTargetAtTime(0.020 + intensity * 0.010, at, 0.35);
+      o.connect(flt); flt.connect(g); g.connect(musicBus);
+      o.start(at);
+      padVoices.push({ o, g });
+    }
+  }
+}
+
+/* ------------------------------------------------------------- sequencer */
+function playStep(s, at){
+  const bar = Math.floor(s / 16) % 4;
+  const ch = PROG[bar];
+  const i = s % 16;
+
+  if (i === 0) setPad(ch.chord, at);
+
+  /* Layer in as the run escalates — arrangement is still the intensity dial,
+     but the kit sits well back now. A kick on every quarter with eighth-note
+     hats over it is a drum machine playing at you for the length of a run;
+     the tune, the bass and the arpeggio were never the problem. */
+  if (i === 0 || i === 8) kick(at, 1);
+  if (intensity >= 2 && i === 14) kick(at, 0.5);
+  if (intensity >= 1 && (i === 4 || i === 12)) snare(at, 1);
+  if (intensity >= 2 && i % 4 === 0) hat(at, 1);
+  if (intensity >= 3 && i % 4 === 2) hat(at, 0.6);
+
+  if (BASS_STEPS[i] !== undefined && i % 2 === 0) bassNote(at, semi(ch.root, BASS_STEPS[i]));
+  if (intensity >= 2) arpNote(at, semi(ch.chord[0] * 4, ARP_STEPS[i]), intensity >= 3 ? 1 : 0.6);
+}
+
+function tick(){
+  if (!ready) return;
+  intensity += (targetInt - intensity) * 0.08;
+  while (nextTime < ac.currentTime + 0.14) {
+    playStep(step, nextTime);
+    step = (step + 1) % 64;
+    nextTime += STEP;
+  }
+  timer = setTimeout(tick, 25);
+}
+
+/* ------------------------------------------------------------------- API */
+const A = {
+  init, resume,
+  get on(){ return ready && !muted; },
+
+  toggleMute(){
+    muted = !muted;
+    applyMaster();
+    return muted;
+  },
+  isMuted(){ return muted; },
+
+  /* portal-driven mute (CrazyGames SDK settings.muteAudio) */
+  setSiteMute(on){
+    if (siteMuted === !!on) return;
+    siteMuted = !!on;
+    applyMaster();
+  },
+  /* what the sound button should actually read */
+  isSilenced(){ return muted || siteMuted; },
+  /* The engine is the one voice you hear without pause for a whole run, so
+     it gets its own switch. Killing it must not cost you the music. */
+  setEngine(on){ engineOff = !on; },
+  engineOn(){ return !engineOff; },
+  /* the graph, for automated mix checks — see the engine-voice notes */
+  _probe(){ return ready ? { ac, sfxBus, musicBus, engGain } : null; },
+  isForced(){ return siteMuted; },
+
+  /* silence for an ad or a backgrounded tab, then restore the user's setting */
+  duck(on){
+    if (ducked === !!on) return;
+    ducked = !!on;
+    applyMaster();
+  },
+
+  /* browsers throttle a hidden tab's timers; stop the sequencer outright */
+  setActive(on){
+    if (!ready) return;
+    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    else if (ac.state === 'running') ac.suspend();
+  },
+
+  /* continuous state, called every frame */
+  frame(st){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const spd = st.speed || 0;
+
+    /* Faint at a crawl, present at speed, never loud. The old voice sat at a
+       flat 0.055 whatever you were doing, which is why it nagged. */
+    const drive = st.playing ? 1 : 0.22;
+    const load = Math.min(1, spd / 620);
+    engGain.gain.setTargetAtTime(engineOff ? 0 : (0.005 + load * 0.009) * drive, t, 0.10);
+
+    /* Heard from across the street, not from inside the car. The previous
+       pass put the fundamental at 258-958Hz, which is a sustained tone right
+       in the band the ear is most sensitive to — quieter than the growl it
+       replaced and far more tiring. Down an octave and a half, and buried
+       under a low filter, it reads as a drivetrain you are near rather than
+       a note being played at you. */
+    const f = 46 + spd * 0.135 + (st.boost ? 22 : 0);
+    engOsc1.frequency.setTargetAtTime(f, t, 0.07);
+    engOsc2.frequency.setTargetAtTime(f, t, 0.07);
+    engSub.frequency.setTargetAtTime(f * 0.25, t, 0.07);
+    engHi.frequency.setTargetAtTime(f * 2.01, t, 0.07);
+    /* the inverter shimmer only shows up once there is load on the motor */
+    engHiGain.gain.setTargetAtTime(0.05 + load * 0.10, t, 0.12);
+    engFilt.frequency.setTargetAtTime(210 + spd * 0.42 + (st.boost ? 260 : 0), t, 0.08);
+
+    const sq = st.playing ? Math.min(1, (st.drift || 0) * (spd > 240 ? 1 : 0)) : 0;
+    sqGain.gain.setTargetAtTime(0.055 * sq, t, 0.05);
+    sqFilt.frequency.setTargetAtTime(1900 + sq * 1300, t, 0.06);
+
+    const si = st.playing ? Math.min(1, (st.cops || 0) / 2) : 0;
+    sirGain.gain.setTargetAtTime(0.020 * si, t, 0.25);
+
+    targetInt = st.intensity || 0;
+  },
+
+  /* one-shots */
+  bank(mult){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const base = 330 * Math.pow(2, Math.min(2.2, mult * 0.16) / 12 * 6);
+    [0, 4, 7, 12].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(base, n);
+      const g = env(sfxBus, 0.15, 0.005, 0.16, t + k * 0.045);
+      o.connect(g); o.start(t + k * 0.045); o.stop(t + k * 0.045 + 0.24);
+    });
+  },
+  /* Picking something up should read as a reward before you have parsed
+     which one it was: a rising arpeggio, brighter and faster for a Boost. */
+  pickup(hot){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const steps = hot ? [660, 880, 1320] : [523, 784, 1046];
+    steps.forEach((f, i) => {
+      const o = ac.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(f, t + i * 0.045);
+      const g = env(sfxBus, 0.20, 0.004, 0.13, t + i * 0.045);
+      o.connect(g); o.start(t + i * 0.045); o.stop(t + i * 0.045 + 0.2);
+    });
+  },
+  /* Convoy inbound. Two rising thirds, low enough to cut through the bed
+     without being another bright ping. */
+  warn(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [[196, 0], [262, 0.13]].forEach(([f, d]) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.setValueAtTime(f, t + d);
+      o.frequency.linearRampToValueAtTime(f * 1.02, t + d + 0.22);
+      const lp = ac.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 1400; lp.Q.value = 0.7;
+      const g = env(sfxBus, 0.26, 0.012, 0.24, t + d);
+      o.connect(lp); lp.connect(g); o.start(t + d); o.stop(t + d + 0.4);
+    });
+  },
+  nearMiss(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
+    f.frequency.setValueAtTime(2600, t);
+    f.frequency.exponentialRampToValueAtTime(420, t + 0.24);
+    const g = env(sfxBus, 0.24, 0.01, 0.22, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.32);
+  },
+  hit(power){
+    if (!ready) return;
+    const t = ac.currentTime, p = power || 1;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1100;
+    const g = env(sfxBus, 0.42 * p, 0.003, 0.20, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.3);
+
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(38, t + 0.22);
+    const g2 = env(sfxBus, 0.55 * p, 0.004, 0.26, t);
+    o.connect(g2); o.start(t); o.stop(t + 0.36);
+  },
+  /* the crunch: a body-panel transient over a low thump, pitched by force */
+  smash(power){
+    if (!ready) return;
+    const t = ac.currentTime, p = Math.min(1.7, power || 1);
+
+    /* Crunch, not hiss: a lowpass sweeping down keeps the weight in the body
+       of the hit. The old one band-passed noise from 1.8k, which put the
+       loudest part of every collision in the ear's sorest band. */
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter();
+    f.type = 'lowpass'; f.Q.value = 0.8;
+    f.frequency.setValueAtTime(1100 * p, t);
+    f.frequency.exponentialRampToValueAtTime(180, t + 0.20);
+    const g = env(sfxBus, 0.44 * p, 0.002, 0.24, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.34);
+
+    /* the thump is what makes it land — give it the most room */
+    const o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(190 * p, t);
+    o.frequency.exponentialRampToValueAtTime(32, t + 0.28);
+    const g2 = env(sfxBus, 0.70 * p, 0.003, 0.32, t);
+    o.connect(g2); o.start(t); o.stop(t + 0.42);
+
+    /* Sheet metal: two detuned triangles low in the midrange, decaying fast.
+       This was a square through a 900Hz highpass — a square's odd harmonics
+       with the body removed, which is buzz and nothing else. */
+    const base = 300 + Math.random() * 190;
+    for (const [mult, amp] of [[1, 0.15], [1.47, 0.09]]) {
+      const m = ac.createOscillator(); m.type = 'triangle';
+      m.frequency.setValueAtTime(base * mult, t);
+      m.frequency.exponentialRampToValueAtTime(base * mult * 0.72, t + 0.14);
+      const mf = ac.createBiquadFilter();
+      mf.type = 'lowpass'; mf.frequency.value = 2400; mf.Q.value = 0.6;
+      const g3 = env(sfxBus, amp * p, 0.002, 0.12, t);
+      m.connect(mf); mf.connect(g3); m.start(t); m.stop(t + 0.2);
+    }
+  },
+
+  spark(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const n = noiseSource(false);
+    const f = ac.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 3800;
+    const g = env(sfxBus, 0.10, 0.002, 0.05, t);
+    n.connect(f); f.connect(g); n.start(t); n.stop(t + 0.09);
+  },
+  ui(up){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'square';
+    o.frequency.setValueAtTime(up ? 520 : 400, t);
+    o.frequency.exponentialRampToValueAtTime(up ? 780 : 260, t + 0.08);
+    const g = env(sfxBus, 0.08, 0.004, 0.09, t);
+    o.connect(g); o.start(t); o.stop(t + 0.16);
+  },
+  chip(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, 7, 12, 19].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'sine';
+      o.frequency.value = semi(523.25, n);
+      const g = env(sfxBus, 0.16, 0.004, 0.42, t + k * 0.06);
+      o.connect(g); o.start(t + k * 0.06); o.stop(t + k * 0.06 + 0.55);
+    });
+  },
+  curse(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, -1, -5].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = semi(146.83, n);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+      const g = env(sfxBus, 0.15, 0.02, 0.5, t + k * 0.05);
+      o.connect(f); f.connect(g); o.start(t + k * 0.05); o.stop(t + k * 0.05 + 0.7);
+    });
+  },
+  clear(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    [0, 4, 7, 12, 16, 19].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(261.63, n);
+      const g = env(sfxBus, 0.17, 0.005, 0.3, t + k * 0.07);
+      o.connect(g); o.start(t + k * 0.07); o.stop(t + k * 0.07 + 0.42);
+    });
+  },
+  boss(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    for (const d of [0, 0.16]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(82, t + d);
+      o.frequency.exponentialRampToValueAtTime(55, t + d + 0.5);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = 4;
+      const g = env(sfxBus, 0.5, 0.01, 0.55, t + d);
+      o.connect(f); f.connect(g); o.start(t + d); o.stop(t + d + 0.7);
+    }
+  },
+  bossHit(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'square';
+    o.frequency.setValueAtTime(420, t);
+    o.frequency.exponentialRampToValueAtTime(120, t + 0.16);
+    const g = env(sfxBus, 0.22, 0.003, 0.18, t);
+    o.connect(g); o.start(t); o.stop(t + 0.24);
+  },
+  crash(){
+    if (!ready) return;
+    A.hit(1.5);
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(300, t);
+    o.frequency.exponentialRampToValueAtTime(48, t + 0.9);
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1200;
+    const g = env(sfxBus, 0.3, 0.01, 1.0, t);
+    o.connect(f); f.connect(g); o.start(t); o.stop(t + 1.2);
+  }
+};
+return A;
+})();
+
+/* ============================================================
+   NEON HEAT — perks, curses and events
+   Every perk writes into a flat modifier table the physics and
+   scoring read each frame. Keeping effects declarative means builds
+   stack and interact without special-casing anywhere in the engine.
+
+   Perks and chips used to be two pools delivered by two card screens,
+   writing into this same table. They are one pool now — 49 perks, three
+   offered per level, fifteen levels deep.
+   ============================================================ */
+window.NHChips = (() => {
+'use strict';
+
+/* the full modifier surface — anything a perk can touch lives here */
+function defaults(){
+  return {
+    bankMul: 1,        // payout multiplier when you cash in
+    wreckMul: 1,       // payout multiplier on a wreck specifically
+    multRate: 0.60,    // chain links -> multiplier slope
+    multCap: 9.9,
+    topMul: 1,
+    gripMul: 1,
+    chainTime: 3.2,    // seconds on the chain clock, reset by every wreck
+    boostTime: 1,      // scales how long a Boost pickup lasts
+    powerTime: 1,      // scales how long the timed pickups last
+    pickupRate: 1,     // how many power-ups are on the road
+    boostChain: 0,     // extra chain links for a wreck made while boosting
+    nearMul: 1,        // near-miss bonus scale
+    nearChain: 0,      // extra seconds a thread puts back on the clock
+    nearTop: 0,        // top speed gained per near miss, resets each district
+    ghostOnBank: 0,    // seconds police lose your trail after a bank
+    shockOnBank: 0,    // banking spins out nearby pursuit
+    crumple: 0,        // crashes absorbed per district
+    heatBonus: 0,      // extra scoring at Heat 2+
+    roadMul: 1,        // curse: narrower streets
+    trafficMul: 1,     // curse: heavier traffic
+    policeStart: 0,    // curse: pursuit starts hotter
+    brittle: 0,        // curse: wall contact ends the chain outright
+    zoomMul: 1,        // curse: tighter camera
+    hullMax: 1,        // hull capacity multiplier
+    hullCost: 1,       // hull taken per wreck
+    bankHeal: 0,       // extra hull welded back on each bank
+
+    /* everything below hooks the toys rather than the base loop */
+    ballTime: 1,       // wrecking ball duration scale
+    droneTime: 1,      // escort drone duration scale
+    arcHops: 0,        // extra chain-lightning hops
+    wellPull: 1,       // singularity radius/strength scale
+    convoyPay: 1,      // hauler payout scale
+    convoyArmour: 0,   // armour knocked off every hauler
+    rocketBonus: 0,    // extra rockets per Bazooka
+    startShield: 0,    // seconds of Ram Plate at each district start
+    startDrones: 0,    // seconds of Escort Drones at each district start
+    coinPerWreck: 0,   // garage coins per wreck
+    scoreMul: 1,       // flat multiplier on everything banked
+    chainStep: 0,      // extra links granted every fifth wreck
+
+    /* ---- weapons ----
+       Everything above is a number the engine multiplies by. These are
+       systems the engine has to *run*: the perk pool was 49 cards deep and
+       every one of them was a passive buff, and the eight that touched a toy
+       only extended a toy you still had to find on the road. A card that
+       reads "singularities pull harder" is a dead card until a singularity
+       shows up. These grant the verb outright. */
+    punt: 0,           // wrecked cars fire forward and bowl through traffic
+    cook: 0,           // seconds until a wreck detonates; 0 = never
+    cookR: 0,          // detonation radius
+    slick: 0,          // seconds between burning slicks dropped behind you
+    ballAlways: 0,     // the wrecking ball is out for the whole run
+    arcAlways: 0,      // every wreck arcs without the pickup
+    dronesAlways: 0,   // escort drones for the whole run
+    autoload: 0        // seconds between free rockets
+  };
+}
+
+/* Overclocked offers pair a stronger perk with a permanent drawback. The
+   drawback is always legible up front — a hidden cost is not a choice. */
+/* ============================================================
+   PERKS
+   The in-run build, and the only one. A perk arrives at a level-up — earned
+   by wrecking, banking and clearing — so it always reads as a reward for the
+   last thirty seconds rather than for a menu you walked through. Forty-nine
+   of them so that fifteen levels never show you the same three twice, and so
+   that two runs diverge inside the first district.
+
+   They are deliberately weighted toward the *toys* rather than toward the
+   base numbers: a perk that says "+9% top speed" is a stat line, and a perk
+   that says "your wrecking ball never stops" changes what the run is.
+   ============================================================ */
+const PERKS = [
+  /* ---- the chain ---- */
+  { id:'p_clock',   name:'Long Fuse',      rarity:'common',   tag:'Chain',
+    desc:'The chain clock runs 0.5s longer.', apply(M){ M.chainTime += 0.5; } },
+  { id:'p_step',    name:'Momentum',       rarity:'uncommon', tag:'Chain',
+    desc:'Every fifth wreck in a chain counts as two.', apply(M){ M.chainStep += 1; } },
+  { id:'p_thread',  name:'Needle',         rarity:'common',   tag:'Chain',
+    desc:'Threading a gap puts another 0.4s on the clock.', apply(M){ M.nearChain += 0.4; } },
+  { id:'p_rate',    name:'Snowball',       rarity:'uncommon', tag:'Chain',
+    desc:'The multiplier climbs 25% faster.', apply(M){ M.multRate += 0.15; } },
+  { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
+    desc:'The multiplier ceiling comes off — ×22.',
+    apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+
+  /* ---- weapons: cards that hand you a verb, not a coefficient ----
+     Everything else in this pool multiplies something the engine already
+     does. These make it do something new, and they are owned from the moment
+     you take the card rather than waiting on a pickup to show up. */
+  { id:'w_punt',    name:'Kickoff',        rarity:'uncommon', tag:'Weapon',
+    desc:'The car you hit is launched down the road and wrecks what it bowls into.',
+    apply(M){ M.punt = Math.max(M.punt, 1); } },
+  { id:'w_punt2',   name:'Break Shot',     rarity:'rare',     tag:'Weapon',
+    desc:'Cars you hit are launched, and pass the hit on twice more down the lane.',
+    apply(M){ M.punt = Math.max(M.punt, 1) + 2; } },
+  { id:'w_cook',    name:'Fuel Cell',      rarity:'uncommon', tag:'Weapon',
+    desc:'Wrecks cook off a beat later and take out anything close.',
+    apply(M){ M.cook = M.cook || 0.7; M.cookR = Math.max(M.cookR, 165); } },
+  { id:'w_cook2',   name:'Thermite',       rarity:'rare',     tag:'Weapon',
+    desc:'Wrecks detonate sooner and twice as wide.',
+    apply(M){ M.cook = 0.42; M.cookR = Math.max(M.cookR, 165) + 105; } },
+  { id:'w_slick',   name:'Tailgunner',     rarity:'uncommon', tag:'Weapon',
+    desc:'You leave a burning wake. Anything that follows you into it goes up.',
+    apply(M){ M.slick = M.slick ? M.slick * 0.6 : 0.45; } },
+  { id:'w_ball',    name:'Dead Weight',    rarity:'rare',     tag:'Weapon',
+    desc:'The wrecking ball is out for the rest of the run.',
+    apply(M){ M.ballAlways = 1; } },
+  { id:'w_arc',     name:'Live Wire',      rarity:'rare',     tag:'Weapon',
+    desc:'Every wreck arcs to the nearest car, no pickup needed.',
+    apply(M){ M.arcAlways = 1; } },
+  { id:'w_drones',  name:'Wingmen',        rarity:'rare',     tag:'Weapon',
+    desc:'Two escort drones fly with you for the rest of the run.',
+    apply(M){ M.dronesAlways = 1; } },
+  { id:'w_load',    name:'Autoloader',     rarity:'uncommon', tag:'Weapon',
+    desc:'A rocket loads itself every 5s, forever.',
+    apply(M){ M.autoload = M.autoload ? M.autoload * 0.6 : 5; } },
+
+  /* ---- the ball ---- */
+  { id:'p_ball1',   name:'Heavy Iron',     rarity:'common',   tag:'Ball',
+    desc:'The wrecking ball lasts 60% longer.', apply(M){ M.ballTime += 0.6; } },
+  { id:'p_ball2',   name:'Second Chain',   rarity:'rare',     tag:'Ball',
+    desc:'Wrecking balls last two and a half times as long.',
+    apply(M){ M.ballTime += 1.5; } },
+
+  /* ---- the drones ---- */
+  { id:'p_dr1',     name:'Long Patrol',    rarity:'common',   tag:'Drones',
+    desc:'Escort drones stay 60% longer.', apply(M){ M.droneTime += 0.6; } },
+  { id:'p_dr2',     name:'Standing Escort',rarity:'rare',     tag:'Drones',
+    desc:'Every district starts with 8s of escort drones.',
+    apply(M){ M.startDrones += 8; } },
+
+  /* ---- the arc ---- */
+  { id:'p_arc1',    name:'Conductor',      rarity:'uncommon', tag:'Arc',
+    desc:'Arc lightning jumps one extra car.', apply(M){ M.arcHops += 1; } },
+  { id:'p_arc2',    name:'Substation',     rarity:'rare',     tag:'Arc',
+    desc:'Arc lightning jumps two extra cars.', apply(M){ M.arcHops += 2; } },
+
+  /* ---- the well ---- */
+  { id:'p_well1',   name:'Event Horizon',  rarity:'uncommon', tag:'Well',
+    desc:'Singularities pull half again as hard, and wider.',
+    apply(M){ M.wellPull += 0.5; } },
+  /* the four that came across from the old chip table — the only ones of
+     the twenty-two that were not already a perk on the same axis */
+  { id:'p_slip',    name:'Slipstream',     rarity:'common',   tag:'Risk',
+    desc:'Threading pays +50% and puts 0.35s back on the clock.',
+    apply(M){ M.nearMul += 0.5; M.nearChain += 0.35; } },
+  { id:'p_after',   name:'Afterburn',      rarity:'uncommon', tag:'Power',
+    desc:'A wreck made under boost counts as two links.',
+    apply(M){ M.boostChain += 1; } },
+  { id:'p_kin',     name:'Kinetic Battery',rarity:'uncommon', tag:'Risk',
+    desc:'Each thread adds 1.5% top speed for the district.',
+    apply(M){ M.nearTop += 0.015; } },
+  { id:'p_coil',    name:'Coil Pack',      rarity:'rare',     tag:'Engine',
+    desc:'Top speed +20%, but the chain clock is 0.4s shorter.',
+    apply(M){ M.topMul += 0.20; M.chainTime -= 0.40; } },
+
+  { id:'p_well2',   name:'Collapse',       rarity:'rare',     tag:'Well',
+    desc:'Singularities pull twice as hard and last 60% longer.',
+    apply(M){ M.wellPull += 1; M.powerTime += 0.6; } },
+
+  /* ---- the convoy ---- */
+  { id:'p_cv1',     name:'Hijacker',       rarity:'uncommon', tag:'Convoy',
+    desc:'Haulers pay 60% more.', apply(M){ M.convoyPay += 0.6; } },
+  { id:'p_cv2',     name:'Can Opener',     rarity:'rare',     tag:'Convoy',
+    desc:'Haulers lose a layer of armour — one good hit cracks them.',
+    apply(M){ M.convoyArmour += 1; } },
+
+  /* ---- power-ups ---- */
+  { id:'p_pu1',     name:'Scrap Sense',    rarity:'common',   tag:'Power',
+    desc:'Half again as many power-ups on the road.', apply(M){ M.pickupRate += 0.5; } },
+  { id:'p_pu2',     name:'Slow Burn',      rarity:'common',   tag:'Power',
+    desc:'Timed power-ups last 40% longer.', apply(M){ M.powerTime += 0.4; } },
+  { id:'p_pu3',     name:'Munitions',      rarity:'uncommon', tag:'Power',
+    desc:'The Bazooka carries three extra rockets.', apply(M){ M.rocketBonus += 3; } },
+  { id:'p_pu4',     name:'Cold Start',     rarity:'uncommon', tag:'Power',
+    desc:'Every district starts with 6s of Ram Plate.', apply(M){ M.startShield += 6; } },
+  { id:'p_pu5',     name:'Deep Cell',      rarity:'common',   tag:'Power',
+    desc:'Boost pickups burn 70% longer.', apply(M){ M.boostTime += 0.7; } },
+
+  /* ---- hull ---- */
+  { id:'p_h1',      name:'Spot Weld',      rarity:'common',   tag:'Hull',
+    desc:'Hull +25%.', apply(M){ M.hullMax += 0.25; } },
+  { id:'p_h2',      name:'Bull Bar',       rarity:'common',   tag:'Hull',
+    desc:'Wrecks cost 30% less hull.', apply(M){ M.hullCost *= 0.70; } },
+  { id:'p_h3',      name:'Field Kit',      rarity:'uncommon', tag:'Hull',
+    desc:'Every bank welds back an extra 10 hull.', apply(M){ M.bankHeal += 10; } },
+  { id:'p_h4',      name:'Ablative',       rarity:'rare',     tag:'Hull',
+    desc:'Hull +50%, and wrecks cost 40% less.',
+    apply(M){ M.hullMax += 0.5; M.hullCost *= 0.6; } },
+  { id:'p_h5',      name:'Crumple Zone',   rarity:'uncommon', tag:'Hull',
+    desc:'Survive one totalled hull per district.', apply(M){ M.crumple += 1; } },
+
+  /* ---- pay ---- */
+  { id:'p_pay1',    name:'Fence',          rarity:'common',   tag:'Pay',
+    desc:'Every wreck banks 25% more.', apply(M){ M.wreckMul += 0.25; } },
+  { id:'p_pay2',    name:'Blood Money',    rarity:'rare',     tag:'Pay',
+    desc:'Everything you bank pays 45% more.', apply(M){ M.scoreMul += 0.45; } },
+  { id:'p_pay3',    name:'Chop Shop',      rarity:'uncommon', tag:'Pay',
+    desc:'Every wreck is worth 14 coins in the garage.',
+    apply(M){ M.coinPerWreck += 14; } },
+  { id:'p_pay4',    name:'Insurance',      rarity:'uncommon', tag:'Pay',
+    desc:'Threading pays double.', apply(M){ M.nearMul += 1; } },
+
+  /* ---- the car ---- */
+  { id:'p_c1',      name:'Big Bore',       rarity:'common',   tag:'Engine',
+    desc:'Top speed +8%.', apply(M){ M.topMul += 0.08; } },
+  { id:'p_c2',      name:'Cold Rubber',    rarity:'common',   tag:'Handling',
+    desc:'Grip +22%.', apply(M){ M.gripMul += 0.22; } },
+  { id:'p_c3',      name:'Wide Streets',   rarity:'uncommon', tag:'Handling',
+    desc:'Every street is 15% wider.', apply(M){ M.roadMul *= 1.15; } },
+  { id:'p_c4',      name:'Overdrive',      rarity:'rare',     tag:'Engine',
+    desc:'Top speed +18% and the camera pulls back.',
+    apply(M){ M.topMul += 0.18; M.zoomMul *= 1.10; } },
+
+  /* ---- traffic ---- */
+  { id:'p_t1',      name:'Rush Hour',      rarity:'common',   tag:'Risk',
+    desc:'Half again as much traffic to hit.', apply(M){ M.trafficMul += 0.5; } },
+  { id:'p_t2',      name:'Gridlock',       rarity:'uncommon', tag:'Risk',
+    desc:'Double traffic, and wrecks pay 20% more.',
+    apply(M){ M.trafficMul += 1; M.wreckMul += 0.2; } },
+
+  /* ---- heat ---- */
+  { id:'p_he1',     name:'Adrenal Feed',   rarity:'uncommon', tag:'Heat',
+    desc:'+55% scoring while Heat is 2 or higher.', apply(M){ M.heatBonus += 0.55; } },
+  { id:'p_he2',     name:'Ghost Plates',   rarity:'common',   tag:'Heat',
+    desc:'Banking makes pursuit lose you for 3s.', apply(M){ M.ghostOnBank += 3; } },
+  { id:'p_he3',     name:'Static Discharge',rarity:'uncommon',tag:'Heat',
+    desc:'Banking spins out any pursuit close behind.', apply(M){ M.shockOnBank = 1; } },
+  { id:'p_he4',     name:'Marked Man',     rarity:'rare',     tag:'Heat',
+    desc:'Pursuit starts a tier hotter, and everything pays 30% more.',
+    apply(M){ M.policeStart += 1; M.scoreMul += 0.30; } },
+
+  /* ---- the greedy ones ---- */
+  { id:'p_g1',      name:'Glass Cannon',   rarity:'rare',     tag:'Risk',
+    desc:'Wrecks pay double. Hull cut by a third.',
+    apply(M){ M.wreckMul += 1; M.hullMax *= 0.66; } },
+  { id:'p_g2',      name:'Featherweight',  rarity:'uncommon', tag:'Risk',
+    desc:'Top speed +14%, but every wreck costs half again as much hull.',
+    apply(M){ M.topMul += 0.14; M.hullCost *= 1.5; } },
+  { id:'p_g3',      name:'Redline',        rarity:'rare',     tag:'Risk',
+    desc:'The chain clock is 0.6s shorter, and every wreck pays 70% more.',
+    apply(M){ M.chainTime -= 0.6; M.wreckMul += 0.7; } },
+  { id:'p_g4',      name:'Tunnel Vision',  rarity:'uncommon', tag:'Risk',
+    desc:'The camera sits tighter, and scoring is up 25%.',
+    apply(M){ M.zoomMul *= 0.88; M.scoreMul += 0.25; } },
+  { id:'p_g5',      name:'Last Stand',     rarity:'rare',     tag:'Hull',
+    desc:'Below a third hull, everything pays double.',
+    apply(M){ M.lastStand = 1; } },
+  { id:'p_g6',      name:'Salvage Rights', rarity:'common',   tag:'Pay',
+    desc:'Clearing a district repairs the hull completely.',
+    apply(M){ M.clearHeal = 1; } }
+];
+
+const perkById = id => PERKS.find(p => p.id === id);
+
+/* Three offers, no repeats of what is already fitted. Rarity odds improve
+   with level so the late choices feel like the reward for getting there. */
+function rollPerks(owned, level, takenCurses){
+  const pool = PERKS.filter(p => !owned.includes(p.id));
+  const W = level >= 11 ? { common: 22, uncommon: 40, rare: 38 }
+          : level >= 6  ? { common: 42, uncommon: 40, rare: 18 }
+                        : { common: 62, uncommon: 31, rare: 7 };
+  const picks = [];
+  const used = new Set();
+  /* A weapon is nine cards in fifty-eight, and left to chance a run can go
+     six levels without being offered one — which reads as "this pool is all
+     passive buffs", because for that player it was. So the first weapon is
+     guaranteed: until you own one, one slot in the offer is reserved for it.
+     After that they take their chances with everything else. */
+  const armed = owned.some(id => { const p = perkById(id); return p && p.tag === 'Weapon'; });
+  for (let n = 0; n < 3 && pool.length; n++) {
+    let avail = pool.filter(p => !used.has(p.id));
+    if (!armed && n === 0) {
+      const guns = avail.filter(p => p.tag === 'Weapon' &&
+                                     (level >= 4 || p.rarity !== 'rare'));
+      if (guns.length) avail = guns;
+    }
+    if (!avail.length) break;
+    let total = 0;
+    for (const p of avail) total += W[p.rarity];
+    let r = Math.random() * total, chosen = avail[0];
+    for (const p of avail) { r -= W[p.rarity]; if (r <= 0) { chosen = p; break; } }
+    used.add(chosen.id);
+    /* At most one offer per level carries a curse, never before level 4, and
+       the odds climb as the run deepens. This is where the old Overclocked
+       chips went: the risk survived, the second draft screen did not. */
+    let curse = null;
+    const curseOK = level >= 4 && !picks.some(p => p.curse);
+    if (curseOK && chosen.rarity !== 'common' &&
+        Math.random() < Math.min(0.42, 0.06 + level * 0.03)) {
+      const left = CURSES.filter(c => !(takenCurses || []).includes(c.id));
+      if (left.length) curse = left[Math.floor(Math.random() * left.length)];
+    }
+    picks.push(curse ? Object.assign({ curse }, chosen) : chosen);
+  }
+  return picks;
+}
+
+const CURSES = [
+  { id:'narrow', name:'Narrow Streets', desc:'Every street is 20% tighter.',
+    apply(M){ M.roadMul *= 0.80; } },
+  { id:'gridlock', name:'Gridlock', desc:'Half again as much traffic.',
+    apply(M){ M.trafficMul += 0.5; } },
+  { id:'marked', name:'Marked', desc:'Pursuit starts one tier hotter.',
+    apply(M){ M.policeStart += 1; } },
+  { id:'brittle', name:'Brittle', desc:'Scraping a barrier ends your chain outright.',
+    apply(M){ M.brittle = 1; } },
+  { id:'scavenged', name:'Scavenged', desc:'Half as many power-ups on the road.',
+    apply(M){ M.pickupRate *= 0.5; } },
+  { id:'tunnel', name:'Tunnel Vision', desc:'The camera sits 15% tighter.',
+    apply(M){ M.zoomMul *= 0.85; } }
+];
+
+/* ============================================================
+   EVENTS
+   Chosen *before* a district. Each is a boon welded to a bane, both stated
+   up front, and each changes how the district actually drives rather than
+   only what the numbers say. This is the wager the player makes going in,
+   and risk is what buys levels: +50% XP at risk 1, double at risk 2.
+   ============================================================ */
+const CONTRACTS = [
+  { id:'clear', name:'Clear Night', risk:0,
+    bane:'Nothing out of the ordinary.',
+    boon:'Standard payout.',
+    apply(M, L){} },
+
+  { id:'demolition', name:'Demolition Derby', risk:2,
+    bane:'Hull cut to 60%.',
+    boon:'Wrecks pay double and cost no hull at all.',
+    apply(M, L){ M.hullMax *= 0.60; M.hullCost = 0; L.wreckPay = 2; } },
+
+  { id:'featherweight', name:'Featherweight', risk:2,
+    bane:'Every wreck costs triple hull.',
+    boon:'Threading a gap pays four times over.',
+    apply(M, L){ M.hullCost *= 3; M.nearMul += 3; } },
+
+  { id:'armoured', name:'Armoured Up', risk:1,
+    bane:'Top speed down 15%.',
+    boon:'Hull doubled.',
+    apply(M, L){ M.topMul -= 0.15; M.hullMax *= 2; } },
+
+  { id:'downpour', name:'Downpour', risk:1,
+    bane:'Wet asphalt — grip down 30%.',
+    boon:'Every bank pays +50%.',
+    apply(M, L){ M.gripMul *= 0.70; M.bankMul += 0.5; L.wet = 1; } },
+
+  { id:'rush', name:'Rush Hour', risk:1,
+    bane:'Twice the traffic.',
+    boon:'Threading pays triple and keeps the clock alive.',
+    apply(M, L){ M.trafficMul += 1; M.nearMul += 2; M.nearChain += 0.5; } },
+
+  { id:'blackout', name:'Blackout', risk:1,
+    bane:'City power is out. You drive on headlights.',
+    boon:'The multiplier climbs 60% faster.',
+    apply(M, L){ M.multRate += 0.25; L.blackout = 1; } },
+
+  { id:'dragnet', name:'Dragnet', risk:2,
+    bane:'Pursuit is already on you at Heat 2.',
+    boon:'Heat pays double.',
+    apply(M, L){ M.policeStart += 2; M.heatBonus += 1.0; } },
+
+  { id:'roadworks', name:'Roadworks', risk:2,
+    bane:'The road is littered with spike strips.',
+    boon:'Quota cut by 35%.',
+    apply(M, L){ L.hazards = 1; L.quotaMul *= 0.65; } },
+
+  /* This used to empty the streets entirely, which was a boon back when the
+     game was about dodging. Once traffic became the *scoring* verb, zero
+     cars meant zero points and the contract was not hard, it was
+     unwinnable. Same flavour, inverted into a real wager: far fewer cars,
+     each one worth a great deal more. */
+  { id:'ghost', name:'Ghost Town', risk:2,
+    bane:'The streets are nearly empty — a third of the traffic.',
+    boon:'Every wreck pays three times over.',
+    apply(M, L){ M.trafficMul *= 0.34; L.wreckPay *= 3; } },
+
+  { id:'overpressure', name:'Overpressure', risk:2,
+    bane:'Grip down 20% and the chain clock is half a second shorter.',
+    boon:'Top speed up 30%.',
+    apply(M, L){ M.gripMul *= 0.80; M.chainTime -= 0.5; M.topMul += 0.30; } },
+
+  { id:'scrapyard', name:'Scrapyard', risk:2,
+    bane:'Touching a barrier ends your chain outright.',
+    boon:'Power-ups everywhere — two and a half times as many.',
+    apply(M, L){ M.brittle = 1; M.pickupRate += 1.5; } },
+
+  { id:'narrows', name:'The Narrows', risk:2,
+    bane:'Streets 25% tighter.',
+    boon:'The multiplier ceiling comes off — \u00d725.',
+    apply(M, L){ M.roadMul *= 0.75; M.multCap = Math.max(M.multCap, 25); } }
+];
+
+/* Offer a safe option alongside real wagers, weighted by how deep the run
+   is — later districts stop offering the free ride. */
+function rollContracts(district, elite){
+  const pool = CONTRACTS.filter(c => c.id !== 'clear');
+  const picks = [];
+  const used = new Set();
+  const want = 3;
+
+  if (!elite && district <= 2) { picks.push(CONTRACTS[0]); used.add('clear'); }
+
+  while (picks.length < want && used.size < CONTRACTS.length) {
+    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1));
+    if (!avail.length) break;
+    const c = avail[Math.floor(Math.random() * avail.length)];
+    used.add(c.id);
+    picks.push(c);
+  }
+  return picks;
+}
+const contractById = id => CONTRACTS.find(c => c.id === id);
+
+const curseById = id => CURSES.find(c => c.id === id);
+
+/* Level params a contract can bend, separate from the persistent modifier
+   table so they reset when the district ends. */
+function levelDefaults(){
+  return { quotaMul: 1, wet: 0, blackout: 0, hazards: 0, wreckPay: 1, xpMul: 1 };
+}
+
+function build(curseIds, contractId, perkIds){
+  const M = defaults();
+  const L = levelDefaults();
+  for (const id of (perkIds || [])) { const p = perkById(id); if (p) p.apply(M, L); }
+  for (const id of curseIds) { const c = curseById(id); if (c) c.apply(M); }
+  const k = contractById(contractId);
+  /* Risk is the whole point of an event, so it has to buy something the
+     safe option cannot: levels. Risk 1 is half again the XP, risk 2 double. */
+  if (k) { k.apply(M, L); L.xpMul *= 1 + k.risk * 0.5; }
+  return { M, L };
+}
+
+return { defaults, levelDefaults, CURSES, CONTRACTS, PERKS,
+         curseById, contractById, perkById, rollContracts, rollPerks, build };
+})();
+
 /* ============================================================
    NEON HEAT — playable prototype
    Every pixel is generated at runtime. No image assets, by design:
@@ -5922,3 +8945,7 @@ window.__NH = {
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();
+
+</script>
+</body>
+</html>

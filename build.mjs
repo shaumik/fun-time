@@ -268,6 +268,55 @@ ${js}
 </script>
 `);
 
+/* ---------------- standalone target ----------------
+   The same game with no portal SDK: for self-hosting, for itch.io, and as
+   the base an adapter for another ad network drops into.
+
+   It is a separate artefact rather than a switch inside one build, and that
+   is not tidiness. CrazyGames allow ads from their SDK alone, so a build
+   carrying a second network is a rejection — the only safe shape is one
+   provider per build, enforced below.
+
+   Nothing in the game needs changing for this: Ads.resolve() finds no
+   provider, every placement falls back to the local simulated overlay, and
+   saves fall back to localStorage. To wire a real network, implement the
+   adapter contract documented at the platform seam in src/game.js and add
+   its script tag here — nowhere else. */
+const noProvider = fs.readFileSync(path.join(ROOT, 'dist/index.html'), 'utf8')
+  .replace(/\s*<!--[^>]*?CrazyGames SDK[\s\S]*?-->\s*/, '\n')
+  .replace(/\s*<script src="https:\/\/sdk\.crazygames\.com\/[^"]*"><\/script>/, '');
+
+/* Each target is the same game with exactly one provider compiled in. The
+   adapters live in src/providers/ and each presents the seam's shape, so
+   nothing outside this file and that folder knows which network is on the
+   other end.
+
+   `host` is the only external origin a target is permitted to reach, and it
+   is checked below — that is the guard that keeps a build from ever carrying
+   two ad networks, which is a rejection everywhere and a policy breach on
+   CrazyGames specifically. */
+const TARGETS = [
+  { dir:'standalone',       provider:null,               host:null,
+    note:'self-host / itch.io, no ads' },
+  { dir:'gamedistribution', provider:'gamedistribution', host:'html5.api.gamedistribution.com',
+    note:'needs a GD game id' },
+  { dir:'gamemonetize',     provider:'gamemonetize',     host:'api.gamemonetize.com',
+    note:'needs a GM game id; no rewarded ads on this network' },
+];
+
+for (const t of TARGETS) {
+  let out = noProvider;
+  if (t.provider) {
+    const adapter = read('src/providers/' + t.provider + '.js');
+    /* the adapter goes in the head, before the game: it must have installed
+       window.__NH_PROVIDER by the time Ads.resolve() looks for it */
+    out = out.replace('</head>', `<script>\n${adapter}\n</script>\n</head>`);
+  }
+  const dir = path.join(ROOT, 'dist', t.dir);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'index.html'), out);
+}
+
 /* The submission artefact: a zip with index.html at its root, and nothing
    else in it. dist/mockup.html and dist/playable.html are deliberately
    excluded — neither is the game build. */
@@ -276,15 +325,52 @@ const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
 execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 
+for (const t of TARGETS) {
+  const z = path.join(dist, t.dir, 'neon-heat-' + t.dir + '.zip');
+  fs.rmSync(z, { force: true });
+  execSync('zip -q -X neon-heat-' + t.dir + '.zip index.html', { cwd: path.join(dist, t.dir) });
+}
+
 const kb = n => (fs.statSync(n).size / 1024).toFixed(1) + ' KB';
 console.log('dist/index.html    ' + kb(path.join(dist, 'index.html')) + '   (self-contained game)');
 console.log('dist/mockup.html   ' + kb(path.join(dist, 'mockup.html')) + '   (shareable pitch page)');
 console.log('dist/playable.html ' + kb(path.join(dist, 'playable.html')) + '   (hosted playable build)');
 console.log('dist/neon-heat.zip ' + kb(zip) + '   <- upload this to CrazyGames');
+for (const t of TARGETS) {
+  const z = path.join(dist, t.dir, 'neon-heat-' + t.dir + '.zip');
+  console.log(('dist/' + t.dir + '/neon-heat-' + t.dir + '.zip').padEnd(46) + kb(z) + '   (' + t.note + ')');
+}
 
-/* guard the two things that would fail their review silently */
+/* Guard each target against the thing that would fail it silently. Both
+   checks are about the same rule from opposite sides: exactly one ad
+   provider per build, and never two. */
+const hosts = s => [...s.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m => m[2]);
+
 const built = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const ext = [...built.matchAll(/(?:src|href)="(https?:)?\/\/([^"]+)"/g)].map(m => m[2]);
-const stray = ext.filter(u => !u.startsWith('sdk.crazygames.com'));
+const stray = hosts(built).filter(u => !u.startsWith('sdk.crazygames.com'));
 if (stray.length) console.warn('WARNING external requests besides the SDK: ' + stray.join(', '));
 if (!built.includes('sdk.crazygames.com')) console.warn('WARNING the SDK script tag is missing from the build');
+
+/* Every other target: exactly its own provider's host and nothing else. Two
+   networks in one build is a rejection anywhere and a policy breach on
+   CrazyGames; a stray CrazyGames tag in a self-hosted build would sitelock
+   it to their domains. */
+/* Adapters inject their script through createElement rather than a tag, so
+   the provider URL is a JS string and an attribute scan will not see it.
+   Check for the host anywhere in the file, and check every other known
+   provider is absent — that second half is the one that matters. */
+const ALL_HOSTS = ['sdk.crazygames.com', ...TARGETS.map(t => t.host).filter(Boolean)];
+
+for (const t of TARGETS) {
+  const f = fs.readFileSync(path.join(dist, t.dir, 'index.html'), 'utf8');
+  const foreign = ALL_HOSTS.filter(h => h !== t.host && f.includes(h));
+  if (foreign.length) console.warn(`WARNING ${t.dir} build carries another ad network: ` + foreign.join(', '));
+
+  const tagHosts = [...new Set(hosts(f))].filter(h => !t.host || !h.startsWith(t.host));
+  if (tagHosts.length) console.warn(`WARNING ${t.dir} build has stray external tags: ` + tagHosts.join(', '));
+
+  if (t.host && !f.includes(t.host))
+    console.warn(`WARNING ${t.dir} build is missing its provider (${t.host})`);
+  if (t.provider && !f.includes('__NH_PROVIDER'))
+    console.warn(`WARNING ${t.dir} build did not inline its adapter`);
+}

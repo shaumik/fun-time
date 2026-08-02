@@ -618,6 +618,16 @@ body{
 /* Geometry is shared across the whole stack so the decline path is exactly
    as large and as reachable as the rewarded offers above it. */
 .ovActs .btn{width:100%;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
+/* The key hint must not change the button's box. These four buttons are
+   measured against each other — their rules require the continue-without-
+   watching path to match the ad offers in size exactly — and an inline hint
+   adds four pixels of height to the one button that has it. Pulled out of
+   flow, the same way the AD badge already is. */
+.ovActs .btn .key{
+  position:absolute;right:calc(var(--u)*1.4);top:50%;
+  transform:translateY(-50%);margin-left:0;
+}
+
 /* Ad-unavailability notice. Quiet, inline, and never a popup. */
 .ovAdNote{
   margin-top:calc(var(--u)*1.2);text-align:center;
