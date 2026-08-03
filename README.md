@@ -147,8 +147,8 @@ src/chips.js      perks, curses and events; pure data + one flat modifier table
 src/game.js       engine: physics, districts, bosses, AI, renderer, post FX, meta
 build.mjs         inlines the above into dist/
 dist/index.html   self-contained single file — this is what you zip for CrazyGames
-dist/mockup.html  body fragment for publishing as a shareable page
 dist/neon-heat.zip  the CrazyGames upload
+dist/standalone/  the same game with no portal SDK, for self-hosting / itch.io
 press/            1920x1080 store screenshots, generated from the game
 DESIGN.md         concept, monetization, art direction
 ```

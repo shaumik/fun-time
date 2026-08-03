@@ -44,10 +44,11 @@ npm test           # the compliance harness, see section 9
 |---|---|
 | `dist/neon-heat.zip` | **Upload this.** One file, `index.html` at the zip root. ~129 KB. |
 | `dist/index.html` | The same build, unzipped, for local checking. |
-| `dist/mockup.html` | The shareable pitch page. **Not** part of the submission. |
+| `dist/standalone/neon-heat-standalone.zip` | The same game with no portal SDK, for self-hosting or itch.io. **Not** part of the submission. |
 
 The build warns if anything other than the CrazyGames SDK would be requested at
-runtime, or if the SDK tag went missing.
+runtime, if the SDK tag went missing, or if the standalone build picked up an
+external host of any kind.
 
 ## 1a. Check
 

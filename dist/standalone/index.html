@@ -3789,13 +3789,14 @@ const Ads = {
   },
 
   /* What the provider on the other end can actually serve. Not every network
-     has rewarded placements — GameMonetize documents none at all — and a
-     rewarded button that cannot pay out is the exact thing CrazyGames reject
-     builds for. Worth honouring everywhere, not just where it is policed. */
+     has rewarded placements, and a rewarded button that cannot pay out is the
+     exact thing CrazyGames reject builds for — so an adapter may declare what
+     it does not have, and the offers come down rather than going dead. Worth
+     honouring everywhere, not just where it is policed. */
   /* A build compiled with no ad provider at all — the standalone/itch target.
-     Distinct from "no provider yet": off a local file or the playable page
-     there is no provider either, and there simulating a placement is exactly
-     what you want. Only the build can tell the two apart, so it says. */
+     Distinct from "no provider yet": off a local file there is no provider
+     either, and there simulating a placement is exactly what you want. Only
+     the build can tell the two apart, so it says. */
   noAds(){ return !!window.__NH_NO_ADS; },
 
   caps(){
@@ -3869,10 +3870,10 @@ const Ads = {
 
   /* "Am I on a real network, or simulating?" This used to sniff the DOM for
      the CrazyGames script tag, which predates the provider seam and is wrong
-     twice over now: it answers false on the GameDistribution, GameMonetize
-     and Playgama builds, which are real placements, and the literal host
-     string tripped the build guard that checks no target carries a second ad
-     network. resolve() already knows, for every target. */
+     twice over: it answers false for any adapter dropped in at the seam, whose
+     placements are real, and the literal host string tripped the build guard
+     that checks the standalone build carries no ad network at all. resolve()
+     already knows, for every build. */
   onPlatform(){ return !!this.resolve(); },
 
   /* Rewarded ads can be unavailable for reasons we cannot see in advance:
