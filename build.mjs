@@ -351,12 +351,22 @@ for (const t of TARGETS) {
 const dist = path.join(ROOT, 'dist');
 const zip = path.join(dist, 'neon-heat.zip');
 fs.rmSync(zip, { force: true });
+/* Stamp every file to a fixed mtime before zipping. `zip -X` drops the extra
+   fields but still records each entry's modification time, so an unchanged
+   build produced a byte-different archive on every run and left five dirty
+   zips in the working tree after any rebuild. Deterministic archives mean the
+   diff shows a zip only when the game inside it actually changed. */
+const STAMP = '202601010000.00';
+const stamp = dir => execSync('find . -type f -exec touch -t ' + STAMP + ' {} +', { cwd: dir });
+
+stamp(dist);
 execSync('zip -q -X neon-heat.zip index.html', { cwd: dist });
 
 for (const t of TARGETS) {
   const z = path.join(dist, t.dir, 'neon-heat-' + t.dir + '.zip');
   fs.rmSync(z, { force: true });
   const files = 'index.html' + (t.extra ? ' ' + t.extra : '');
+  stamp(path.join(dist, t.dir));
   execSync('zip -q -X neon-heat-' + t.dir + '.zip ' + files, { cwd: path.join(dist, t.dir) });
 }
 
