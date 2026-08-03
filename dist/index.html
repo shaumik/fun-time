@@ -5623,6 +5623,7 @@ function newWorld(ai){
     : G.hpMax;
   G.ai = !!ai;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
+  cam.sx = 0; cam.sy = 0;              // the shake damps out, so clear it by hand
   for (let i = 0; i < 18; i++) addTraffic(14 + i * 11);
 }
 /* Zoom is bounded by width as well as height, otherwise a portrait phone
@@ -5637,10 +5638,24 @@ const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
    one knob over all of them, and the camera is the only place that reads it.
    The shake used to be up to 30px of freshly drawn white noise every single
    frame, which CrazyGames flagged as strong enough to make some players feel
-   dizzy — and the per-frame resampling is as much to blame as the size, since
-   noise at frame rate reads as a strobe rather than as an impact. The camera
-   now trims the amplitude and swings it as two slow cosines at unrelated
-   frequencies: the hit still lands, but as a rumble the eye can track.
+   dizzy.
+
+   Three separate things were making it harsh, and the size was only one:
+
+   - resampling at frame rate. Noise redrawn every frame reads as a strobe
+     rather than as an impact, so the offset is now two cosines at unrelated
+     frequencies — a waveform the eye can track instead of static.
+   - the onset. Deflecting the whole screen by its full amplitude on a single
+     frame is a snap, and a snap is what registers as a jolt however small it
+     is. The oscillator is a *target* now; the camera is damped toward it, so
+     the shake swings in over a few frames and can never teleport.
+   - the tail. A linear decay holds most of its amplitude for most of its
+     life, so a hit that should be over still has the screen moving. It falls
+     off faster now, and the whole thing lasts about two thirds as long.
+
+   Net of the multiplier and the damping, a full-strength hit peaks around 6px
+   against the original 30px, and the impact is carried by the hitstop freeze
+   and the flash — which is where it should sit anyway.
 
    Anyone who has asked their OS for reduced motion gets none of it — the
    stylesheet already honours that for the UI, and the camera is the loudest
@@ -5648,7 +5663,9 @@ const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
    without a reload. */
 const REDUCE_MOTION = (window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)'))
                       || { matches:false };
-const SHAKE_MUL = 0.55;
+/* Live rather than const so a tuning pass can try values in the console
+   without a rebuild: __NH.setShake(0.2). */
+let SHAKE_MUL = 0.30;
 const shakeMul = () => REDUCE_MOTION.matches ? 0 : SHAKE_MUL;
 const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 /* level conditions set by the chosen contract, reset when the district ends */
@@ -7913,18 +7930,26 @@ function step(dt){
   const spdZoom = 1 - clamp(car.speed / 1100, 0, 1) * 0.20;
   cam.zoom = damp(cam.zoom, baseZoom() * spdZoom * (G.state === 'crash' ? 1.18 : 1), 3, dt);
 
-  /* a fresh hit restarts the waveform, so the kick lands on the frame of the
-     impact rather than wherever the oscillator happened to be */
+  /* a fresh hit restarts the waveform, so successive hits swing the same way
+     out of the gate rather than landing wherever the oscillator happened to be
+     and occasionally cancelling each other */
   if (G.shake > G.shakePrev) G.shakeT = 0;
-  G.shake = Math.max(0, G.shake - dt * 34);
+  G.shake = Math.max(0, G.shake - dt * 44);
   G.shakePrev = G.shake;
   G.shakeT += dt;
   const amp = G.shake * shakeMul();
   /* ~3.8Hz and ~2.8Hz: low enough that a 30fps frame still samples the swing
      several times, so the rumble does not alias back into a strobe on the
      machines that need the help most */
-  cam.sx = Math.cos(G.shakeT * 24.0) * amp;
-  cam.sy = Math.cos(G.shakeT * 17.3) * amp * 0.8;
+  const shx = Math.cos(G.shakeT * 24.0) * amp;
+  const shy = Math.cos(G.shakeT * 17.3) * amp * 0.8;
+  /* damped toward the waveform rather than set to it: this is what turns the
+     onset from a snap into a swing, and it low-passes the whole thing on top */
+  cam.sx = damp(cam.sx, shx, 26, dt);
+  cam.sy = damp(cam.sy, shy, 26, dt);
+  /* damping is asymptotic, so park it rather than leaving the world a fraction
+     of a pixel off centre for the rest of the run */
+  if (!amp && Math.abs(cam.sx) < 0.05 && Math.abs(cam.sy) < 0.05) cam.sx = cam.sy = 0;
   G.flash = Math.max(0, G.flash - dt * 2.4);
 
   T.ensure(car.idx + 140);
@@ -11829,6 +11854,10 @@ window.__NH = {
   env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
   get stage(){ return G.stage; },
   bossDamage, BOSS_BITE,
+  /* screen shake, for tuning by feel: 0 is off, 1 is the original amplitude.
+     Whatever value ends up feeling right is SHAKE_MUL in src/game.js. */
+  setShake: v => { SHAKE_MUL = Math.max(0, Math.min(1, +v || 0)); return SHAKE_MUL; },
+  get shake(){ return SHAKE_MUL; },
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
