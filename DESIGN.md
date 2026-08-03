@@ -391,6 +391,10 @@ stays anonymous and nothing breaks.
 
 `Ads` in `src/game.js` loads the CrazyGames SDK v3, awaits `SDK.init()`, and brackets play
 with `gameplayStart`/`gameplayStop` so the portal never counts menu time as gameplay. The
+session's *first* `gameplayStart` waits for the first steering input rather than for the
+district to start running: on a zero-click start the road is already moving underneath the
+onboarding hint, and the seconds spent reading that hint are not play. Every bracket after
+it follows the play state directly. The
 game is paused and the audio ducked *before* the ad request rather than on `adStarted`, so
 an ad that opens instantly never gets a frame of game sound over it, and a watchdog resumes
 play if an ad hangs without ever calling back. Off-platform every call degrades to a

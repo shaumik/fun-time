@@ -113,20 +113,36 @@ await session({}, async (page, errors) => {
   const state = await page.evaluate(() => window.__NH.G.state);
   check('new player lands in gameplay with 0 clicks', state === 'play', 'state=' + state);
   const log = await page.evaluate(() => window.__sdkLog.map(e => e.n));
-  check('gameplayStart fired', log.includes('gameplayStart'));
   check('loadingStart before loadingStop',
     log.indexOf('loadingStart') >= 0 && log.indexOf('loadingStart') < log.indexOf('loadingStop'));
-  check('gameplayStart comes after loadingStop',
-    log.indexOf('gameplayStart') > log.indexOf('loadingStop'));
-  check('setGameContext sent for the district', log.includes('setGameContext'));
-  check('systemInfo consumed (device detection)',
-    await page.evaluate(() => window.__NH.Ads.deviceType() === 'desktop'));
-  check('no console errors on the fast path', errors.length === 0, errors.slice(0, 3).join(' | '));
+  /* Their review asked for this specifically: the district is already running
+     under the onboarding hint, but the first gameplayStart belongs to the
+     moment the player takes the wheel, not to the moment the road appears. */
+  check('gameplayStart withheld until the player steers', !log.includes('gameplayStart'),
+    'log=' + log.join(','));
+  /* the hint has to be up and readable while that is true, or the wait is
+     just a game that never says what it wants */
   const hint = await page.evaluate(() => {
     const el = document.getElementById('gsHint');
     return { on: el.classList.contains('on'), text: el.firstElementChild.textContent };
   });
   check('keyboard onboarding hint shown in gameplay', hint.on && /steer/i.test(hint.text), JSON.stringify(hint));
+
+  /* take the wheel */
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(250);
+  await page.keyboard.up('ArrowRight');
+  await page.waitForTimeout(1200);            // the hint fades out over 900ms
+  const log2 = await page.evaluate(() => window.__sdkLog.map(e => e.n));
+  check('gameplayStart fired once steering begins', log2.includes('gameplayStart'));
+  check('gameplayStart comes after loadingStop',
+    log2.indexOf('gameplayStart') > log2.indexOf('loadingStop'));
+  check('the hint closes once the player has the control',
+    await page.evaluate(() => !document.getElementById('gsHint').classList.contains('on')));
+  check('setGameContext sent for the district', log2.includes('setGameContext'));
+  check('systemInfo consumed (device detection)',
+    await page.evaluate(() => window.__NH.Ads.deviceType() === 'desktop'));
+  check('no console errors on the fast path', errors.length === 0, errors.slice(0, 3).join(' | '));
 });
 
 /* ---- 2. a returning player still gets the menu ---- */

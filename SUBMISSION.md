@@ -297,8 +297,10 @@ npm test
 | `test/sizes.mjs` | Renders all ten of their iframe sizes at DPR 1 into `press/iframe-sizes/`. |
 
 Observed SDK call order on boot:
-`init → loadingStart → loadingStop → addSettingsChangeListener → gameplayStart`,
-and on a rewarded ad: `gameplayStop → requestAd:rewarded → adStarted → adFinished`.
+`init → loadingStart → loadingStop → addSettingsChangeListener`, then
+`gameplayStart` on the player's first steering input — not on the frame the
+district starts, which is a moment earlier and still behind the onboarding hint.
+On a rewarded ad: `gameplayStop → requestAd:rewarded → adStarted → adFinished`.
 
 ## 10. Outstanding — do not submit before reading
 
@@ -455,7 +457,7 @@ audio back. Test it locally with `?muteAudio=true`.
 | No external requests except the SDK | Yes — build warns on any other host |
 | SDK loaded and `await SDK.init()` before use | Yes |
 | `loadingStart()` / `loadingStop()` | Yes (immediate — the whole game is inline) |
-| `gameplayStart()` / `gameplayStop()` bracketing play | Yes, incl. menus, briefs, level-ups, ads, and a backgrounded tab |
+| `gameplayStart()` / `gameplayStop()` bracketing play | Yes, incl. menus, briefs, level-ups, ads, and a backgrounded tab. The first `gameplayStart` waits for the player's first steering input, i.e. once the onboarding hint has been answered |
 | Ads via `SDK.ad.requestAd()` | Yes — rewarded and midgame |
 | Game paused and muted for the duration of an ad | Yes, before the request rather than on `adStarted` |
 | Works in an iframe | Yes — no navigation, no popups, no top-level access |

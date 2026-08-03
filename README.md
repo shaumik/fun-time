@@ -163,7 +163,8 @@ node build.mjs
 `dist/neon-heat.zip` — that is the upload.
 
 `Ads` in `src/game.js` loads the CrazyGames SDK v3, awaits `init()`, brackets play with
-`gameplayStart`/`gameplayStop`, and pauses and mutes the game around every ad. Off-platform
+`gameplayStart`/`gameplayStop` — the first one held back until the player actually steers —
+and pauses and mutes the game around every ad. Off-platform
 each call degrades to a simulated placement so the flow stays demonstrable. Two rewarded
 placements and one midgame interstitial are wired; banners are not.
 

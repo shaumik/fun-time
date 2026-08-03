@@ -67,7 +67,14 @@ const browser = await launch();
 
   await page.goto(GAME, { waitUntil: 'load' });
   await page.waitForTimeout(2000);
+  /* No gameplayStart here, and that is the point: the district is running but
+     the player has not been handed the wheel yet, so the portal is not told
+     play has begun until they steer. */
   console.log('SDK boot calls:', JSON.stringify(await page.evaluate(() => window.__calls)));
+  await page.keyboard.down('ArrowRight');
+  await page.waitForTimeout(250);
+  await page.keyboard.up('ArrowRight');
+  console.log('after first steer:', JSON.stringify(await page.evaluate(() => window.__calls)));
   console.log('player name read:', await page.evaluate(() => window.__NH.Ads.playerName));
 
   const ad = await page.evaluate(() => new Promise(resolve => {
