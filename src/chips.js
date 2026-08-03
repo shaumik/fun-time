@@ -16,8 +16,11 @@ function defaults(){
   return {
     bankMul: 1,        // payout multiplier when you cash in
     wreckMul: 1,       // payout multiplier on a wreck specifically
-    multRate: 0.60,    // chain links -> multiplier slope
-    multCap: 9.9,
+    /* 0.60 capped the meter at chain 15 — measured, every run including a
+       casual district 1 pegged ×9.9, so the multiplier stopped being a thing
+       you climb. At 0.40 a 15-chain reads ×7.0 and the cap needs 27 links. */
+    multRate: 0.40,    // chain links -> multiplier slope
+    multCap: 12,
     topMul: 1,
     gripMul: 1,
     chainTime: 3.2,    // seconds on the chain clock, reset by every wreck
@@ -419,7 +422,11 @@ function rollContracts(district, elite){
   if (!elite && district <= 2) { picks.push(CONTRACTS[0]); used.add('clear'); }
 
   while (picks.length < want && used.size < CONTRACTS.length) {
-    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1));
+    /* the opening district never deals a risk-2 wager: a learner who takes
+       Dragnet on district 1 is dead in twenty seconds and knows only that
+       the game is unfair */
+    const avail = pool.filter(c => !used.has(c.id) && (!elite || c.risk >= 1)
+                                && (district > 1 || c.risk < 2));
     if (!avail.length) break;
     const c = avail[Math.floor(Math.random() * avail.length)];
     used.add(c.id);

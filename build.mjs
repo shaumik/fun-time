@@ -1,6 +1,7 @@
-/* Inlines style.css and game.js into index.html to produce two artefacts:
+/* Inlines style.css and game.js into index.html to produce three artefacts:
      dist/index.html     — self-contained single file, what you zip for CrazyGames
      dist/mockup.html    — body fragment for publishing as a shareable page
+     dist/artifact.html  — body fragment for playtesting: the cabinet and a test card
    index.html stays the source of truth; nothing is duplicated by hand. */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -145,7 +146,7 @@ ${body}
   </div>
 
   <div class="spec">
-    <div><b>86</b><span>KB, zipped</span></div>
+    <div><b>129</b><span>KB, zipped</span></div>
     <div><b>0</b><span>image files</span></div>
     <div><b>0</b><span>audio files</span></div>
     <div><b>58</b><span>perks in the pool</span></div>
@@ -260,8 +261,18 @@ ${css}
 
 /* --- host-page overrides, playable build only: not part of the game --- */
 html{color-scheme:dark}
-html,body{background:#02030A;overflow:hidden}
+/* svh, not vh: on a phone the browser chrome would otherwise crop the HUD off
+   the bottom of the cabinet. */
+html,body{background:#02030A;overflow:hidden;height:100svh;min-height:30rem}
 </style>
+<script>
+/* The host owns <head>, so a page that forgets the viewport meta lays this
+   out at desktop width on a phone and the whole cabinet arrives shrunk. */
+if (!document.querySelector('meta[name=viewport]')) {
+  document.head.insertAdjacentHTML('beforeend',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');
+}
+</script>
 ${body}
 <script>
 ${js}

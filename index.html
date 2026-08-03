@@ -73,6 +73,26 @@
       <div class="powers" id="powers"></div>
     </div>
 
+    <!-- The level-up lands on the road before it lands as a card screen.
+         The two ghosts are the chromatic split: same words, cyan and
+         magenta, thrown apart on entry and pulled into register. -->
+    <div id="lvlUp" class="lvlUp">
+      <div class="luType">
+        <span class="luBeam"></span>
+        <span class="luEdge t"></span>
+        <span class="luEdge b"></span>
+        <span class="luTick tl"></span><span class="luTick tr"></span>
+        <span class="luTick bl"></span><span class="luTick br"></span>
+        <span class="luWords">Level Up</span>
+        <span class="luSlice"></span>
+      </div>
+      <div class="luSub">
+        <span>Level</span><b id="lvlUpNum">2</b>
+        <s></s>
+        <span>Take a perk</span>
+      </div>
+    </div>
+
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
       <b>Drag anywhere to steer</b>
@@ -183,7 +203,7 @@
   <!-- ============ level up ============ -->
   <div id="levelup" class="layer screen">
     <div class="draftIn">
-      <div class="luKick">Level <b id="luLevel">2</b></div>
+      <div class="luKick"><span>Level</span><b id="luLevel">2</b></div>
       <h2 class="dtitle">Take a perk</h2>
       <div class="dsub">It stays with you for the rest of the run</div>
       <div class="dcards" id="luCards"></div>
@@ -207,6 +227,7 @@
       </div>
       <div class="clLvl" id="clLvl">Level up &mdash; take a perk</div>
       <button class="btn primary" id="btnCleared">Keep going<span class="key">Enter</span></button>
+      <button class="btn loopBtn hide" id="btnLoop">Keep driving &mdash; THE LOOP</button>
     </div>
   </div>
 
@@ -302,12 +323,18 @@
           <div class="gFitted" id="gFitted"></div>
         </div>
 
-        <!-- the work order -->
+        <!-- the workshop: one station at a time, not a settings scroll -->
         <div class="gWork" id="gWork">
-          <div class="gwHead"><h3>Tuning</h3><span id="gwUps">0 / 30</span></div>
-          <div class="gUps" id="gUps"></div>
-          <div class="gwHead"><h3>Hardware</h3><span id="gwGear">0 / 6</span></div>
-          <div class="gGear" id="gGear"></div>
+          <div class="gTabs" id="gTabs">
+            <button class="gTab on" data-sec="tune">Tuning<span id="gwUps">0 / 30</span></button>
+            <button class="gTab" data-sec="parts">Parts<span id="gwGear">0 / 6</span></button>
+            <button class="gTab" data-sec="crew">Crew<span id="gwTree">0 / 20</span></button>
+            <button class="gTab" data-sec="paint">Paint<span id="gwLiv">1 / 6</span></button>
+          </div>
+          <div class="gSec on" data-sec="tune"><div class="gUps" id="gUps"></div></div>
+          <div class="gSec" data-sec="parts"><div class="gGear" id="gGear"></div></div>
+          <div class="gSec" data-sec="crew"><div class="gTree" id="gTree"></div></div>
+          <div class="gSec" data-sec="paint"><div class="gLiv" id="gLiv"></div></div>
         </div>
       </div>
     </div>
