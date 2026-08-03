@@ -3745,6 +3745,7 @@ const Ads = {
   suspended: false,    // platform is refusing ads this session
   canServe(){ return !this.blocked && !this.suspended; },
   blockedNote(){
+    if (this.noAds()) return '';                          // by design, not a fault
     if (!this.caps().rewarded && this.ready) return '';   // not a fault, just this network
     if (this.blocked)   return 'Ad blocker detected — the ad bonuses are unavailable.';
     if (this.suspended) return 'Ad bonuses are unavailable right now.';
@@ -3797,12 +3798,19 @@ const Ads = {
      has rewarded placements — GameMonetize documents none at all — and a
      rewarded button that cannot pay out is the exact thing CrazyGames reject
      builds for. Worth honouring everywhere, not just where it is policed. */
+  /* A build compiled with no ad provider at all — the standalone/itch target.
+     Distinct from "no provider yet": off a local file or the playable page
+     there is no provider either, and there simulating a placement is exactly
+     what you want. Only the build can tell the two apart, so it says. */
+  noAds(){ return !!window.__NH_NO_ADS; },
+
   caps(){
     /* Read off the adapter, not off this.sdk. What a network can serve is a
        static fact about the adapter and is known the moment it loads —
        this.sdk is only set once init() resolves, which on a portal that
        never answers is eight seconds of the game believing it can offer
        rewarded ads it cannot. */
+    if (this.noAds()) return { rewarded:false, midgame:false };
     const p = this.sdk || this.resolve();
     const c = p && p.caps;
     return { rewarded: !c || c.rewarded !== false,
@@ -3904,6 +3912,10 @@ const Ads = {
         done(false);
         return;
       }
+      /* Shipped without ads: no overlay and no reward. The offer is already
+         hidden by caps(), so reaching here at all means a keyboard shortcut
+         or a stale callback, and the honest answer to both is nothing. */
+      if (this.noAds()) { done(false); return; }
       simAd(msg, simSecs, () => done(true));
       return;
     }

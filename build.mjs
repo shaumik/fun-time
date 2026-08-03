@@ -327,6 +327,14 @@ for (const t of TARGETS) {
     /* the adapter goes in the head, before the game: it must have installed
        window.__NH_PROVIDER by the time Ads.resolve() looks for it */
     out = out.replace('</head>', `<script>\n${adapter}\n</script>\n</head>`);
+  } else {
+    /* A target with no provider has to say so. "No provider" is otherwise
+       indistinguishable from running off a local file or the playable page,
+       where simulating a placement is the point — and a shipped standalone
+       build that mimes a three-second ad and then hands over the reward is
+       both a lie and a free grant. Declared, the game retires the ad routes
+       and the coin route carries the over-screen. */
+    out = out.replace('</head>', '<script>window.__NH_NO_ADS = true;</script>\n</head>');
   }
   const dir = path.join(ROOT, 'dist', t.dir);
   fs.mkdirSync(dir, { recursive: true });
