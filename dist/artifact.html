@@ -1,9 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>NEON HEAT — Drift Outlaw</title>
+<title>NEON HEAT — playtest build</title>
+<script>
+/* The host owns <head>, and a phone with no viewport meta lays the page out
+   at 980px — which renders the whole cabinet at a third scale and leaves the
+   HUD unreadable. Set one if the shell has not. This is the only line on the
+   page that reaches outside its own fragment. */
+if (!document.querySelector('meta[name=viewport]')) {
+  document.head.insertAdjacentHTML('beforeend',
+    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">');
+}
+</script>
 <style>
 /* ============================================================
    NEON HEAT — UI
@@ -28,17 +33,6 @@
 
   --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI Variable Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --u:8px; /* unit, set from JS to stage height / 100 */
-
-  /* Safe-area insets. The viewport is declared viewport-fit=cover so the
-     canvas can reach the physical edges of a notched phone — which also
-     means anything positioned at those edges lands under the notch, the
-     rounded corners or the home indicator unless it pays these back.
-     Every edge-anchored element below adds them; the canvas deliberately
-     does not, since artwork under the notch is the point. */
-  --sa-t:env(safe-area-inset-top,0px);
-  --sa-r:env(safe-area-inset-right,0px);
-  --sa-b:env(safe-area-inset-bottom,0px);
-  --sa-l:env(safe-area-inset-left,0px);
 }
 
 *{box-sizing:border-box}
@@ -79,12 +73,12 @@ body{
 
 /* ---------- shared type ---------- */
 .lbl{
-  font-size:max(10px,calc(var(--u)*1.35));
+  font-size:calc(var(--u)*1.35);
   letter-spacing:.24em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .val{
-  font-size:max(10px,calc(var(--u)*5.2));
+  font-size:calc(var(--u)*5.2);
   font-weight:800;line-height:.95;
   font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   color:#fff;text-shadow:0 0 calc(var(--u)*2.4) rgba(61,232,255,.45);
@@ -92,7 +86,7 @@ body{
 .amber{color:var(--amber)!important;text-shadow:0 0 calc(var(--u)*2.4) rgba(255,177,61,.5)!important}
 .key{
   display:inline-block;
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.14em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
   border:1px solid var(--edge);border-radius:calc(var(--u)*.45);
   padding:calc(var(--u)*.25) calc(var(--u)*.6);
@@ -109,9 +103,9 @@ body{
    has no such reservation, which is why it can be added unconditionally. */
 .hudTop{
   position:absolute;
-  top:calc(var(--u)*3 + var(--sa-t));
-  left:calc(var(--u)*3.4 + var(--sa-l));
-  right:calc(var(--u)*3.4 + var(--sa-r));
+  top:calc(var(--u)*3 + env(safe-area-inset-top));
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
   display:flex;align-items:flex-start;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .stat.right{text-align:right}
@@ -125,7 +119,7 @@ body{
 }
 .combo.on{opacity:1;transform:none}
 .cmult{
-  font-size:max(10px,calc(var(--u)*4.6));font-weight:800;line-height:1;
+  font-size:calc(var(--u)*4.6);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.02em;
   color:var(--magenta);
   text-shadow:0 0 calc(var(--u)*3) rgba(255,46,136,.75);
@@ -160,7 +154,7 @@ body{
 #score.pop{animation:scorePop .5s cubic-bezier(.2,.9,.3,1.4)}
 @keyframes scorePop{35%{transform:scale(1.12);text-shadow:0 0 calc(var(--u)*4) rgba(255,177,61,.9)}}
 .cpts{
-  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;margin-top:calc(var(--u)*.2);
 }
 .cbar{
@@ -173,7 +167,7 @@ body{
   box-shadow:0 0 calc(var(--u)*1.4) rgba(255,46,136,.9);
 }
 .cnote{
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);margin-top:calc(var(--u)*.7);
 }
 
@@ -189,11 +183,11 @@ body{
   margin-bottom:calc(var(--u)*.55);
 }
 .objHead span{
-  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.26em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);letter-spacing:.26em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .objHead b{
-  font-size:max(10px,calc(var(--u)*1.6));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*1.6);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;
 }
 .obj.boss .objHead span{color:var(--red)}
@@ -234,7 +228,7 @@ body{
 }
 .build i{
   font-style:normal;
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.12em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.12em;text-transform:uppercase;
   font-weight:800;color:var(--ice);
   border-left:calc(var(--u)*.35) solid var(--cyan);
   background:rgba(255,255,255,.05);
@@ -251,7 +245,7 @@ body{
 
 .dchip{
   display:inline-block;
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:#04121A;background:var(--cyan);
   border-radius:99px;padding:calc(var(--u)*.3) calc(var(--u)*1);
   margin-bottom:calc(var(--u)*1);
@@ -265,7 +259,7 @@ body{
 }
 .heat.on{opacity:1}
 .hlbl{
-  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.28em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);letter-spacing:.28em;text-transform:uppercase;
   font-weight:800;color:var(--dim);margin-right:calc(var(--u)*.5);
 }
 .heat i{
@@ -278,19 +272,19 @@ body{
 
 .hudBot{
   position:absolute;
-  left:calc(var(--u)*3.4 + var(--sa-l));
-  right:calc(var(--u)*3.4 + var(--sa-r));
-  bottom:calc(var(--u)*3 + var(--sa-b));
+  left:calc(var(--u)*3.4 + env(safe-area-inset-left));
+  right:calc(var(--u)*3.4 + env(safe-area-inset-right));
+  bottom:calc(var(--u)*3 + env(safe-area-inset-bottom));
   display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2);
 }
 .speedo{display:flex;align-items:baseline;gap:calc(var(--u)*.8)}
 .spdv{
-  font-size:max(10px,calc(var(--u)*6.4));font-weight:800;line-height:.85;color:#fff;
+  font-size:calc(var(--u)*6.4);font-weight:800;line-height:.85;color:#fff;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;
   text-shadow:0 0 calc(var(--u)*2.6) rgba(61,232,255,.5);
 }
 .spdu{
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.22em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.22em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 /* Active power-ups. Nothing here is a resource you meter out any more, so
@@ -300,7 +294,7 @@ body{
   display:flex;align-items:center;gap:calc(var(--u)*.8);
   padding:calc(var(--u)*.45) calc(var(--u)*1);
   border:1px solid currentColor;border-radius:99px;
-  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;
+  font-size:calc(var(--u)*1.15);font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;
   background:rgba(4,8,18,.5);
   animation:pwrIn .18s cubic-bezier(.2,.9,.25,1) both;
@@ -329,12 +323,6 @@ body{
 @keyframes pwrIn{from{opacity:0;transform:translateX(calc(var(--u)*1.5))}to{opacity:1;transform:none}}
 
 /* toasts */
-/* Below the chain readout, the level bar and the heat pips — all of which
-   live in the top band and none of which this may sit on top of. It was at
-   24 units, which on a 1080p screen lands square on the level bar, so every
-   wreck stacked its toast over the HUD and the middle of the screen turned
-   to mush. The mobile breakpoint already moved it to 38%; the desktop
-   default never got the same treatment. */
 #toasts{
   /* below the centre HUD stack — at 24u the rail sat exactly on the pile-up
      counter and convoy badge, and a hot chain turned the screen centre into
@@ -343,7 +331,7 @@ body{
   display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.6);
 }
 .toast{
-  font-size:max(10px,calc(var(--u)*1.9));font-weight:800;
+  font-size:calc(var(--u)*1.9);font-weight:800;
   letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
   color:#fff;text-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.8);
   animation:toast 1.1s cubic-bezier(.2,.9,.2,1) forwards;
@@ -374,21 +362,15 @@ body{
 }
 .tbtn svg{width:45%;height:45%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .tbtn:active,.tbtn.down{background:rgba(61,232,255,.24);transform:scale(.94)}
-/* These are the steering controls and they sit in the bottom-left corner —
-   the same place iOS puts the home indicator, and the corner a landscape
-   phone rounds off. Both offsets clear the inset before applying their own. */
-.tl{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l));
-    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
-.tr{left:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-l) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
-    bottom:calc(max(14px,calc(var(--u)*2.4)) + var(--sa-b))}
+.tl{left:max(14px,calc(var(--u)*2.4));bottom:max(14px,calc(var(--u)*2.4))}
+.tr{left:calc(max(14px,calc(var(--u)*2.4)) + max(60px,calc(var(--u)*11)) + max(10px,calc(var(--u)*1.4)));
+    bottom:max(14px,calc(var(--u)*2.4))}
 
 /* ============ screens ============ */
 .screen{
   pointer-events:auto;
   display:grid;place-items:center;
-  padding:
-    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
-    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));
+  padding:calc(var(--u)*3);
   /* the attract driver runs live behind these screens, so the scrim has to
      hold contrast for the copy no matter what is on screen underneath */
   background:radial-gradient(115% 85% at 50% 45%,rgba(5,6,14,.86) 0%,rgba(3,4,10,.96) 68%);
@@ -398,25 +380,15 @@ body{
 @keyframes fade{from{opacity:0}to{opacity:1}}
 
 /* menu */
-/* The title card is the only screen whose copy is large enough to survive a
-   thinner scrim, and it is the one screen where the attract driver behind it
-   is worth seeing — more so now the city has depth and the cars leave light.
-   The first thing a player looks at should be that, not a black sheet with a
-   logo on it. The dense text screens (map, contract, depot) keep the heavy
-   scrim above. */
-#menu{
-  background:radial-gradient(120% 88% at 50% 45%,
-    rgba(5,6,14,.80) 0%, rgba(4,5,12,.74) 46%, rgba(2,3,9,.46) 100%);
-}
 .menuIn{text-align:center;max-width:calc(var(--u)*82)}
 .eyebrow{
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);opacity:.85;
   margin-bottom:calc(var(--u)*2);
 }
 .title{
   margin:0;line-height:.82;
-  font-size:max(10px,calc(var(--u)*13));font-weight:800;
+  font-size:calc(var(--u)*13);font-weight:800;
   text-transform:uppercase;letter-spacing:-.03em;
   display:flex;flex-direction:column;align-items:center;
 }
@@ -432,7 +404,7 @@ body{
 }
 .tag{
   margin:calc(var(--u)*2.2) 0 calc(var(--u)*3.4);
-  font-size:max(10px,calc(var(--u)*1.75));font-weight:600;color:var(--ice);opacity:.72;
+  font-size:calc(var(--u)*1.75);font-weight:600;color:var(--ice);opacity:.72;
   letter-spacing:.02em;
 }
 .btns{display:flex;gap:calc(var(--u)*1.4);justify-content:center;flex-wrap:wrap}
@@ -441,7 +413,7 @@ body{
   margin-top:calc(var(--u)*3.4);
 }
 .hint{
-  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.25);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .hint b{
@@ -451,7 +423,7 @@ body{
 }
 .best{
   margin-top:calc(var(--u)*2.6);
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.24em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.24em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .best b{color:var(--cyan);font-variant-numeric:tabular-nums;margin-left:calc(var(--u)*.6)}
@@ -460,7 +432,7 @@ body{
 .btn{
   pointer-events:auto;cursor:pointer;
   font-family:var(--sans);
-  font-size:max(10px,calc(var(--u)*1.65));font-weight:800;
+  font-size:calc(var(--u)*1.65);font-weight:800;
   letter-spacing:.16em;text-transform:uppercase;
   color:var(--ice);
   background:rgba(255,255,255,.05);
@@ -522,7 +494,7 @@ body{
 }
 .btn em{
   position:absolute;right:calc(var(--u)*1.4);
-  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.18em;
+  font-style:normal;font-size:calc(var(--u)*1.05);letter-spacing:.18em;
   opacity:.62;border:1px solid currentColor;border-radius:calc(var(--u)*.35);
   padding:calc(var(--u)*.15) calc(var(--u)*.55);
 }
@@ -530,22 +502,22 @@ body{
 /* ---------- district brief ---------- */
 .briefIn{text-align:center;max-width:calc(var(--u)*62)}
 .bkicker{
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .bname{
   margin:calc(var(--u)*1.4) 0 calc(var(--u)*.8);
-  font-size:max(10px,calc(var(--u)*8));font-weight:800;line-height:.9;
+  font-size:calc(var(--u)*8);font-weight:800;line-height:.9;
   text-transform:uppercase;letter-spacing:-.02em;color:#fff;
   text-shadow:0 0 calc(var(--u)*3.5) rgba(61,232,255,.5);
 }
 .bsub{
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.28em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.28em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .bobj{
   margin:calc(var(--u)*2.6) 0 calc(var(--u)*3.2);
-  font-size:max(10px,calc(var(--u)*2));font-weight:600;color:var(--ice);line-height:1.5;
+  font-size:calc(var(--u)*2);font-weight:600;color:var(--ice);line-height:1.5;
 }
 .bobj b{color:var(--cyan);font-weight:800;font-variant-numeric:tabular-nums}
 
@@ -603,11 +575,11 @@ body{
 .draftIn{text-align:center;width:100%;max-width:calc(var(--u)*94)}
 .dtitle{
   margin:calc(var(--u)*1) 0 calc(var(--u)*.6);
-  font-size:max(10px,calc(var(--u)*4.4));font-weight:800;
+  font-size:calc(var(--u)*4.4);font-weight:800;
   text-transform:uppercase;letter-spacing:.02em;color:#fff;
 }
 .dsub{
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);margin-bottom:calc(var(--u)*2.8);
 }
 .dcards{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(var(--u)*1.6)}
@@ -631,21 +603,21 @@ body{
 .dcard.rare{border-top-color:var(--amber)}
 .dcard.rare:hover{background:rgba(255,177,61,.09)}
 .drar{
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.24em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .dcard.uncommon .drar{color:var(--magenta)}
 .dcard.rare .drar{color:var(--amber)}
 .dname{
-  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
   text-transform:uppercase;letter-spacing:.01em;line-height:1.05;
 }
-.ddesc{font-size:max(10px,calc(var(--u)*1.5));line-height:1.45;color:var(--ice);opacity:.82}
+.ddesc{font-size:calc(var(--u)*1.5);line-height:1.45;color:var(--ice);opacity:.82}
 /* the drawback is never buried — an unreadable cost is not a choice */
 .dcard.oc{border-top-color:var(--red)}
 .octag{
   position:absolute;top:0;right:0;
-  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  font-size:calc(var(--u)*.95);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
   color:#1A0407;background:var(--red);
   padding:calc(var(--u)*.3) calc(var(--u)*.9);
   border-radius:0 0 0 calc(var(--u)*.6);
@@ -653,15 +625,15 @@ body{
 .dcurse{
   margin-top:auto;padding-top:calc(var(--u)*1);
   border-top:1px dashed rgba(255,51,85,.42);
-  font-size:max(10px,calc(var(--u)*1.3));line-height:1.4;color:rgba(255,150,165,.9);
+  font-size:calc(var(--u)*1.3);line-height:1.4;color:rgba(255,150,165,.9);
 }
 .dcurse span{
   display:block;font-weight:800;text-transform:uppercase;letter-spacing:.16em;
-  font-size:max(10px,calc(var(--u)*1.05));color:var(--red);margin-bottom:calc(var(--u)*.35);
+  font-size:calc(var(--u)*1.05);color:var(--red);margin-bottom:calc(var(--u)*.35);
 }
 .dhint{
   margin-top:calc(var(--u)*2.4);
-  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .dhint b{
@@ -670,21 +642,19 @@ body{
 }
 
 .ovRank{
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--cyan);margin-top:calc(var(--u)*1);
 }
 
 .opts{
-  position:absolute;
-  right:calc(var(--u)*3 + var(--sa-r));
-  bottom:calc(var(--u)*3 + var(--sa-b));
+  position:absolute;right:calc(var(--u)*3);bottom:calc(var(--u)*3);
   display:flex;gap:calc(var(--u)*.8);
 }
 #btnCtrl{display:none}
 #btnCtrl.show{display:block}
 .mute{
   pointer-events:auto;cursor:pointer;font-family:var(--sans);
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
   background:none;border:1px solid var(--edge);border-radius:calc(var(--u)*.5);
   padding:calc(var(--u)*.6) calc(var(--u)*1.2);
@@ -711,11 +681,11 @@ body{
 
 .ovHead{display:flex;align-items:center;justify-content:space-between;gap:calc(var(--u)*1.4)}
 .ovKicker{
-  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.34em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.4);letter-spacing:.34em;text-transform:uppercase;
   font-weight:800;color:var(--red);
 }
 .ovBadge{
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.2em;text-transform:uppercase;font-weight:800;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;font-weight:800;
   color:#04121A;background:var(--cyan);border-radius:99px;
   padding:calc(var(--u)*.35) calc(var(--u)*1.1);
   box-shadow:0 0 calc(var(--u)*2) rgba(61,232,255,.6);
@@ -723,7 +693,7 @@ body{
 .ovBadge.hide{display:none}
 .btn.hide{display:none}
 .ovScore{
-  font-size:max(10px,calc(var(--u)*9));font-weight:800;line-height:1;
+  font-size:calc(var(--u)*9);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:#fff;
   margin:calc(var(--u)*1.2) 0 calc(var(--u)*2.4);
   text-shadow:0 0 calc(var(--u)*3.4) rgba(61,232,255,.5);
@@ -735,38 +705,12 @@ body{
   margin-bottom:calc(var(--u)*2.4);
 }
 .ovRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
-/* These labels sit above their values in a four-column grid, so a label that
-   wraps drops its own value half a line below the other three. Below the font
-   floor the columns are narrow enough for that to happen, so keep them on one
-   line and let the tracking give a little instead. */
 .ovRow span{
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.14em;text-transform:uppercase;
-  font-weight:700;color:var(--dim);white-space:nowrap;
+  font-size:calc(var(--u)*1.1);letter-spacing:.2em;text-transform:uppercase;
+  font-weight:700;color:var(--dim);
 }
-.ovRow b{font-size:max(10px,calc(var(--u)*2.1));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.ovRow b{font-size:calc(var(--u)*2.1);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .ovActs{display:flex;flex-direction:column;gap:calc(var(--u)*1)}
-/* Geometry is shared across the whole stack so the decline path is exactly
-   as large and as reachable as the rewarded offers above it. */
-.ovActs .btn{width:100%;justify-content:center;padding:calc(var(--u)*1.5) calc(var(--u)*3)}
-/* The key hint must not change the button's box. These four buttons are
-   measured against each other — their rules require the continue-without-
-   watching path to match the ad offers in size exactly — and an inline hint
-   adds four pixels of height to the one button that has it. Pulled out of
-   flow, the same way the AD badge already is. */
-.ovActs .btn .key{
-  position:absolute;right:calc(var(--u)*1.4);top:50%;
-  transform:translateY(-50%);margin-left:0;
-}
-
-/* Ad-unavailability notice. Quiet, inline, and never a popup. */
-.ovAdNote{
-  margin-top:calc(var(--u)*1.2);text-align:center;
-  font-size:max(10px,calc(var(--u)*1.25));line-height:1.45;color:rgba(255,177,61,.78);
-}
-.ovAdNote.hide{display:none}
-/* A disabled offer has to read as unavailable rather than as a live button
-   the player keeps hitting. */
-.ovActs .btn:disabled{opacity:.34;cursor:default;box-shadow:none}
 .ovFoot{display:flex;gap:calc(var(--u)*1.2);margin-top:calc(var(--u)*2.2)}
 .ovFoot .btn{flex:1;justify-content:center}
 
@@ -776,10 +720,7 @@ body{
    on it wearing everything you have bolted on, and a work order beside it.
    Steel edges, hazard tape and printed dockets rather than rounded web cards.
    ============================================================ */
-#garage.screen{align-items:flex-start;
-  padding:
-    calc(var(--u)*3 + var(--sa-t)) calc(var(--u)*3 + var(--sa-r))
-    calc(var(--u)*3 + var(--sa-b)) calc(var(--u)*3 + var(--sa-l));}
+#garage.screen{align-items:flex-start;padding:calc(var(--u)*3)}
 .gPanel{
   position:relative;
   width:100%;max-width:calc(var(--u)*116);
@@ -806,24 +747,24 @@ body{
 }
 .gId{display:flex;flex-direction:column;gap:calc(var(--u)*.3);min-width:0}
 .gKick{
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.3em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.3em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gId b{
-  font-size:max(10px,calc(var(--u)*2.6));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.6);font-weight:800;color:#fff;
   letter-spacing:.14em;text-transform:uppercase;line-height:1;
 }
 .gBal{margin-left:auto;text-align:right;display:flex;flex-direction:column;gap:calc(var(--u)*.3)}
 .gBal span{
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gBal b{
-  font-size:max(10px,calc(var(--u)*2.8));font-weight:800;line-height:1;
+  font-size:calc(var(--u)*2.8);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;
 }
 .gAct{display:flex;gap:calc(var(--u)*1);flex:0 0 auto}
-.gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:max(10px,calc(var(--u)*1.5))}
+.gAct .btn{padding:calc(var(--u)*1.25) calc(var(--u)*2.2);font-size:calc(var(--u)*1.5)}
 
 /* hazard tape under the header — the one loud piece of shop furniture */
 .gTape{
@@ -860,7 +801,7 @@ body{
   padding:calc(var(--u)*1) calc(var(--u)*1.2);
 }
 .gpName{
-  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*1.25);font-weight:800;color:#fff;
   letter-spacing:.16em;text-transform:uppercase;margin-bottom:calc(var(--u)*.7);
 }
 .gpName em{font-style:normal;color:var(--dim);font-weight:700;letter-spacing:.1em}
@@ -870,7 +811,7 @@ body{
 }
 .gpRow span{
   flex:0 0 calc(var(--u)*5.4);
-  font-size:max(10px,calc(var(--u)*.95));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*.95);letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .gpRow i{display:flex;gap:2px;flex:1}
@@ -878,7 +819,7 @@ body{
 .gpRow i b.on{background:var(--cyan);box-shadow:0 0 calc(var(--u)*.9) rgba(61,232,255,.6)}
 .gpRow em{
   flex:0 0 auto;font-style:normal;
-  font-size:max(10px,calc(var(--u)*1));font-weight:800;color:var(--ice);
+  font-size:calc(var(--u)*1);font-weight:800;color:var(--ice);
   font-variant-numeric:tabular-nums;min-width:calc(var(--u)*6);text-align:right;
 }
 /* legend for the render: what those extra shapes on the car are */
@@ -891,7 +832,7 @@ body{
 }
 .gFitted i{
   font-style:normal;
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
   border:1px solid rgba(61,232,255,.35);
   background:rgba(61,232,255,.08);
@@ -913,11 +854,11 @@ body{
 }
 .gwHead:first-child{margin-top:0}
 .gwHead h3{
-  margin:0;font-size:max(10px,calc(var(--u)*1.4));font-weight:800;
+  margin:0;font-size:calc(var(--u)*1.4);font-weight:800;
   letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);
 }
 .gwHead span{
-  font-size:max(10px,calc(var(--u)*1.15));font-weight:800;color:var(--dim);
+  font-size:calc(var(--u)*1.15);font-weight:800;color:var(--dim);
   font-variant-numeric:tabular-nums;letter-spacing:.1em;
 }
 
@@ -979,12 +920,13 @@ body{
 .up .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*.5)}
 .up .nm{
   display:flex;align-items:baseline;justify-content:space-between;gap:calc(var(--u)*.8);
-  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.18em;
+  font-size:calc(var(--u)*1.3);font-weight:800;letter-spacing:.18em;
   text-transform:uppercase;color:#fff;
 }
 .up .nm em{
   font-style:normal;letter-spacing:.04em;text-transform:none;
-  font-size:max(10px,calc(var(--u)*1.2));color:var(--cyan);font-variant-numeric:tabular-nums;
+  font-size:calc(var(--u)*1.35);color:var(--cyan);font-variant-numeric:tabular-nums;
+  text-shadow:0 0 calc(var(--u)*1.6) rgba(61,232,255,.55);
 }
 /* the meter reads as dyno segments, not a progress bar */
 .pips{display:flex;gap:calc(var(--u)*.35)}
@@ -1002,7 +944,7 @@ body{
 .up button{
   cursor:pointer;flex:0 0 auto;min-width:calc(var(--u)*9.5);
   font-family:var(--sans);
-  font-size:max(10px,calc(var(--u)*1.2));font-weight:800;letter-spacing:.1em;
+  font-size:calc(var(--u)*1.2);font-weight:800;letter-spacing:.08em;
   font-variant-numeric:tabular-nums;
   color:#1A0C04;background:linear-gradient(180deg,#FFD790,var(--amber) 60%,#E08A12);
   border:none;
@@ -1080,20 +1022,6 @@ body{
 }
 .gear .ico canvas{width:62% !important;max-width:150px}
 .gear .nm{
-  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;letter-spacing:.14em;
-  text-transform:uppercase;color:#fff;
-}
-.gear .ds{font-size:max(10px,calc(var(--u)*1.15));line-height:1.4;color:var(--ice);opacity:.75}
-.gear .pr{
-  margin-top:auto;padding-top:calc(var(--u)*.4);
-  display:flex;align-items:baseline;gap:calc(var(--u)*.8);
-  font-size:max(10px,calc(var(--u)*1.3));font-weight:800;
-  font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.06em;
-}
-/* the shortfall, so "too expensive" is a number rather than a dimmed card */
-.gear .pr em{
-  font-style:normal;font-size:max(10px,calc(var(--u)*1));color:var(--dim);
-  font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   font-size:calc(var(--u)*1.25);font-weight:800;letter-spacing:.14em;
   text-transform:uppercase;color:#fff;
 }
@@ -1194,7 +1122,7 @@ body{
 #ad.on{display:grid}
 .adBox{width:100%;max-width:calc(var(--u)*46);text-align:center;padding:calc(var(--u)*3)}
 .adTag{
-  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);letter-spacing:.4em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .adArt{
@@ -1212,7 +1140,7 @@ body{
   0%{transform:scale(.5);opacity:1}
   100%{transform:scale(1.9);opacity:0}
 }
-.adMsg{font-size:max(10px,calc(var(--u)*2));font-weight:800;color:#fff;margin-bottom:calc(var(--u)*1.6)}
+.adMsg{font-size:calc(var(--u)*2);font-weight:800;color:#fff;margin-bottom:calc(var(--u)*1.6)}
 .adBar{height:calc(var(--u)*.5);background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
 .adBar i{
   display:block;height:100%;width:0%;
@@ -1220,7 +1148,7 @@ body{
 }
 .adNote{
   margin-top:calc(var(--u)*1.6);
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.14em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.14em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 
@@ -1245,11 +1173,11 @@ body{
 }
 .gsHint.on{opacity:1;transform:translate(-50%,0)}
 .gsHint b{
-  display:block;font-size:max(10px,calc(var(--u)*1.8));font-weight:800;color:#fff;
+  display:block;font-size:calc(var(--u)*1.8);font-weight:800;color:#fff;
   letter-spacing:.04em;margin-bottom:calc(var(--u)*.5);
 }
 .gsHint span{
-  font-size:max(10px,calc(var(--u)*1.2));font-weight:700;color:var(--dim);
+  font-size:calc(var(--u)*1.2);font-weight:700;color:var(--dim);
   letter-spacing:.1em;text-transform:uppercase;line-height:1.5;
 }
 
@@ -1266,9 +1194,7 @@ body{
    ============================================================ */
 @media (max-aspect-ratio:1/1){
   .hudTop{
-    top:calc(var(--u)*2.2 + var(--sa-t));
-    left:calc(var(--u)*2.2 + var(--sa-l));
-    right:calc(var(--u)*2.2 + var(--sa-r));
+    top:calc(var(--u)*2.2);left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
     flex-direction:column;align-items:stretch;gap:calc(var(--u)*1.4);
   }
   /* objective first: it is the thing you are actually playing against */
@@ -1280,9 +1206,9 @@ body{
   }
   .stat.right{justify-content:flex-end}
   .stat .lbl{margin-bottom:0}
-  .val{font-size:max(10px,calc(var(--u)*3.4))}
+  .val{font-size:calc(var(--u)*3.4)}
   .dchip{margin-bottom:0;order:-1}
-  .cmult{font-size:max(10px,calc(var(--u)*3.6))}
+  .cmult{font-size:calc(var(--u)*3.6)}
   .cnote{display:none}
 
   /* toasts sit mid-screen over empty road; at 20u they landed on the score */
@@ -1294,35 +1220,34 @@ body{
     flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*46);
     margin-top:0;gap:calc(var(--u)*.35);
   }
-  #hud .build i{font-size:max(10px,calc(var(--u)*.95));padding:calc(var(--u)*.22) calc(var(--u)*.55)}
+  #hud .build i{font-size:calc(var(--u)*.95);padding:calc(var(--u)*.22) calc(var(--u)*.55)}
 
   .hudBot{
-    left:calc(var(--u)*2.2 + var(--sa-l));right:calc(var(--u)*2.2 + var(--sa-r));
-    /* clears the touch buttons, which have themselves moved up by --sa-b */
-    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6 + var(--sa-b));
+    left:calc(var(--u)*2.2);right:calc(var(--u)*2.2);
+    bottom:calc(max(60px,var(--u)*11) + max(14px,var(--u)*2.4) + var(--u)*1.6);
   }
-  .spdv{font-size:max(10px,calc(var(--u)*4.4))}
+  .spdv{font-size:calc(var(--u)*4.4)}
   .hudDrv{gap:calc(var(--u)*1.9)}
   .nbar{width:calc(var(--u)*16)}
 
   /* screens */
-  .title{font-size:max(10px,calc(var(--u)*9))}
-  .tag{font-size:max(10px,calc(var(--u)*1.6));margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
+  .title{font-size:calc(var(--u)*9)}
+  .tag{font-size:calc(var(--u)*1.6);margin:calc(var(--u)*1.8) 0 calc(var(--u)*2.6)}
   .btns{flex-direction:column;align-items:stretch}
   .btn{justify-content:center}
   .hints{gap:calc(var(--u)*1.2)}
-  .bname{font-size:max(10px,calc(var(--u)*5.6))}
-  .bobj{font-size:max(10px,calc(var(--u)*1.7));margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
+  .bname{font-size:calc(var(--u)*5.6)}
+  .bobj{font-size:calc(var(--u)*1.7);margin:calc(var(--u)*2) 0 calc(var(--u)*2.6)}
 
   .dcards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .dcard{padding:calc(var(--u)*1.5) calc(var(--u)*1.5) calc(var(--u)*1.4)}
-  .dname{font-size:max(10px,calc(var(--u)*2))}
-  .ddesc{font-size:max(10px,calc(var(--u)*1.35))}
-  .dtitle{font-size:max(10px,calc(var(--u)*3.4))}
+  .dname{font-size:calc(var(--u)*2)}
+  .ddesc{font-size:calc(var(--u)*1.35)}
+  .dtitle{font-size:calc(var(--u)*3.4)}
   .dhint{display:none}          /* no number row to press on a phone */
 
   .panel{padding:calc(var(--u)*2.4)}
-  .ovScore{font-size:max(10px,calc(var(--u)*6.4))}
+  .ovScore{font-size:calc(var(--u)*6.4)}
   .ovRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .ovRow div{flex-direction:row;justify-content:space-between;align-items:baseline}
   .ovFoot{flex-direction:column}
@@ -1340,10 +1265,6 @@ body{
     flex-wrap:nowrap;gap:calc(var(--u)*1.2);
     padding:calc(var(--u)*1.2) calc(var(--u)*1.6);
   }
-  .gId b{font-size:max(10px,calc(var(--u)*2.2))}
-  .gBal b{font-size:max(10px,calc(var(--u)*2.4))}
-  .gAct{order:3;width:100%;flex-direction:row-reverse}
-  .gAct .btn{flex:1;justify-content:center;padding:calc(var(--u)*1.4) calc(var(--u)*1.2)}
   .gId b{font-size:calc(var(--u)*2.2)}
   .gBal b{font-size:calc(var(--u)*2.4)}
   .gAct{
@@ -1383,15 +1304,14 @@ body{
   .cnote,.dhint{display:none}
   .build{max-width:calc(var(--u)*20)}
   .build i:nth-child(n+5){display:none}
-  .title{font-size:max(10px,calc(var(--u)*9))}
+  .title{font-size:calc(var(--u)*9)}
   .tag{margin:calc(var(--u)*1.4) 0 calc(var(--u)*2)}
   .hints{display:none}
-  .bname{font-size:max(10px,calc(var(--u)*6))}
+  .bname{font-size:calc(var(--u)*6)}
   .bobj{margin:calc(var(--u)*1.6) 0 calc(var(--u)*2)}
-  .ovScore{font-size:max(10px,calc(var(--u)*7))}
-  .hudBot{bottom:calc(var(--u)*2.4 + var(--sa-b))}
-  /* keep the speedo clear of the left-hand steering pads, which sit one
-     safe-area inset further right on a landscape phone with rounded corners */
+  .ovScore{font-size:calc(var(--u)*7)}
+  .hudBot{bottom:calc(var(--u)*2.4)}
+  /* keep the speedo clear of the left-hand steering pads */
   .hudDrv{margin-left:calc(max(60px,var(--u)*11)*2 + var(--u)*4)}
 }
 
@@ -1407,21 +1327,21 @@ body{
 }
 .mapHead{display:flex;align-items:flex-end;justify-content:space-between;gap:calc(var(--u)*2)}
 .mkicker{
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.32em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.32em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .mkicker b{color:#fff}
 .mtitle{
-  margin:calc(var(--u)*.6) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
+  margin:calc(var(--u)*.6) 0 0;font-size:calc(var(--u)*4.2);font-weight:800;
   text-transform:uppercase;letter-spacing:.02em;color:#fff;line-height:1;
 }
 .mstats{display:flex;gap:calc(var(--u)*2.4);text-align:right}
 .mstats div{display:flex;flex-direction:column;gap:calc(var(--u)*.4)}
 .mstats span{
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.2em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
-.mstats b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.mstats b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 
 .mapBoard{
   position:relative;flex:1;min-height:0;overflow:hidden;
@@ -1475,17 +1395,17 @@ body{
 }
 .mnode .pin i{
   font-style:normal;line-height:1;
-  font-size:max(10px,calc(var(--u)*2.3));
+  font-size:calc(var(--u)*2.3);
   color:var(--dim);
 }
 .mnode .plabel{display:flex;flex-direction:column;align-items:center;gap:calc(var(--u)*.15)}
 .mnode .pname{
-  font-size:max(10px,calc(var(--u)*1.25));font-weight:800;color:var(--ice);
+  font-size:calc(var(--u)*1.25);font-weight:800;color:var(--ice);
   letter-spacing:.09em;text-transform:uppercase;white-space:nowrap;
 }
 .mnode .pmeta{
   display:flex;align-items:center;gap:calc(var(--u)*.55);
-  font-size:max(10px,calc(var(--u)*1));font-weight:800;white-space:nowrap;
+  font-size:calc(var(--u)*1);font-weight:800;white-space:nowrap;
 }
 .mnode .pmeta b{color:var(--cyan);letter-spacing:.04em}
 /* the payout and the price need a visible divider or they read as one number */
@@ -1520,8 +1440,8 @@ body{
   width:calc(var(--u)*8);height:calc(var(--u)*8);
   border-color:var(--red);border-width:calc(var(--u)*.4);
 }
-.mnode.boss .pin i{color:var(--red);font-size:max(10px,calc(var(--u)*3.4))}
-.mnode.boss .pname{color:var(--red);font-size:max(10px,calc(var(--u)*1.5));letter-spacing:.14em}
+.mnode.boss .pin i{color:var(--red);font-size:calc(var(--u)*3.4)}
+.mnode.boss .pname{color:var(--red);font-size:calc(var(--u)*1.5);letter-spacing:.14em}
 .mnode.boss .pmeta b{color:var(--red)}
 
 /* reachable: full colour, lifted, and quietly breathing */
@@ -1539,7 +1459,7 @@ body{
 .mnode.done{opacity:.42;filter:saturate(.1)}
 .mnode.done .pin{background:#0B0F1A}
 .mnode.done .pin i::before{content:'✓'}
-.mnode.done .pin i{font-size:max(10px,calc(var(--u)*2))}
+.mnode.done .pin i{font-size:calc(var(--u)*2)}
 .mnode.done .pin i{color:rgba(198,210,232,.55)}
 .mnode.here{opacity:1;filter:none}
 .mnode.here .pin{
@@ -1561,7 +1481,7 @@ body{
 #mapBuild{flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*58);margin:0}
 .mapLegend{
   display:flex;align-items:center;gap:calc(var(--u)*.6);flex-wrap:wrap;
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
 }
 .mapLegend .lg{
@@ -1576,7 +1496,7 @@ body{
 
 /* ---------- contract / depot cards ---------- */
 .ckicker{
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .ckicker.elitek{color:var(--magenta)}
@@ -1601,20 +1521,20 @@ body{
 .ccard.r2:hover{background:rgba(255,51,85,.08)}
 .crisk{
   display:flex;align-items:center;gap:calc(var(--u)*.4);
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.22em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.22em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .crisk i{width:calc(var(--u)*1.6);height:calc(var(--u)*.4);border-radius:99px;background:rgba(255,255,255,.16)}
 .crisk i.on{background:var(--amber)}
 .ccard.r2 .crisk i.on{background:var(--red)}
 .cname{
-  font-size:max(10px,calc(var(--u)*2.4));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.4);font-weight:800;color:#fff;
   text-transform:uppercase;line-height:1.05;
 }
-.cline{display:flex;gap:calc(var(--u)*.9);font-size:max(10px,calc(var(--u)*1.4));line-height:1.45}
+.cline{display:flex;gap:calc(var(--u)*.9);font-size:calc(var(--u)*1.4);line-height:1.45}
 .cline b{
   flex:0 0 calc(var(--u)*4.2);
-  font-size:max(10px,calc(var(--u)*1));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*1);letter-spacing:.16em;text-transform:uppercase;
   font-weight:800;padding-top:calc(var(--u)*.25);
 }
 .cline.boon b{color:var(--cyan)}
@@ -1622,23 +1542,23 @@ body{
 .cline span{color:var(--ice);opacity:.86}
 .cpay{
   margin-top:auto;padding-top:calc(var(--u)*1);border-top:1px solid var(--edge);
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.18em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.1);letter-spacing:.18em;text-transform:uppercase;
   font-weight:800;color:var(--amber);
 }
 
 @media (max-aspect-ratio:1/1){
   .ccards{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .ccard{padding:calc(var(--u)*1.4)}
-  .cname{font-size:max(10px,calc(var(--u)*2))}
-  .cline{font-size:max(10px,calc(var(--u)*1.25))}
-  .mtitle{font-size:max(10px,calc(var(--u)*3))}
+  .cname{font-size:calc(var(--u)*2)}
+  .cline{font-size:calc(var(--u)*1.25)}
+  .mtitle{font-size:calc(var(--u)*3)}
   .mapFoot .mapLegend{display:none}
   .mnode{gap:calc(var(--u)*.4)}
   .mnode .pin{width:calc(var(--u)*4.8);height:calc(var(--u)*4.8)}
-  .mnode .pin i{font-size:max(10px,calc(var(--u)*2))}
+  .mnode .pin i{font-size:calc(var(--u)*2)}
   .mnode.boss .pin{width:calc(var(--u)*6.4);height:calc(var(--u)*6.4)}
-  .mnode .pname{font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.06em}
-  .mnode .pmeta{font-size:max(10px,calc(var(--u)*.9));gap:calc(var(--u)*.35)}
+  .mnode .pname{font-size:calc(var(--u)*1.1);letter-spacing:.06em}
+  .mnode .pmeta{font-size:calc(var(--u)*.9);gap:calc(var(--u)*.35)}
   .mapIn{gap:calc(var(--u)*1)}
   .mapHead{flex-direction:column;align-items:flex-start;gap:calc(var(--u)*.8)}
   .mstats{text-align:left}
@@ -1665,11 +1585,11 @@ body{
   margin-bottom:calc(var(--u)*.4);
 }
 .hullHead span{
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .hullHead b{
-  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*1.5);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;
 }
 .hullBar{
@@ -1694,7 +1614,7 @@ body{
    objective, and it is amber because that is what the haulers are. */
 .convoy{
   display:flex;align-items:center;gap:calc(var(--u)*.8);
-  font-size:max(10px,calc(var(--u)*1.35));font-weight:800;letter-spacing:.22em;
+  font-size:calc(var(--u)*1.35);font-weight:800;letter-spacing:.22em;
   text-transform:uppercase;color:var(--amber);white-space:nowrap;
   border:1px solid rgba(255,177,61,.5);
   background:rgba(255,177,61,.10);
@@ -1715,7 +1635,7 @@ body{
    at a hand-picked offset — an absolutely positioned counter here collided
    with the hull bar and the toasts the moment all three were live at once. */
 .wreck{
-  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;letter-spacing:.2em;
+  font-size:calc(var(--u)*1.5);font-weight:800;letter-spacing:.2em;
   text-transform:uppercase;color:var(--amber);white-space:nowrap;
   opacity:0;transition:opacity .15s;
   text-shadow:0 0 calc(var(--u)*2) rgba(255,177,61,.8);
@@ -1733,12 +1653,12 @@ body{
    ============================================================ */
 #daily .panel{max-width:calc(var(--u)*44);text-align:center}
 .dayKick{
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.42em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:var(--amber);
 }
 .dayStreak{
   margin-top:calc(var(--u)*.8);
-  font-size:max(10px,calc(var(--u)*2.2));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.2);font-weight:800;color:#fff;
   letter-spacing:.06em;
 }
 .dayAmt{
@@ -1746,15 +1666,15 @@ body{
   margin:calc(var(--u)*2.2) 0 calc(var(--u)*.8);
 }
 .dayAmt b{
-  font-size:max(10px,calc(var(--u)*7));font-weight:800;line-height:1;
+  font-size:calc(var(--u)*7);font-weight:800;line-height:1;
   font-variant-numeric:tabular-nums;letter-spacing:-.03em;
 }
 .dayAmt span{
-  font-size:max(10px,calc(var(--u)*1.4));letter-spacing:.24em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.4);letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .dayNext{
-  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.25);letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);
   padding-bottom:calc(var(--u)*2.2);
   border-bottom:1px solid var(--edge);
@@ -1776,26 +1696,17 @@ body{
   gap:calc(var(--u)*2);margin-bottom:calc(var(--u)*2);
   padding-bottom:calc(var(--u)*1.2);border-bottom:1px solid var(--edge);
 }
-/* The CrazyGames avatar, sized in UI units so it tracks the name beside it.
-   `margin-right:auto` keeps the note on the far right where it was. */
-.bdPic{
-  width:calc(var(--u)*5);height:calc(var(--u)*5);border-radius:50%;
-  object-fit:cover;flex:0 0 auto;align-self:center;
-  border:1px solid var(--edge);background:rgba(255,255,255,.04);
-}
-.bdPic.hide{display:none}
-.bdHead > div:first-of-type{margin-right:auto}
 .bdKick{
-  font-size:max(10px,calc(var(--u)*1.15));letter-spacing:.4em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.15);letter-spacing:.4em;text-transform:uppercase;
   font-weight:800;color:var(--cyan);
 }
 .bdWho{
   margin:calc(var(--u)*.6) 0 0;
-  font-size:max(10px,calc(var(--u)*3));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*3);font-weight:800;color:#fff;
   letter-spacing:.04em;text-transform:uppercase;line-height:1;
 }
 .bdNote{
-  font-size:max(10px,calc(var(--u)*1.1));letter-spacing:.16em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.1);letter-spacing:.16em;text-transform:uppercase;
   font-weight:700;color:var(--dim);text-align:right;
 }
 .bdRows{display:flex;flex-direction:column;gap:calc(var(--u)*.4);margin-bottom:calc(var(--u)*2.2)}
@@ -1814,30 +1725,30 @@ body{
 /* the run you just finished, so you can find yourself without counting */
 .bdRow.me{background:rgba(61,232,255,.09);border-color:rgba(61,232,255,.35)}
 .bdN{
-  font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:var(--dim);
+  font-size:calc(var(--u)*1.5);font-weight:800;color:var(--dim);
   font-variant-numeric:tabular-nums;
 }
 .bdRow:nth-child(1) .bdN{color:var(--amber)}
 .bdS{
-  font-size:max(10px,calc(var(--u)*2.1));font-weight:800;color:#fff;
+  font-size:calc(var(--u)*2.1);font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;letter-spacing:-.01em;
 }
 .bdD,.bdW,.bdT{
-  font-size:max(10px,calc(var(--u)*1.15));font-weight:700;color:var(--dim);
+  font-size:calc(var(--u)*1.15);font-weight:700;color:var(--dim);
   letter-spacing:.12em;text-transform:uppercase;
   font-variant-numeric:tabular-nums;
 }
 .bdD{color:var(--cyan)}
 .bdEmpty{
   padding:calc(var(--u)*3) 0;text-align:center;
-  font-size:max(10px,calc(var(--u)*1.4));color:var(--dim);font-weight:600;
+  font-size:calc(var(--u)*1.4);color:var(--dim);font-weight:600;
 }
 #board .btn{width:100%;justify-content:center}
 
 /* the rank on the game-over panel */
 .ovPlace{
   margin-top:calc(var(--u)*.5);
-  font-size:max(10px,calc(var(--u)*1.2));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.2);letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .ovPlace.in{color:var(--amber)}
@@ -1867,12 +1778,12 @@ body{
   margin-bottom:calc(var(--u)*.35);
 }
 .xpHead span{
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.24em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.24em;text-transform:uppercase;
   font-weight:800;color:var(--dim);
 }
 .xpHead b{color:#fff;font-variant-numeric:tabular-nums}
 .xpHead i{
-  font-style:normal;font-size:max(10px,calc(var(--u)*1.05));font-weight:800;
+  font-style:normal;font-size:calc(var(--u)*1.05);font-weight:800;
   color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em;
 }
 .xpBar{
@@ -2089,11 +2000,11 @@ body{
 
 /* ---- district cleared ---- */
 .clKick{
-  font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.3);letter-spacing:.42em;text-transform:uppercase;
   font-weight:800;color:#7BF5B0;
 }
 .clName{
-  margin:calc(var(--u)*.8) 0 0;font-size:max(10px,calc(var(--u)*4.2));font-weight:800;
+  margin:calc(var(--u)*.8) 0 0;font-size:calc(var(--u)*4.2);font-weight:800;
   letter-spacing:-.01em;color:#fff;line-height:1;
 }
 .clRow{
@@ -2105,16 +2016,16 @@ body{
 }
 .clRow div{display:flex;flex-direction:column;gap:calc(var(--u)*.6)}
 .clRow span{
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.26em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.26em;text-transform:uppercase;
   color:rgba(255,255,255,.42);font-weight:700;
 }
-.clRow b{font-size:max(10px,calc(var(--u)*2.4));font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.clRow b{font-size:calc(var(--u)*2.4);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
 .clRow b.mint{color:#7BF5B0}
 .clXpWrap{margin:0 0 calc(var(--u)*1.8)}
 .clXpHead{
   display:flex;justify-content:space-between;align-items:baseline;
   margin-bottom:calc(var(--u)*.7);
-  font-size:max(10px,calc(var(--u)*1.05));letter-spacing:.22em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.05);letter-spacing:.22em;text-transform:uppercase;
   color:rgba(255,255,255,.42);font-weight:700;
 }
 .clXpHead b{color:#fff;font-variant-numeric:tabular-nums}
@@ -2130,7 +2041,7 @@ body{
   transition:width .5s cubic-bezier(.2,.8,.2,1);
 }
 .clLvl{
-  font-size:max(10px,calc(var(--u)*1.25));letter-spacing:.2em;text-transform:uppercase;
+  font-size:calc(var(--u)*1.25);letter-spacing:.2em;text-transform:uppercase;
   font-weight:800;color:#7BF5B0;margin-bottom:calc(var(--u)*1.8);
   animation:clPulse 1.6s ease-in-out infinite;
 }
@@ -2139,155 +2050,80 @@ body{
 @media (max-width:760px){ .clRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .clRow div{flex-direction:row;justify-content:space-between;align-items:baseline} }
 
+
+/* --- page chrome, playtest build only: not part of the game --- */
+html{color-scheme:dark}
+html,body{background:#02030A;height:auto;overflow:auto}
+body{display:block}
+
+.cabinet{
+  position:relative;
+  /* svh, not vh: on a phone the browser chrome would otherwise crop the HUD */
+  height:100svh;min-height:30rem;
+  border-bottom:1px solid rgba(110,170,255,.16);
+}
+.cabinet #stage{position:absolute;inset:0}
+
+.card{
+  --rail:10.5rem;
+  max-width:60rem;margin:0 auto;padding:0 5vmin 6rem;
+  color:var(--ice);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+.card h1{
+  margin:0;padding:3rem 0 .5rem;
+  font-size:clamp(1.5rem,4vw,2.2rem);font-weight:800;letter-spacing:-.03em;
+  line-height:1.05;color:#fff;text-wrap:balance;
+}
+.card h1 em{font-style:normal;color:var(--cyan)}
+.lede{
+  margin:0 0 2.4rem;max-width:60ch;
+  font-size:.95rem;line-height:1.7;color:#98A7C2;
+}
+
+/* the rail carries the game's own vernacular, the way the HUD labels do */
+.line{
+  display:grid;grid-template-columns:var(--rail) 1fr;gap:.6rem 2.4rem;
+  padding:1.5rem 0;border-top:1px solid rgba(110,170,255,.14);
+  align-items:baseline;
+}
+.line > h2{
+  margin:0;font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;
+  font-weight:800;color:var(--cyan);line-height:1.7;
+}
+.line > div{min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.line p{margin:0;max-width:62ch;font-size:.95rem;line-height:1.72;color:#98A7C2}
+.line p b{color:var(--ice);font-weight:700}
+.line p i{font-style:normal;color:var(--magenta);font-weight:700}
+.line p u{
+  text-decoration:none;color:var(--amber);font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+.keys{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.keys kbd{
+  font:inherit;font-size:.7rem;font-weight:700;letter-spacing:.08em;
+  color:var(--ice);background:rgba(110,170,255,.07);
+  border:1px solid rgba(110,170,255,.2);border-radius:3px;padding:.22rem .5rem;
+}
+.keys span{
+  font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--dim);font-weight:700;margin-right:.35rem;
+}
+.foot{
+  margin:0;padding:2rem 0 0;max-width:56ch;
+  font-size:.74rem;letter-spacing:.09em;color:var(--dim);line-height:1.9;
+}
+@media (max-width:720px){
+  .line{grid-template-columns:1fr;gap:.5rem;padding:1.3rem 0}
+  .line > h2{line-height:1.3}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
 </style>
-<script>
-/* Playgama Bridge adapter.
-   ------------------------------------------------------------------
-   One integration, ~22 platforms: Playgama, Yandex Games, Y8, Poki,
-   GameDistribution, CrazyGames, Telegram/PlayDeck, VK, OK, Lagged, Facebook
-   Instant, MSN, Discord, Huawei, JioGames, YouTube Playables, Reddit,
-   Xiaomi, Microsoft Store, GameSnacks, Aha.
 
-   Presents the platform seam's shape — see the contract on Ads.resolve() in
-   game.js — over the Bridge API.
-
-     script   https://bridge.playgama.com/v1/stable/playgama-bridge.js
-     config   playgama-bridge-config.json, beside index.html
-     init     await bridge.initialize()
-     ads      bridge.advertisement.showRewarded(placement)
-              bridge.advertisement.showInterstitial(placement)
-              bridge.advertisement.setMinimumDelayBetweenInterstitial(n)
-     events   bridge.advertisement.on(bridge.EVENT_NAME.REWARDED_STATE_CHANGED, s => ...)
-              bridge.advertisement.on(bridge.EVENT_NAME.INTERSTITIAL_STATE_CHANGED, s => ...)
-              bridge.platform.on(bridge.EVENT_NAME.AUDIO_STATE_CHANGED, s => ...)
-
-   Three things worth knowing.
-
-   The reward is paid only when the rewarded state is exactly 'rewarded'.
-   Every other state — closed, failed, whatever else the platform emits — is
-   treated as no reward. That is deliberately the safe default: paying out on
-   an unrecognised state would be paying for ads nobody watched, which is the
-   fastest way off a network permanently.
-
-   Their docs say not to call showInterstitial at game start, because
-   platforms that want a preroll show one themselves and an explicit call
-   double-serves. This game only ever requests a midgame at a run end, so
-   that is satisfied — but do not move it.
-
-   And AUDIO_STATE_CHANGED is the host asking for silence, which is the same
-   contract CrazyGames' muteAudio setting has. It is wired to the same place,
-   so the portal outranks the in-game sound toggle here too.
-
-   Licensing: Bridge is LGPL-3.0. It is loaded from their CDN rather than
-   bundled into the build, which keeps it a separately-replaceable library
-   rather than a derived work. Do not inline it.
-   ------------------------------------------------------------------ */
-(() => {
-  let ready = false, readyWaiters = [];
-  let pendingRewarded = null, pendingInterstitial = null;
-  let sawReward = false;
-
-  const bridge = () => window.bridge;
-
-  const settle = (slot, ok, err) => {
-    const p = slot === 'r' ? pendingRewarded : pendingInterstitial;
-    if (!p) return;
-    if (slot === 'r') pendingRewarded = null; else pendingInterstitial = null;
-    if (ok) p.adFinished && p.adFinished();
-    else p.adError && p.adError(err || { code: 'unfilled', message: 'no ad available' });
-  };
-
-  function wire(){
-    const b = bridge();
-    if (!b || !b.advertisement || !b.EVENT_NAME) return;
-    const E = b.EVENT_NAME;
-
-    b.advertisement.on(E.REWARDED_STATE_CHANGED, state => {
-      /* 'rewarded' is the only state that pays. Anything else — closed,
-         failed, or a state this adapter has never heard of — does not. */
-      if (state === 'rewarded') { sawReward = true; if (pendingRewarded) pendingRewarded.adStarted && pendingRewarded.adStarted(); }
-      else if (state === 'opened') { if (pendingRewarded) pendingRewarded.adStarted && pendingRewarded.adStarted(); }
-      else if (state === 'closed') { settle('r', sawReward); sawReward = false; }
-      else if (state === 'failed') { settle('r', false); sawReward = false; }
-    });
-
-    b.advertisement.on(E.INTERSTITIAL_STATE_CHANGED, state => {
-      if (state === 'opened') { if (pendingInterstitial) pendingInterstitial.adStarted && pendingInterstitial.adStarted(); }
-      else if (state === 'closed') settle('i', true);
-      else if (state === 'failed') settle('i', false);
-    });
-
-    /* the host asking for silence — same contract as CrazyGames' muteAudio */
-    try {
-      b.platform.on(E.AUDIO_STATE_CHANGED, state => {
-        const off = state === 'muted' || state === 'paused' || state === false;
-        try { window.NHAudio.setSiteMute(!!off); } catch (e) {}
-      });
-    } catch (e) {}
-  }
-
-  window.__NH_PROVIDER = {
-    name: 'playgama',
-    caps: { rewarded: true, midgame: true },
-
-    init(){
-      return new Promise(resolve => {
-        if (ready) return resolve();
-        readyWaiters.push(resolve);
-        const start = () => {
-          const b = bridge();
-          if (!b || !b.initialize) return;
-          b.initialize()
-            .then(() => { ready = true; wire();
-              try { b.advertisement.setMinimumDelayBetweenInterstitial(60); } catch (e) {}
-              readyWaiters.splice(0).forEach(fn => fn()); })
-            .catch(() => readyWaiters.splice(0).forEach(fn => fn()));
-        };
-        if (bridge()) start();
-        else {
-          const t = setInterval(() => { if (bridge()) { clearInterval(t); start(); } }, 120);
-          setTimeout(() => clearInterval(t), 9000);
-        }
-        /* never hang the boot on a portal that fails to answer */
-        setTimeout(resolve, 10000);
-      });
-    },
-
-    ad: {
-      requestAd(type, cb){
-        const b = bridge();
-        if (!ready || !b || !b.advertisement) {
-          cb.adError && cb.adError({ code: 'other', message: 'bridge unavailable' });
-          return;
-        }
-        if (type === 'rewarded') {
-          pendingRewarded = cb; sawReward = false;
-          try { b.advertisement.showRewarded(); }
-          catch (e) { settle('r', false, { code: 'other', message: 'request threw' }); }
-        } else {
-          /* Their guidance: never at game start. This game only asks at a run
-             end, which is a natural break and not a preroll. */
-          pendingInterstitial = cb;
-          try { b.advertisement.showInterstitial(); }
-          catch (e) { settle('i', false, { code: 'other', message: 'request threw' }); }
-        }
-      },
-      hasAdblock(){ return Promise.resolve(false); }
-    },
-
-    game: {
-      settings: { muteAudio: false, disableChat: false }
-    }
-  };
-
-  const js = document.createElement('script');
-  js.src = 'https://bridge.playgama.com/v1/stable/playgama-bridge.js';
-  document.head.appendChild(js);
-})();
-
-</script>
-</head>
-<body>
+<div class="cabinet">
 <div id="stage">
   <canvas id="c"></canvas>
 
@@ -2520,31 +2356,20 @@ body{
       <div class="ovScore" id="ovScore">0</div>
       <div class="ovRow">
         <div><span>Best</span><b id="ovBest">0</b></div>
-        <div><span>Combo</span><b id="ovCombo">&times;1.0</b></div>
+        <div><span>Top combo</span><b id="ovCombo">&times;1.0</b></div>
         <div><span>Wrecked</span><b id="ovWrecks">0</b></div>
         <div><span>Earned</span><b class="amber" id="ovCoins">0</b></div>
       </div>
-      <!-- The two rewarded offers and the way past them sit in one stack at
-           one width. CrazyGames requires the continue-without-watching path
-           to match the ad offer in size, font and weight, so "Spend it in
-           the garage" cannot go back to being a third of a footer row. -->
       <div class="ovActs">
         <button class="btn rew" id="btnRevive"><span class="play"></span>Revive &amp; keep combo<em>Ad</em></button>
-        <!-- The paid route exists because their rewarded-ad rules require an
-             alternative to watching one. It is also the fallback that keeps
-             the screen useful when ads cannot serve at all. -->
-        <button class="btn rew ghost" id="btnReviveCoins">Revive for <b id="revivePrice">750</b> coins</button>
         <button class="btn rew ghost" id="btnDouble"><span class="play"></span>Double your coins<em>Ad</em></button>
-        <!-- One click back onto the road. The route board, the dispatch and
-             the brief are all still there behind Garage for anyone who wants
-             them, but they are no longer the toll on every retry. -->
-        <button class="btn primary" id="btnAgain">Run it again<span class="key">Enter</span></button>
+        <!-- The no-ad route to the same reward, which their rewarded rules
+             require, and the only revive left when ads cannot be served. -->
+        <button class="btn alt" id="btnRevCoin">Revive for 250 coins</button>
       </div>
-      <!-- A notice, not a popup: their adblock rules ask for the former and
-           explicitly forbid the latter, which would fight fullscreen. -->
       <div class="ovAdNote hide" id="ovAdNote"></div>
       <div class="ovFoot">
-        <button class="btn" id="btnOvGarage">Garage</button>
+        <button class="btn primary" id="btnAgain">Spend it in the garage</button>
         <button class="btn" id="btnOvBoard">Records</button>
         <button class="btn" id="btnMenu">Menu</button>
       </div>
@@ -2555,9 +2380,6 @@ body{
   <div id="board" class="layer screen">
     <div class="panel wide">
       <div class="bdHead">
-        <!-- Username and avatar both come from the CrazyGames account; the
-             game never asks for an identity of its own. Hidden for guests. -->
-        <img class="bdPic hide" id="bdPic" alt="" width="48" height="48">
         <div>
           <div class="bdKick">Records</div>
           <h2 class="bdWho" id="bdWho">Your runs</h2>
@@ -2628,6 +2450,61 @@ body{
     </div>
   </div>
 </div>
+</div>
+
+<div class="card">
+  <h1>Playtest build — <em>zones, gates and a boss that fights back</em></h1>
+  <p class="lede">Click the screen above and press Enter to roll out. Saves go to this
+  page's local storage, so a run you abandon is still there when you come back.</p>
+
+  <div class="line">
+    <h2>Controls</h2>
+    <div>
+      <div class="keys">
+        <span>Steer</span><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>A</kbd><kbd>D</kbd>
+        <span>Go</span><kbd>Enter</kbd>
+        <span>Perk</span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>
+        <span>Mute</span><kbd>M</kbd>
+        <span>Back</span><kbd>Esc</kbd>
+      </div>
+      <p>On a phone, the first finger down becomes the stick wherever it lands. Steering is
+      the entire input — there is no brake, no handbrake and no boost button.</p>
+    </div>
+  </div>
+
+  <div class="line">
+    <h2>The road</h2>
+    <div><p>Every district is <b>three stretches</b> drawn from twelve zones, and the road
+    changes under you twice on the way to the checkpoint. Watch the floor, the barriers and
+    what crosses overhead: a rail yard has live rails and chain-link, the wharf has open
+    water and an unfenced quay, the skyway has nothing at all underneath it. The board and
+    the brief both name which three you are about to drive.</p></div>
+  </div>
+
+  <div class="line">
+    <h2>The gates</h2>
+    <div><p>A painted band across the road marks each checkpoint. You owe <u>30%</u>,
+    <u>64%</u> then <u>100%</u> of the quota by the time you cross them — miss one and the
+    district ends <i>there</i>, not at the far end. Clearing one welds hull back on, puts
+    more traffic out and raises what the next stretch pays, up to <u>&times;1.32</u>.
+    Banking past the quota no longer ends the district; it pays overtime at the line.</p></div>
+  </div>
+
+  <div class="line">
+    <h2>The unit</h2>
+    <div><p>Banking is still the only weapon, but no single cash-in takes more than
+    <u>a fifth</u> of a pursuit unit's integrity, so the fight is five cash-ins deep
+    whatever you are driving. The overflow banks as score rather than vanishing. At two
+    thirds and one third it <i>breaks off</i> — that window is for building the next chain,
+    not for finishing it.</p></div>
+  </div>
+
+  <p class="foot">
+    Everything above this line is running, not described. Zero asset files — every pixel
+    and every note is generated at run time.
+  </p>
+</div>
+
 <script>
 /* ============================================================
    NEON HEAT — audio
@@ -2732,22 +2609,14 @@ function init(){
   tick();
 }
 
-/* iOS parks the AudioContext in `interrupted` when the tab is backgrounded or
-   a call arrives, and it usually surfaces as `suspended` on the way back —
-   but only a real user gesture is allowed to restart it, which is why this
-   hangs off input events rather than visibilitychange. Android keeps the
-   context running and silences it instead, so this is a no-op there. */
+/* iOS parks the AudioContext in 'interrupted' when the tab is backgrounded or
+   a call arrives, and WebKit will not restart it from a visibilitychange — it
+   wants a real user gesture. Android uses 'suspended' for the same situation.
+   Accept both states, and drive this off touchend as well as the pointer and
+   key handlers, which is the gesture CrazyGames names for the iOS case. */
 function resume(){
-  /* Do NOT return after init(). Chrome hands back a running context when it
-     is constructed inside a gesture, but WebKit routinely hands back a
-     suspended one even then — so an early return here spent the player's
-     first gesture creating a context and left it silent until they happened
-     to produce a second. Build it and start it in the same gesture. */
-  if (!ready) init();
-  if (!ready || !ac) return;
-  if (ac.state === 'suspended' || ac.state === 'interrupted') {
-    try { ac.resume(); } catch (e) {}
-  }
+  if (!ready) { init(); return; }
+  if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume();
 }
 addEventListener('touchend', () => { if (ready) resume(); }, { passive: true });
 
@@ -3868,90 +3737,14 @@ const Ads = {
   async readUser(){
     try {
       const u = this.sdk && this.sdk.user && await this.sdk.user.getUser();
-      if (u) this.applyUser(u);
+      if (u && u.username) this.playerName = u.username;
     } catch (e) { /* not signed in, or no user module — anonymous is fine */ }
   },
   playing: false,      // mirrors gameplayStart/Stop so we never double-fire
 
-  /* ---- can an ad actually serve right now? ----
-     Their rules forbid a rewarded offer that is "clickable but without
-     effect", and say it twice: once for adblock users, and once for Basic
-     Launch, where monetization is off and every request comes back
-     `adsDisabledBasicLaunch`. Neither state is knowable from a button click
-     alone, so detect adblock up front and learn the rest from the first
-     error — then take the offers down rather than leaving dead buttons. */
-  blocked: false,      // adblocker present
-  suspended: false,    // platform is refusing ads this session
-  canServe(){ return !this.blocked && !this.suspended; },
-  blockedNote(){
-    if (!this.caps().rewarded && this.ready) return '';   // not a fault, just this network
-    if (this.blocked)   return 'Ad blocker detected — the ad bonuses are unavailable.';
-    if (this.suspended) return 'Ad bonuses are unavailable right now.';
-    return '';
-  },
-  /* `unfilled` and `adCooldown` are transient: the offer stays up and the
-     player is told to try again, which is what their docs ask for. */
-  noteAdError(err){
-    const code = (err && err.code) || '';
-    if (code === 'adblock') this.blocked = true;
-    else if (code === 'adsDisabledBasicLaunch') this.suspended = true;
-    return code;
-  },
-  async probeAdblock(){
-    try {
-      if (this.sdk && this.sdk.ad && this.sdk.ad.hasAdblock)
-        this.blocked = !!(await this.sdk.ad.hasAdblock());
-    } catch (e) { /* detection is best-effort; assume ads work */ }
-    try { refreshAdOffers(); } catch (e) {}
-  },
-
-  /* ---------------- the platform seam ----------------
-     Everything below this line talks to one object, shaped like the
-     CrazyGames v3 SDK, and assumes nothing about who is on the other end of
-     it. That shape is the contract, and it is the whole reason a second
-     distribution channel is a build target rather than a rewrite: the game
-     referenced window.CrazyGames in exactly one place, and this is it.
-
-     An adapter for another network has to present:
-       init() -> Promise
-       game:  { loadingStart, loadingStop, gameplayStart, gameplayStop,
-                happytime, settings:{muteAudio}, addSettingsChangeListener,
-                reportGameCompletedPercentage, setGameContext, clearGameContext }
-       ad:    { requestAd(type, {adStarted, adFinished, adError}), hasAdblock() }
-       user:  { getUser(), systemInfo, addAuthListener }   // optional
-     Anything missing is guarded at the call site, so a partial adapter
-     degrades rather than throws.
-
-     Exactly one provider may be compiled into a build. CrazyGames allow ads
-     from their SDK alone, so a build carrying a second network is a
-     rejection — the build script enforces this per target. */
-  resolve(){
-    /* an adapter compiled in by a build target wins; otherwise CrazyGames,
-       whose SDK the seam is shaped after; otherwise nothing, and the game
-       runs on simulated placements */
-    return window.__NH_PROVIDER || (window.CrazyGames && window.CrazyGames.SDK) || null;
-  },
-
-  /* What the provider on the other end can actually serve. Not every network
-     has rewarded placements — GameMonetize documents none at all — and a
-     rewarded button that cannot pay out is the exact thing CrazyGames reject
-     builds for. Worth honouring everywhere, not just where it is policed. */
-  caps(){
-    /* Read off the adapter, not off this.sdk. What a network can serve is a
-       static fact about the adapter and is known the moment it loads —
-       this.sdk is only set once init() resolves, which on a portal that
-       never answers is eight seconds of the game believing it can offer
-       rewarded ads it cannot. */
-    const p = this.sdk || this.resolve();
-    const c = p && p.caps;
-    return { rewarded: !c || c.rewarded !== false,
-             midgame:  !c || c.midgame  !== false };
-  },
-
   async boot(){
-    const SDK = this.resolve();
-    /* no provider: sim placements, local saves, game plays normally */
-    if (!SDK) return;
+    const SDK = window.CrazyGames && window.CrazyGames.SDK;
+    if (!SDK) return;                       // not hosted on CrazyGames
     try {
       /* v3 is promise-based and unusable until init resolves */
       await SDK.init();
@@ -3961,14 +3754,7 @@ const Ads = {
       this.call(() => SDK.game.loadingStart());
       this.call(() => SDK.game.loadingStop());
       this.bindSettings(SDK);
-      this.readSystemInfo();
       this.readUser();
-      this.bindAuth();
-      this.probeAdblock();
-      this.flushContext();
-      /* a run already in progress by the time init lands still needs its
-         opening percentage reported */
-      try { reportProgress(); } catch (e) {}
     } catch (e) {
       this.sdk = null; this.ready = false;
     }
@@ -4004,13 +3790,10 @@ const Ads = {
   /* used sparingly, per their guidance: a boss down or a new personal best */
   celebrate(){ this.call(() => this.sdk.game.happytime()); },
 
-  /* "Am I on a real network, or simulating?" This used to sniff the DOM for
-     the CrazyGames script tag, which predates the provider seam and is wrong
-     twice over now: it answers false on the GameDistribution, GameMonetize
-     and Playgama builds, which are real placements, and the literal host
-     string tripped the build guard that checks no target carries a second ad
-     network. resolve() already knows, for every target. */
-  onPlatform(){ return !!this.resolve(); },
+  /* The submitted build carries the SDK script tag; the shareable page has it
+     stripped, because its CSP blocks external scripts. So the tag is a
+     reliable "am I the CrazyGames build" test that costs no network. */
+  onPlatform(){ return !!document.querySelector('script[src*="sdk.crazygames.com"]'); },
 
   /* Rewarded ads can be unavailable for reasons we cannot see in advance:
      they are switched off outright for the whole of Basic Launch, an ad
@@ -4071,68 +3854,13 @@ const Ads = {
       this.sdk.ad.requestAd(type, {
         adStarted:  () => { adPause(true); adMute(true); },
         adFinished: () => finish(true),
-        adError:    err => { this.noteAdError(err); finish(false); }
+        adError:    () => finish(false)
       });
     } catch (e) { finish(false); }
   },
 
   rewarded(msg, done){ this.request('rewarded', msg, 3.2, done); },
-  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); },
-
-  /* ---- user module ----
-     A full integration is expected to show the CrazyGames username *and*
-     avatar rather than inventing its own identity, and to notice a guest
-     signing in mid-session instead of leaving them anonymous until reload. */
-  avatar: '',
-  applyUser(u){
-    this.playerName = (u && u.username) || '';
-    this.avatar     = (u && u.profilePictureUrl) || '';
-    try { refreshIdentity(); } catch (e) {}
-  },
-  bindAuth(){
-    try {
-      const us = this.sdk && this.sdk.user;
-      if (us && us.addAuthListener) us.addAuthListener(u => this.applyUser(u));
-    } catch (e) { /* older SDK without the listener — boot read still stands */ }
-  },
-
-  /* Their device detection is better than ours and they ask us to prefer it. */
-  systemInfo: null,
-  readSystemInfo(){
-    try { this.systemInfo = (this.sdk && this.sdk.user && this.sdk.user.systemInfo) || null; }
-    catch (e) { this.systemInfo = null; }
-    try { applyDeviceType(); } catch (e) {}
-  },
-  deviceType(){
-    const d = this.systemInfo && this.systemInfo.device;
-    return (d && d.type) || '';
-  },
-
-  /* Progress and context. NEON HEAT is endless, so "100%" is defined the way
-     their docs allow — our own consistent milestone — and set at the end of
-     the third act, which is the last authored content in the game. */
-  reported: -1,
-  progress(pct){
-    const v = clamp(Math.round(pct), 0, 100);
-    if (v <= this.reported) return;         // progression only moves forward
-    this.reported = v;
-    this.call(() => this.sdk.game.reportGameCompletedPercentage(v));
-  },
-  /* The first district now begins before init() resolves — that is the point
-     of the fast path — so a context set at that moment would be dropped on
-     the floor. Hold the latest one and send it when the SDK comes up. */
-  pendingContext: null,
-  context(o){
-    this.pendingContext = o;
-    this.call(() => this.sdk.game.setGameContext(o));
-  },
-  clearContext(){
-    this.pendingContext = null;
-    this.call(() => this.sdk.game.clearGameContext());
-  },
-  flushContext(){
-    if (this.pendingContext) this.call(() => this.sdk.game.setGameContext(this.pendingContext));
-  }
+  midroll(done){ this.request('midgame', 'Back in a moment', 2.4, () => done()); }
 };
 
 /* ---------------- pause ----------------
@@ -4207,83 +3935,34 @@ function adTick(dt){
    own ground, asphalt, barrier colours, skyline and air. The generator is
    unchanged; only what it is dressed in moves.
    ============================================================ */
-/* Every ground here used to be black — #06080F, #080A0B, #04030A. The three
-   districts had different barrier colours and different building heights,
-   and it made almost no difference, because all of it was painted onto the
-   same abyss. A district reads as a place when the floor under it has a
-   colour, so each of these now owns its ground, its ambient, and the grid
-   burned into it — and one of them has no ground at all. */
 const THEMES = [
   { id:'downtown', name:'The Grid',
-    ground:'#070C1C', amb:'61,232,255', amb2:'255,46,136', rows:2, asphalt:'#131A2C',
-    left:'#3DE8FF', right:'#FF2E88',
+    ground:'#06080F', asphalt:'#131A2C', left:'#3DE8FF', right:'#FF2E88',
     bldA:'#3DE8FF', bldB:'#FF2E88', face1:'#141A2D', face2:'#0F1424',
     h:[110, 480], size:[48, 118], gap:0.34, lit:0.80, back:[80, 400],
-    grid:{ rgb:'61,232,255', fine:240, coarse:960, a1:0.10, a2:0.26 },
     air:null },
-
   { id:'docks', name:'Sunken Docks',
-    ground:'#06140F', amb:'47,224,138', amb2:'255,177,61', rows:2, asphalt:'#17201C',
-    left:'#FFB13D', right:'#2FE08A',
+    ground:'#080A0B', asphalt:'#1B1A18', left:'#FFB13D', right:'#2FE08A',
     bldA:'#FFB13D', bldB:'#6FE3C0', face1:'#1E1C18', face2:'#141310',
     /* long low sheds instead of towers, and more sky between them */
     h:[90, 280], size:[110, 240], gap:0.46, lit:0.45, back:[110, 520],
-    /* wet dock concrete: wide slabs, barely scored */
-    grid:{ rgb:'47,224,138', fine:420, coarse:1680, a1:0.07, a2:0.17 },
     air:{ rgb:'150,170,180', rate:0.14, size:[16, 38], life:[1.8, 3.2], drift:26 } },
-
   { id:'undercity', name:'The Undercity',
-    ground:'#0B0518', amb:'176,124,255', amb2:'127,166,255', rows:3, asphalt:'#141026',
-    left:'#B07CFF', right:'#F2F6FF',
+    ground:'#04030A', asphalt:'#141026', left:'#B07CFF', right:'#F2F6FF',
     bldA:'#B07CFF', bldB:'#7FA6FF', face1:'#171233', face2:'#0D0A1E',
     /* close, tall and constant — it should read as a tunnel, not a skyline */
     h:[420, 900], size:[70, 150], gap:0.10, lit:0.92, back:[46, 190],
-    /* service tunnel decking: tight, hot, close underfoot */
-    grid:{ rgb:'176,124,255', fine:150, coarse:600, a1:0.13, a2:0.30 },
     air:{ rgb:'190,160,255', rate:0.7, size:[2, 5], life:[0.5, 1.1], drift:-190 } },
-
-  /* Above the weather. There is no floor to grid — the road is a ribbon in
-     open sky — so the space under it is cloud, lit from somewhere warm off
-     frame. This is the district that proves the others are not all one
-     black room, and it carries the orange the palette has been missing. */
-  { id:'skyport', name:'Skyport',
-    ground:'#0A1430', amb:'255,150,60', amb2:'61,232,255', rows:2, asphalt:'#1A2340',
-    left:'#FF8A2A', right:'#3DE8FF',
-    bldA:'#FF8A2A', bldB:'#8CF3FF', face1:'#16203A', face2:'#0E1628',
-    /* sparse and very tall: towers coming up through the cloud deck */
-    h:[520, 1100], size:[60, 130], gap:0.62, lit:0.95, back:[60, 260],
-    grid:null,
-    clouds:{ rgb:'150,190,255', warm:'255,160,90', size:900, drift:0.045 },
-    air:{ rgb:'255,190,140', rate:0.10, size:[20, 52], life:[2.4, 4.0], drift:40 } },
-
-  /* The hot one. Everything else on this list is cool-cored; this is the
-     district that is orange all the way down, so a run that draws it does
-     not look like a run that did not. */
-  { id:'redline', name:'Redline',
-    ground:'#1A0710', amb:'255,90,60', amb2:'255,194,74', rows:2, asphalt:'#241019',
-    left:'#FF3355', right:'#FFC24A',
-    bldA:'#FF3355', bldB:'#FF8A2A', face1:'#2A1018', face2:'#1A0810',
-    h:[160, 560], size:[70, 160], gap:0.28, lit:0.72, back:[70, 340],
-    grid:{ rgb:'255,90,70', fine:300, coarse:1200, a1:0.11, a2:0.24 },
-    air:{ rgb:'255,140,80', rate:0.45, size:[3, 8], life:[0.7, 1.5], drift:-120 } }
+  { id:'causeway', name:'The Causeway',
+    /* the endless loop's storm front: pale lightning accents over near-black
+       water, rain streaking hard across the road */
+    ground:'#04070C', asphalt:'#0F1622', left:'#7FD4FF', right:'#FFE066',
+    bldA:'#7FD4FF', bldB:'#FFE066', face1:'#0F1826', face2:'#091018',
+    h:[70, 220], size:[90, 200], gap:0.55, lit:0.35, back:[140, 600],
+    air:{ rgb:'150,190,220', rate:1.1, size:[2, 4], life:[0.3, 0.7], drift:240 } }
 ];
-
-/* Which districts a run visits, and in what order. Same reason the pursuit
-   pool is drawn per run: there are five of these and three acts, so a fixed
-   act-to-theme mapping meant two of them could never be seen and every run
-   was the same three rooms in the same order. */
-let themeOrder = [0, 1, 2];
-function rollThemeOrder(){
-  const pool = THEMES.map((_, i) => i);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = rint(0, i + 1);
-    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
-  }
-  themeOrder = pool.slice(0, 3);
-}
-const themeFor = act => THEMES[themeOrder[(Math.max(1, act) - 1) % themeOrder.length]];
 let TH = THEMES[0];
-function setTheme(act){ TH = themeFor(act); }
+function setTheme(act){ TH = THEMES[(Math.max(1, act) - 1) % THEMES.length]; }
 
 /* ---------------- zones ----------------
    The act picks the palette. The zone picks the *place*.
@@ -4533,26 +4212,14 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
-const QF = { bloom:1, wide:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
-/* The ladder had two rungs pretending to be three: 'med' and 'low' set
-   exactly the same flags, and bloom/city/glow were pinned to 1 at every
-   tier, so the only thing that ever fell away was the backing-store scale.
-   That is thin cover for a platform that disables games which cannot hold a
-   frame on a 4GB Chromebook — and thinner now the city has depth to draw. */
+const QF = { bloom:1, wide:1, city:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
 function setQuality(t){
   QF.tier = t;
-  const high = t === 'high', low = t === 'low';
-  QF.wide    = high ? 1 : 0;
-  QF.grain   = high ? 1 : 0;
-  /* window rows are the most expensive detail in the scene: a save, a clip
-     and two additive dashed strokes per visible face */
-  QF.windows  = low ? 0 : 1;
-  /* the ranks behind the front one are mass rather than architecture, so
-     they are the first thing worth losing and the last thing anyone misses */
-  QF.cityDeep = low ? 0 : 1;
+  const high = t === 'high';
+  QF.wide = QF.windows = QF.grain = high ? 1 : 0;
   QF.bloom = 1; QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
-  QF.dpr = high ? 1.5 : low ? 0.9 : 1.15;
+  QF.dpr = high ? 1.5 : 1;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -4601,12 +4268,13 @@ function resize(){
   /* In portrait the narrow axis governs legibility: height/100 on a 390x844
      phone gives 8.4px units inside a 390px-wide column, which overflows. */
   const portrait = W / H < 1.15;
-  /* The floors are a legibility requirement, not taste. Their QA checks text
-     at devicePixelRatio 1 in iframes as small as 821x462, where an unfloored
-     H/100 gives a 4.6px unit and captions render at about 5px — unreadable.
-     Every font-size also carries a 10px floor in the stylesheet; these keep
-     the boxes around that text growing with it instead of clipping it. */
-  const u = portrait ? clamp(W / 54, 5, 10) : clamp(H / 100, 6, 11);
+  /* The landscape floor is set by legibility, not by taste. CrazyGames require
+     text to be readable at devicePixelRatio 1 in their responsive iframe sizes,
+     the smallest of which are 821x462 and 800x450 — and at height/100 those
+     gave a 4.5px unit, which put the HUD's caption type at just over 6px. A
+     floor of 5.6 lifts the smallest captions back to ~8px without changing
+     anything at the sizes where the formula was already above it. */
+  const u = portrait ? clamp(W / 54, 4, 10) : clamp(H / 100, 5.6, 11);
   stage.style.setProperty('--u', u.toFixed(2) + 'px');
   /* plates are drawn at CSS size, so a resolution tweak must not rebuild
      them — that is three full-screen canvases of work */
@@ -4673,39 +4341,23 @@ addEventListener('keydown', e => {
     if (G.state === 'board') closeBoard();
     else if (G.state === 'daily') closeDaily();
     else if (G.state === 'menu') $('btnPlay').onclick();
-    else if (G.state === 'over') { commitCoins(1); startRunDirect(); }
+    else if (G.state === 'over') { commitCoins(1); toGarage(); }
     else if (G.state === 'garage') { hide(UI.garage); startRun(); }
     else if (G.state === 'brief') beginDistrict();
     else if (G.state === 'cleared') leaveCleared();
   }
   if (G.state === 'levelup' && /^Digit[123]$/.test(e.code)) takePerk(+e.code.slice(5) - 1);
   if (e.code === 'KeyM') { NHAudio.toggleMute(); setMute(); }
-  /* Escape is deliberately unbound. It is on their restricted list because the
-     browser — and CrazyGames' own fullscreen control — already own it, and
-     this used to call toMenu(), which nulls the run. So a player in fullscreen
-     pressing Escape to get their cursor back also silently lost the run they
-     were driving. Quitting stays on the buttons, which no browser reserves. */
+  /* Escape is deliberately not bound. On the web it already means "leave
+     fullscreen", and CrazyGames lists it as a restricted key for exactly
+     that reason: a player who hits it to un-fullscreen would have had the
+     run abandoned underneath them at the same time. Quitting is a button. */
+  if (steerCode(e.code)) { dismissHint(); MS.on = false; }   // keys reclaim the wheel
 });
 addEventListener('keyup', e => { keys[e.code] = 0; });
 
 
-/* pointerdown covers mouse and most touch, but WebKit is stricter about which
-   gesture may restart an interrupted AudioContext, and their docs name
-   touchend specifically. Cheap to listen for all three than to ship a game
-   that comes back from a phone call silent. */
 addEventListener('pointerdown', () => NHAudio.resume(), { passive: true });
-addEventListener('touchend',    () => NHAudio.resume(), { passive: true });
-addEventListener('click',       () => NHAudio.resume(), { passive: true });
-
-/* From their common-fixes list. A wheel event that escapes the game scrolls
-   the page embedding it, and a right-click drops a browser menu over the
-   canvas — on tablets a long press does the same. Both are suppressed, except
-   inside the garage work order, which is the one panel meant to scroll. */
-addEventListener('wheel', e => {
-  const t = e.target;
-  if (!(t && t.closest && t.closest('.gWork'))) e.preventDefault();
-}, { passive: false });
-addEventListener('contextmenu', e => e.preventDefault());
 stage.addEventListener('pointerdown', gsDown);
 stage.addEventListener('pointermove', gsMove);
 stage.addEventListener('pointerup', gsUp);
@@ -4713,19 +4365,7 @@ stage.addEventListener('pointercancel', gsUp);
 stage.addEventListener('lostpointercapture', gsUp);
 
 const touchEl = document.getElementById('touch');
-/* A local guess, corrected later by the platform. CrazyGames strongly
-   recommend their own device detection over probes like this one, which
-   misreads touchscreen laptops as phones — but systemInfo only exists once
-   the SDK has initialised, which is after this file runs. So: guess now,
-   and let applyDeviceType() overrule it when the real answer arrives. */
-let hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
-function applyDeviceType(){
-  const t = Ads.deviceType();
-  if (!t) return;                       // SDK absent or older — keep the probe
-  hasTouch = (t === 'mobile' || t === 'tablet');
-  const b = $('btnCtrl');
-  if (b) b.classList.toggle('show', hasTouch);
-}
+const hasTouch = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
 touchEl.querySelectorAll('.tbtn').forEach(b => {
   const k = b.dataset.k;
   const on  = e => { e.preventDefault(); touch[k] = 1; b.classList.add('down'); };
@@ -4842,42 +4482,12 @@ stage.addEventListener('pointermove', e => {
 stage.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') MS.on = false; });
 
 function readInput(){
-  /* Already layout-adaptive, and deliberately so: KeyboardEvent.code names
-     physical positions after US QWERTY, so an AZERTY player reaching for ZQSD
-     presses the key labelled Q — which is physically KeyA and arrives here as
-     KeyA. Reading `code` rather than `key` is what satisfies their guidance
-     about not making French players rebind; don't "fix" this to `key`. */
-  const l = keys.ArrowLeft  || keys.KeyA || touch.left;
+  const l = keys.ArrowLeft  || keys.KeyA || keys.KeyQ || touch.left;
   const r = keys.ArrowRight || keys.KeyD || touch.right;
   let steer = (r ? 1 : 0) - (l ? 1 : 0);
   if (swipeMode() && GS.on && !steer) steer = GS.steer;  // analogue, unlike the keyboard
   if (!steer && MS.on && G.state === 'play') steer = MS.steer;
   IN.steer = steer;
-  if (steer) dismissCtrlHint();     // they have the control; stop telling them
-}
-
-/* ---------------- the control hint ----------------
-   On a zero-click start this is doing two jobs. It teaches the control, and
-   it is the only thing on screen asking for the gesture that lets audio
-   begin — no browser will start an AudioContext until the player produces
-   one, so a first district driven without touching anything is silent by
-   design, not by fault. It therefore waits for the player rather than
-   expiring on a timer into a quiet game with nothing left to explain it. */
-function showCtrlHint(){
-  const el = $('gsHint');
-  el.firstElementChild.textContent = swipeMode()
-    ? 'Drag anywhere to steer'
-    : 'Press ← → to steer';
-  el.classList.add('on');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('on'), 20000);  // backstop only
-}
-function dismissCtrlHint(){
-  const el = $('gsHint');
-  if (!el.classList.contains('on') || el._going) return;
-  el._going = true;
-  clearTimeout(el._t);
-  el._t = setTimeout(() => { el.classList.remove('on'); el._going = false; }, 900);
 }
 
 /* ============================================================
@@ -4934,35 +4544,22 @@ class Track {
     if (this.n % 2 === 0 && B.mode !== 'none') {
       p.b = [];
       for (const side of [-1, 1]) {
-        if (Math.random() < TH.gap) continue;
-        const nx = -Math.sin(this.ang), ny = Math.cos(this.ang);
-        /* A block rather than a box. One mass per side left the skyline as
-           isolated cubes floating on the grid with black between them, which
-           is the thing that stopped it reading as a city at all. Several at
-           staggered depths and offsets overlap into a silhouette, and the
-           deeper rows are what fill the void behind the front row. */
-        const rows = TH.rows || 3;
-        for (let r = 0; r < rows; r++) {
-          const t = rows === 1 ? 0 : r / (rows - 1);
-          const off = this.hw + lerp(TH.back[0], TH.back[1], t) + rnd(-34, 34);
-          /* slide along the road too, or every row lines up on one normal */
-          const al = rnd(-1, 1) * SEG * 1.4;
-          p.b.push({
-            x: this.x + nx * off * side + Math.cos(this.ang) * al,
-            y: this.y + ny * off * side + Math.sin(this.ang) * al,
-            w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
-            /* back rows run taller: the front row should not hide the city */
-            h: rnd(TH.h[0], TH.h[1]) * (1 + t * 0.35),
-            a: this.ang + rnd(-0.25, 0.25),
-            /* a minority burn in the accent so the field is two colours */
-            hue: Math.random() < 0.22 ? (TH.bldB || TH.bldA)
-               : Math.random() < 0.5 ? TH.bldA : TH.bldB,
-            face1: TH.face1, face2: TH.face2,
-            lit: Math.random() < TH.lit,
-            row: r,
-            seed: Math.random() * 1000
-          });
-        }
+        if (Math.random() < B.gap) continue;
+        const off = this.hw + rnd(B.back[0], B.back[1]);
+        const wide = B.mode === 'shed' || B.mode === 'stack';
+        p.b.push({
+          kind:'block', mode:B.mode,
+          x: this.x + nx * off * side,
+          y: this.y + ny * off * side,
+          w: rnd(B.size[0], B.size[1]),
+          d: rnd(B.size[0], B.size[1]) * (wide ? 0.62 : 1),
+          h: rnd(B.h[0], B.h[1]),
+          a: this.ang + rnd(-0.25, 0.25) * (B.mode === 'stack' ? 0.2 : 1),
+          hue: Math.random() < 0.5 ? E.bldA : E.bldB,
+          face1: E.face1, face2: E.face2,
+          lit: Math.random() < B.lit,
+          seed: Math.random() * 1000
+        });
       }
     }
 
@@ -5029,12 +4626,11 @@ function spawn(x, y, vx, vy, life, r, col, add, grow, streak){
 }
 /* decal corners are baked at spawn so the draw pass is one batched path
    instead of a save/rotate/restore per mark */
-function skid(x, y, a, w, rgb){
+function skid(x, y, a, w){
   if (SKID.length > 620) SKID.splice(0, 40);
   const c = Math.cos(a), s = Math.sin(a), L = 4;
   SKID.push({
     life:5.5,
-    rgb: rgb || '61,232,255',
     q:[ x - c*L - s*-w, y - s*L + c*-w,
         x + c*L - s*-w, y + s*L + c*-w,
         x + c*L - s*w,  y + s*L + c*w,
@@ -5073,7 +4669,6 @@ class Vehicle {
     this.nearFlag = false; this.lamp = Math.random() * TAU; this.driftHeld = 0;
     this.mods = null; this.topBonus = 0; this.spin = 0; this.wrecked = 0;
     this.inv = 0;
-    this.trail = []; this.trailT = 0;   // light ribbon samples, newest last
   }
   get speed(){ return hyp(this.vx, this.vy); }
 
@@ -5146,32 +4741,26 @@ class Vehicle {
         for (const side of [-1, 1]) {
           const rx = this.x - cs * s.len * 0.30 - sn * s.wid * 0.42 * side;
           const ry = this.y - sn * s.len * 0.30 + cs * s.wid * 0.42 * side;
-          /* the ribbon takes the paint of whatever laid it */
-          skid(rx, ry, this.a, s.wid * 0.20, rgbOf(s.col));
+          skid(rx, ry, this.a, s.wid * 0.20);
         }
       }
       this.smokeT -= dt;
       if (this.smokeT <= 0) {
         this.smokeT = 0.026;
-        /* Off both rear tyres rather than the centreline — it reads as
-           rubber, not a chimney. The decals under it already take the paint
-           of whatever laid them, so the smoke does too: it is still smoke,
-           dark and occluding, but lit by the car that made it, and it no
-           longer swells past sixty units, which is where it stopped reading
-           as smoke at all. */
-        const sc2 = rgbOf(s.col);
+        /* off both rear tyres, not the centreline — it reads as rubber, not
+           a chimney — starting small and catching a hint of the district's
+           neon so the smoke belongs to the place */
+        const tint = TH.left || '#3DE8FF';
+        const smokeCol = Math.round(parseInt(tint.slice(1, 3), 16) * 0.1 + 171) + ',' +
+                         Math.round(parseInt(tint.slice(3, 5), 16) * 0.1 + 185) + ',' +
+                         Math.round(parseInt(tint.slice(5, 7), 16) * 0.1 + 212);
         for (const side of [-1, 1]) {
           const rx = this.x - cs * s.len * 0.32 - sn * s.wid * 0.42 * side;
           const ry = this.y - sn * s.len * 0.32 + cs * s.wid * 0.42 * side;
           spawn(rx + rnd(-4, 4), ry + rnd(-4, 4),
                 -cs * 50 + rnd(-60, 60) - sn * 40 * side,
                 -sn * 50 + rnd(-60, 60) + cs * 40 * side,
-                rnd(0.5, 0.9), rnd(5, 10), sc2, false, 24);
-          /* a hot spark at the contact patch, so the tyre glows where it is
-             being scrubbed */
-          spawn(rx + rnd(-5, 5), ry + rnd(-5, 5),
-                -cs * 40 + rnd(-45, 45), -sn * 40 + rnd(-45, 45),
-                rnd(0.10, 0.22), rnd(2.5, 5), sc2, true, -6);
+                rnd(0.5, 0.9), rnd(5, 9), smokeCol, false, 60);
         }
       }
     }
@@ -5182,133 +4771,13 @@ class Vehicle {
         const rx = this.x - cs * back + rnd(-4, 4);
         const ry = this.y - sn * back + rnd(-4, 4);
         spawn(rx, ry, -cs * 260 + rnd(-70, 70), -sn * 260 + rnd(-70, 70),
-              /* sized against the streak it sits on: at r=13 the plume was
-                 wider than the light it is supposed to be coming out of */
-              rnd(0.13, 0.26), rnd(3.5, 8), k ? '255,150,60' : '255,225,170', true, -12);
+              rnd(0.13, 0.26), rnd(6, 13), k ? '255,150,60' : '255,225,170', true, -16);
       }
     }
-    trailStep(this, dt, cs, sn);
-
     this.hitFlash = Math.max(0, this.hitFlash - dt * 3);
     this.inv = Math.max(0, this.inv - dt);
     this.lamp += dt * 9;
   }
-}
-
-/* ============================================================
-   LIGHT STREAKS
-   The skid decals already glow, which covers the mark a slide leaves on the
-   road. This is the other half: the light a moving car leaves in the air
-   behind it, whether it is sliding or not.
-
-   The reference is a long-exposure photograph of a night road, so the streak
-   is thin, it runs a long way, and it is continuous — a hot filament inside a
-   faint halo, which is the same shape the barriers already use and the reason
-   they read as the most expensive thing on screen.
-
-   Sampled on a fixed clock rather than per frame, so the streak is the same
-   length at 30fps and at 144. Each sample carries its own lateral normal, so
-   it twists with the car and fans sideways in a slide. Drawn as tapered
-   polygons rather than a stroke per segment: a stroke per segment is thirty
-   draw calls a car, and this runs for every vehicle on screen.
-   ============================================================ */
-const TRAIL_LIFE = 1.5;
-const TRAIL_MAX  = 68;
-
-function trailStep(v, dt, cs, sn){
-  const t = v.trail;
-  for (let i = t.length - 1; i >= 0; i--) {
-    /* uniform decay, so the oldest always expires first and the array
-       stays ordered without a sort */
-    if ((t[i].life -= dt) <= 0) t.splice(i, 1);
-  }
-  if (v.speed < 40) return;
-  v.trailT -= dt;
-  if (v.trailT > 0) return;
-  /* Spacing is chosen so a full-length streak fits inside TRAIL_MAX samples.
-     The streak is only a few units wide, so the faceting a coarser interval
-     shows on a hard turn is well under a pixel — which is what buys the
-     length back at no cost in vertices. */
-  v.trailT = v.kind === 'traffic' || v.kind === 'convoy' ? 0.052 : 0.024;
-  const s = v.spec;
-  t.push({
-    x: v.x - cs * s.len * 0.46, y: v.y - sn * s.len * 0.46,
-    nx: -sn, ny: cs, life: TRAIL_LIFE
-  });
-  if (t.length > TRAIL_MAX) t.shift();
-}
-
-/* mul scales the whole streak: the player owns the road, traffic only hints
-   at it, or thirty of them wash the frame into a white smear. `rich` buys the
-   wide halo, the most expensive of the passes and the least missed on a car
-   you are not driving. */
-function drawTrail(v, mul, rich){
-  const t = v.trail;
-  if (t.length < 3 || !onScreen(v)) return;
-  const s = v.spec;
-  const drive = clamp(v.speed / 300, 0, 1);
-  if (drive < 0.08) return;
-  const hot = 0.66 + v.drift * 0.30 + (v.boost ? 0.34 : 0);
-  /* Half-width. A long-exposure streak is a line: this is the width of a
-     light, not of a vehicle. It still opens under drift, because a slide
-     smearing sideways is the one time you want to see width. */
-  const base = s.wid * (0.17 + v.drift * 0.13);
-  const col = s.col;
-  const n = t.length - 1;
-
-  /* Most of the alpha in the thinnest band, same as the barriers: that is
-     what makes a light read as a light and not as a painted stripe. */
-  const passes = rich
-    ? [[3.40, col,       0.11 * mul * drive * hot],
-       [1.70, col,       0.26 * mul * drive * hot],
-       [0.85, col,       0.88 * mul * drive * hot],
-       [0.30, '#FFFFFF', 0.48 * mul * drive * hot * (v.boost ? 1.3 : 1)]]
-    : [[2.40, col,       0.16 * mul * drive * hot],
-       [1.00, col,       0.75 * mul * drive * hot],
-       [0.36, '#FFFFFF', 0.30 * mul * drive * hot]];
-
-  /* Thin bands land under a pixel at the portrait camera, where a sub-pixel
-     line does not get thinner, it gets noisier. Floor every width in screen
-     space so the filament stays a clean hairline instead of a dotted one. */
-  const minHalf = 0.55 / Math.max(cam.zoom, 0.2);
-
-  /* Civilian streaks shorten rather than switch off when the budget tightens.
-     Twenty-six at full length is a lot of additive fill, but cutting them
-     breaks the effect — a long exposure where only the hero cars smear reads
-     as a bug, not as a lower setting. */
-  const from = (rich || QF.wide) ? 0 : Math.max(0, n - 18);
-  const head = t[n], tail = t[from];
-  const dx = head.x - tail.x, dy = head.y - tail.y;
-  if (dx * dx + dy * dy < 36) return;      // degenerate gradient, nothing to draw
-
-  ctx.globalCompositeOperation = 'lighter';
-  for (const [wm, c, al] of passes) {
-    const a = clamp(al, 0, 1);
-    if (a < 0.012) continue;
-    const w = Math.max(base * wm, minHalf);
-    ctx.beginPath();
-    for (let i = from; i <= n; i++) {
-      const q = t[i];
-      if (i === from) ctx.moveTo(q.x + q.nx * w, q.y + q.ny * w);
-      else ctx.lineTo(q.x + q.nx * w, q.y + q.ny * w);
-    }
-    for (let i = n; i >= from; i--) {
-      const q = t[i];
-      ctx.lineTo(q.x - q.nx * w, q.y - q.ny * w);
-    }
-    ctx.closePath();
-    /* Width is flat end to end and the fade lives entirely in the alpha.
-       Tapering the width instead makes a triangle, and it reads as one — a
-       cone stuck to the bumper rather than light left behind. */
-    const g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
-    g.addColorStop(0,    hexA(c, 0));
-    g.addColorStop(0.30, hexA(c, a * 0.34));
-    g.addColorStop(0.72, hexA(c, a * 0.82));
-    g.addColorStop(1,    hexA(c, a));
-    ctx.fillStyle = g;
-    ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* ============================================================
@@ -5328,8 +4797,7 @@ const G = {
   env:null, envPrev:null, envT:1, stage:0,
   levelFlare:0,
   hp:100, hpMax:100, freeze:0, hitCool:0,
-  pickups:[], pops:[],   // pops: the short-lived flare left where one was taken
-  power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
+  pickups:[], power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
   rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
@@ -5355,52 +4823,14 @@ const DISTRICTS = [
   'Radial', 'Saltgate', 'Old Cutting', 'The Shallows', 'Tannery Bend'
 ];
 const DEPOT_NAMES = ['Lockup', 'Chop Shop', 'The Yard', 'Back Alley', 'Cold Store'];
-/* Every pursuit unit used to be the same object wearing a different name:
-   one chassis, one red, three behaviours. `look` gives each of them a
-   silhouette and a livery, so the thing chasing you is recognisable before
-   the toast telling you what it is has finished appearing. */
 const BOSSES = [
   { id:'warden', name:'WARDEN',  sub:'Heavy Interdiction',
-    blurb:'Rams hard and salts the road behind it.',
-    look:{ len:74, wid:36, nose:.94, tail:.96, boxy:true, col:'#FF3355', col2:'#3A0A14' },
-    power:600, top:640 },
+    blurb:'Rams hard and salts the road behind it.' },
   { id:'siren',  name:'SIREN',   sub:'Signals Division',
-    blurb:'Pulses wipe a bank you have let grow too fat.',
-    look:{ len:58, wid:27, nose:.48, tail:.60, col:'#B07CFF', col2:'#241040' },
-    power:610, top:670 },
+    blurb:'Pulses wipe a bank you have let grow too fat.' },
   { id:'reaper', name:'REAPER',  sub:'Pursuit Special',
-    blurb:'Faster than you, and it brought friends.',
-    look:{ len:64, wid:28, nose:.40, tail:.50, col:'#FF6B2A', col2:'#3A1204' },
-    power:660, top:720 },
-  { id:'bulwark', name:'BULWARK', sub:'Roadblock Division',
-    blurb:'Too wide to go around, and it keeps laying wreckage.',
-    look:{ len:96, wid:38, nose:.98, tail:.98, boxy:true, col:'#FFB13D', col2:'#3E2606' },
-    power:640, top:585 },
-  { id:'lance',  name:'LANCE',   sub:'Interceptor Wing',
-    blurb:'Charges again before you have finished dodging the last one.',
-    look:{ len:56, wid:24, nose:.36, tail:.46, col:'#9DFF3D', col2:'#1E3A05' },
-    power:690, top:745 }
+    blurb:'Faster than you, and it brought friends.' }
 ];
-
-/* Which units a run will actually send. Selection used to be `act - 1`, and
-   since there are exactly three acts that meant every run fought the same
-   three in the same order — adding a fourth unit to this list would have
-   changed nothing at all. A run now draws three of the five, so the act
-   three fight is not a foregone conclusion and a player who has been
-   through the game twice has still not seen all of it.
-
-   Held module-level rather than on the run because newRun() builds its
-   route inside the object literal, before G.run exists to read from. */
-let bossOrder = [0, 1, 2];
-function rollBossOrder(){
-  const pool = BOSSES.map((_, i) => i);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = rint(0, i + 1);
-    const t = pool[i]; pool[i] = pool[j]; pool[j] = t;
-  }
-  bossOrder = pool.slice(0, 3);
-}
-const bossFor = act => BOSSES[bossOrder[(act - 1) % bossOrder.length]];
 
 /* How strong the player actually is, on a scale where a brand-new save is
    1.0 and a maxed garage at level 15 is about 5.7.
@@ -5453,14 +4883,15 @@ const STAGE_TAG  = ['Approach', 'Deep', 'Run-out'];
 
 function districtCfg(n, type, act){
   const boss = type === 'boss';
+  const bi = act - 1;
   const elite = type === 'elite';
   const node = G.run && G.run.node;
   const zones = (node && node.zones) || pickZones(act, boss ? 1 : 3);
   const cfg = {
     n, boss, elite, type, zones,
     name: (node && node.name) ||
-          (boss ? bossFor(act).name : DISTRICTS[(n - 1) % DISTRICTS.length]),
-    bossDef: boss ? bossFor(act) : null,
+          (boss ? BOSSES[bi % BOSSES.length].name : DISTRICTS[(n - 1) % DISTRICTS.length]),
+    bossDef: boss ? BOSSES[bi % BOSSES.length] : null,
     /* Boss roads run a third longer: the fight is banking under pressure and
        "the unit got away" was 4 of 23 measured run-endings — a fight that now
        runs three phases needs more of that road, not less. A quota district
@@ -5470,25 +4901,9 @@ function districtCfg(n, type, act){
     quota: Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex()),
     /* Wrecks bank far harder than the old drift-only income did, so a boss
        that used to be a two-chain fight now needs the headroom to last. */
-    /* scales with the act, not with which unit the draw happened to send —
-       a run must not get easier because it drew a different pursuit car */
-    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, act - 1))),
+    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, bi))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
-  cfg.stages = boss
-    ? [{ zone:zones[0], end:cfg.len, cut:0, pay:1, tag:'Pursuit' }]
-    : STAGE_AT.map((f, i) => ({
-        zone: zones[i % zones.length],
-        end: Math.round(cfg.len * f),
-        cut: STAGE_CUT[i],
-        pay: STAGE_PAY[i],
-        tag: STAGE_TAG[i]
-      }));
-  return cfg;
-  /* Three gates per district rather than one verdict at the end. Each stretch
-     has its own zone, its own cut of the quota and its own pay multiplier, so
-     the district asks its question three times and clearing one turns the
-     road up. A boss district is a single pursuit stretch. */
   cfg.stages = boss
     ? [{ zone:zones[0], end:cfg.len, cut:0, pay:1, tag:'Pursuit' }]
     : STAGE_AT.map((f, i) => ({
@@ -5609,7 +5024,7 @@ function makeRoute(act){
        the act-2 opener were both "district 5", so the quota curve plateaued
        one full step at every act seam */
     const idx = r + 1 + (act - 1) * ROWS;
-    n.name = n.type === 'boss' ? bossFor(act).name
+    n.name = n.type === 'boss' ? BOSSES[(act - 1) % BOSSES.length].name
            : n.type === 'depot' ? depots[di++ % depots.length]
            : pool[pi++ % pool.length];
     /* The stretches are drawn on the board, not at the start line: which
@@ -5632,9 +5047,7 @@ function makeRoute(act){
 }
 
 function newRun(){
-  rollBossOrder();          // a fresh draw of pursuit units for this attempt
-  rollThemeOrder();         // and of the districts they will be met in
-  return {
+  const r = {
     act: 1, route: makeRoute(1), row: -1, col: -1,
     xp: 0, level: 1, perks: [], hullBonus: 0,
     node: null, district: 0,
@@ -5687,7 +5100,6 @@ function newWorld(ai){
   G.stage = 0;
   G.spec = activeSpec();
   G.traffic = []; G.police = []; G.boss = null; G.hazards = []; G.pickups = []; G.convoy = [];
-  G.pops = [];
   G.slicks = []; G.slickT = 0;
   P.length = 0; SKID.length = 0;
   G.car = new Vehicle(G.spec, 'player');
@@ -5751,57 +5163,12 @@ const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults
 
 const LANES = [-0.62, -0.21, 0.21, 0.62];
 
-/* ---------------- civilian traffic ----------------
-   Every car on this road used to be the same object: a chassis borrowed from
-   the player's own list, repainted '#7C8FBF', and sent out. In a game whose
-   whole premise is that traffic is ammunition rather than scenery, the
-   ammunition was the dullest thing on screen — one grey silhouette repeated
-   until the district ended.
-
-   Two tables instead. Shape carries the silhouette, because a bus you can
-   recognise at a glance is a different target from a coupe, and a road of
-   one repeated object reads as empty however many cars are on it. Paint
-   carries the colour, kept warm and neutral on purpose: nothing out here may
-   compete with the player's cyan or the barrier magenta, which are the two
-   things that have to stay instantly readable at speed.
-
-   `worth` is the one gameplay string attached. A bus is a bigger target and
-   harder to thread past, so it pays more when you go through it. */
-/* Shape is what a thing looks like; `arch` is how it behaves when you hit it
-   — a tanker cooks off, an armoured car needs a second hit, a bike is a
-   kamikaze. The two were built independently and each is useless without the
-   other: shapes with no archetype are scenery, archetypes with no shape are
-   seven identical boxes. Every shape names the behaviour it obviously is. */
-const CIV_SHAPES = [
-  { id:'sedan',  len:46, wid:23, nose:.62, tail:.74, worth:1.00, w:22, arch:'car' },
-  { id:'coupe',  len:43, wid:21, nose:.50, tail:.62, worth:0.95, w:16, arch:'car' },
-  { id:'wagon',  len:52, wid:24, nose:.68, tail:.92, worth:1.10, w:14, arch:'car' },
-  { id:'pickup', len:55, wid:26, nose:.72, tail:.84, worth:1.20, w:12, arch:'car' },
-  { id:'van',    len:60, wid:28, nose:.92, tail:.96, worth:1.35, w:10, boxy:true, arch:'armored' },
-  { id:'bus',    len:88, wid:31, nose:.98, tail:.98, worth:1.75, w:5,  boxy:true, arch:'tanker' },
-  { id:'taxi',   len:47, wid:23, nose:.62, tail:.76, worth:1.05, w:9,  taxi:true, arch:'car' }
-];
-const CIV_PAINT = [
-  ['#C4452E', '#3A0F09'],   // oxide red
-  ['#E4E0D4', '#4A4740'],   // bone
-  ['#D08618', '#3C2405'],   // ochre
-  ['#7A8CA8', '#1A2130'],   // steel — the old grey, now one voice among eight
-  ['#2F6E5C', '#0C1F1A'],   // deep teal, well short of the player's cyan
-  ['#8A5A9C', '#291533'],   // plum
-  ['#A8402C', '#310F08'],   // brick
-  ['#566A86', '#151B26']    // slate
-];
-const TAXI_PAINT = ['#F2B21E', '#3E2A04'];
-
-/* the same weighted draw the power-up roll uses */
-function pickW(list){
-  let total = 0;
-  for (const it of list) total += it.w;
-  let r = Math.random() * total;
-  for (const it of list) { r -= it.w; if (r <= 0) return it; }
-  return list[0];
-}
-
+/* One grey pill was the whole civilian population. A small muted palette
+   keeps "not neon = not a threat" while killing the clone army, and three
+   special archetypes give the road things worth *choosing*:
+   a tanker detonates where you crack it, an armored car is a coin piñata
+   behind two pips, and at Heat 2+ the kamikaze bikes hunt YOU. */
+const TRAFFIC_COLS = ['#7C8FBF', '#8FA37C', '#A38A7C', '#7C93A3', '#9C7CA3'];
 function addTraffic(ahead){
   const idx = G.car.idx + ahead;
   G.track.ensure(idx + 10);
@@ -5810,16 +5177,38 @@ function addTraffic(ahead){
      through; lanes give the player a readable target to aim at and a readable
      gap to thread, which are the only two things you can do with a car. */
   const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
-  const shape = pickW(CIV_SHAPES);
-  const paint = shape.taxi ? TAXI_PAINT : CIV_PAINT[rint(0, CIV_PAINT.length)];
-  const spec = Object.assign({}, shape, {
-    col: paint[0], col2: paint[1],
-    /* the heavier a thing is, the less willing it is to get out of the way */
-    power:300, grip:8, top: rnd(210, 330) / (1 + (shape.worth - 1) * 0.5)
-  });
+  const c = CARS[rint(0, CARS.length)];
+
+  const roll = Math.random();
+  let spec, arch = null;
+  if (roll < 0.06) {
+    arch = 'tanker';
+    spec = Object.assign({}, c, {
+      len:78, wid:27, nose:0.9, tail:0.95,
+      col:'#B08040', col2:'#3A2708', power:240, grip:8, top:rnd(180, 230)
+    });
+  } else if (roll < 0.13) {
+    arch = 'armored';
+    spec = Object.assign({}, c, {
+      len:56, wid:26, nose:0.85, tail:0.9,
+      col:'#5E6B85', col2:'#11141F', power:300, grip:8, top:rnd(200, 280)
+    });
+  } else if (roll < 0.18 && (G.tier >= 2 || (G.tier === 1 && roll < 0.155))) {
+    arch = 'bike';
+    spec = Object.assign({}, c, {
+      len:30, wid:13, nose:0.5, tail:0.6,
+      col:'#FF5A3C', col2:'#400C05', power:520, grip:7.5, top:520
+    });
+  } else {
+    spec = Object.assign({}, c, {
+      len: c.len * rnd(1.08, 0.92),
+      col: TRAFFIC_COLS[rint(0, TRAFFIC_COLS.length)], col2:'#181F33',
+      power:300, grip:8, top:rnd(210, 330)
+    });
+  }
   const v = new Vehicle(spec, 'traffic');
-  v.arch = shape.arch || 'car';
-  if (v.arch === 'armored') v.armour = 2;
+  v.arch = arch;
+  if (arch === 'armored') v.armour = 2;
   const pos = G.track.at(idx, lat);
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx; v.lane = lat;
   v.vx = Math.cos(pos.a) * spec.top; v.vy = Math.sin(pos.a) * spec.top;
@@ -5829,16 +5218,10 @@ function addTraffic(ahead){
 function addPolice(escort){
   const idx = Math.max(0, G.car.idx - 5);
   const pos = G.track.at(idx, rnd(-80, 80));
-  /* Was '#14203C' on '#080D1A' — near-black on near-black asphalt, so the
-     only thing announcing a pursuit unit was the strobe on its roof and the
-     car under it was a hole in the road. A patrol livery instead: it still
-     reads as authority rather than traffic, but you can see the thing that
-     is hunting you before it hits you.
-
-     Pace scales with the tier rather than always outrunning a stock player
-     (base top 620): tier 1 can be shaken off, tier 3 cannot. */
+  /* Pursuit pace scales with the tier instead of always outrunning a stock
+     player (base top 620): tier 1 can be shaken off, tier 3 cannot. */
   const spec = Object.assign({}, CARS[2], {
-    col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0,
+    col:'#14203C', col2:'#080D1A', power:600, grip:7.0,
     top: 600 + 15 * Math.max(1, G.tier)
   });
   const v = new Vehicle(spec, 'police');
@@ -5856,8 +5239,11 @@ function addPolice(escort){
 function addBoss(){
   const cfg = G.run.cfg, def = cfg.bossDef;
   const pos = G.track.at(Math.max(0, G.car.idx - 4), 0);
-  const spec = Object.assign({}, CARS[2], def.look, {
-    power: def.power, grip:7.2, top: def.top
+  const spec = Object.assign({}, CARS[2], {
+    len:62, wid:32, nose:0.9, tail:0.95,
+    col:'#FF3355', col2:'#3A0A14',
+    power: def.id === 'reaper' ? 660 : 600,
+    grip:7.2, top: def.id === 'reaper' ? 720 : 665
   });
   const v = new Vehicle(spec, 'boss');
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = pos.p.i;
@@ -5868,7 +5254,6 @@ function addBoss(){
   G.boss = v;
 
   if (def.id === 'reaper') { addPolice(true); addPolice(true); }
-  if (def.id === 'lance')  { addPolice(true); }
   NHAudio.boss();
   toast(def.name + ' — ' + def.sub, 'red');
 }
@@ -6029,16 +5414,6 @@ function stepBoss(dt){
       if (b.charge > 0) b.charge -= dt;
       if (!b.baseTop) b.baseTop = b.spec.top;
       b.spec.top = b.baseTop * (1 + b.phase * 0.07);
-    } else if (b.def.id === 'bulwark') {
-      /* It does not have to catch you. It is wide enough to take a lane away
-         just by being in it, and it spends the whole fight making the road
-         behind it unusable, so the line that worked last time is gone. */
-      if (b.atk <= 0) { b.atk = 2.6 * fuse; dropHazard(b); dropHazard(b); }
-    } else if (b.def.id === 'lance') {
-      /* Reaper's charge with half the recovery: the pressure is that you
-         never get a clean beat to bank in. */
-      if (b.atk <= 0) { b.atk = 2.8 * fuse; b.charge = 0.85; }
-      if (b.charge > 0) b.charge -= dt;
     }
   }
 
@@ -6163,19 +5538,6 @@ function hitstop(secs, shake){
   G.shake = Math.max(G.shake, shake);
 }
 
-/* ---------------- the early leash ----------------
-   Simulated sessions: the average run lasted under ninety seconds, cleared
-   1.8 districts of the fifteen that exist, and half of all deaths were
-   traffic — the player being killed by the exact thing the game tells them
-   to drive through. Almost nobody was reaching a perk, a pursuit unit or a
-   second district, which is most of the game and all of the reason to come
-   back tomorrow.
-
-   So the first districts charge less hull per wreck, at full rate by the
-   fifth. It is a curve rather than a flat buff: the ceiling is untouched,
-   and a player who gets that far meets exactly the game that shipped. */
-const rampCost = () => clamp(0.55 + (((G.run && G.run.district) || 1) - 1) * 0.11, 0.55, 1);
-
 function damage(amount, reason){
   if (G.car.inv > 0 && reason !== 'wall') return;
   /* Overdraft: the stake is live — any hit that is not the cost of a wreck
@@ -6239,22 +5601,11 @@ function smash(v, rel){
           rnd(0.3, 0.85), rnd(3, 8),
           i % 3 ? '255,196,120' : '255,120,90', true, -6);
   }
-  /* The smoke used to be one flat grey for every car on the road, which is
-     what turned a pile-up into a field of identical dull blobs. Tinting it
-     with the paint of the thing that just came apart means a wreck now looks
-     like that car exploding rather than like weather. */
-  const wrgb = rgbOf(v.spec.col);
   for (let i = 0; i < 10; i++) {
     const a = rnd(0, TAU), sp = rnd(40, 180);
     spawn(v.x, v.y, Math.cos(a) * sp, Math.sin(a) * sp,
-          rnd(0.6, 1.3), rnd(9, 18), wrgb, false, 40);
+          rnd(0.6, 1.3), rnd(9, 18), '140,150,170', false, 40);
   }
-  /* and the shockwave, which is what makes it read as an impact at all */
-  G.pops.push({
-    x:v.x, y:v.y, t:0, life:0.30 + power * 0.10,
-    rgb:'255,206,150', col:'#FFB13D', hard:true,
-    r:120 + power * 90, g:190 + power * 120, w:12
-  });
   /* the pile-up counter already carries the streak; repeating it in the
      toast just doubles the noise now that wrecks come several a second */
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
@@ -6713,17 +6064,8 @@ function stepPickups(dt){
     if (k.idx < car.idx - 12) { G.pickups.splice(i, 1); continue; }
     if (hyp(k.x - car.x, k.y - car.y) < 52) {
       takePickup(Object.assign({}, k.kind, { x:k.x, y:k.y }));
-      /* Collecting one used to be silent on screen — the icon simply stopped
-         existing. A ring thrown off where it stood is what turns a pickup
-         from an object you drove over into something that happened. */
-      G.pops.push({ x:k.x, y:k.y, t:0, life:0.42, rgb:k.kind.rgb, col:k.kind.col });
       G.pickups.splice(i, 1);
     }
-  }
-  for (let i = G.pops.length - 1; i >= 0; i--) {
-    const p = G.pops[i];
-    p.t += dt;
-    if (p.t >= p.life) G.pops.splice(i, 1);
   }
   const want = Math.round(4 * (G.run ? G.run.M.pickupRate : 1));
   while (G.pickups.length < want) addPickup(rint(34, 110));
@@ -7397,7 +6739,7 @@ function convoyHit(v, rel){
     car.vx *= 0.72; car.vy *= 0.72;
     G.shake = Math.max(G.shake, 20);
     hitstop(0.05, 18);
-    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1) * rampCost()), 'traffic');
+    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1)), 'traffic');
     NHAudio.hit(1.3);
     for (let i = 0; i < 16; i++) {
       const a = rnd(0, TAU), sp = rnd(120, 420);
@@ -7425,7 +6767,7 @@ function convoyHit(v, rel){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1) * rampCost()), 'traffic');
+  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1)), 'traffic');
 
   hitstop(0.09, 30);
   G.flash = Math.max(G.flash, 0.6);
@@ -8036,14 +7378,11 @@ function applyCam(){
   ctx.translate(-cam.x, -cam.y);
 }
 
-/* ---------------- the floor ----------------
-   The grid was already here, at rgba(70,120,190,0.075) — which is to say it
-   was not here. Everything outside the road was flat void, and void is what
-   made the whole frame read as black no matter what happened on the road.
-
-   It is a light source now: a fine grid under a coarse one, both emitting,
-   the coarse lines carrying the district's own hue. This is the floor the
-   game has been implying since the first line of its pitch. */
+/* ---- the ground the road sits on ----
+   One world-aligned grid under every district was the largest single reason
+   they all read the same: whatever the barriers were painted, the floor was
+   the same floor. Each treatment is a handful of lines in world space, which
+   is what the grid already cost. */
 function drawGround(){
   const E = envNow();
   ctx.fillStyle = envCol('ground');
@@ -8209,19 +7548,7 @@ function drawRoad(){
   ctx.fillStyle = envCol('asphalt');
   ctx.fill();
 
-  /* ---- light on the road ----
-     This is the difference between a neon game and a dark one, and until now
-     the game was the dark one. The barrier spill was a single 10%-alpha pass,
-     and the reflections underneath it were gated behind LVL().wet — a level
-     modifier one contract chip sets, defaulting to 0. So in almost every
-     district the road reflected nothing at all, and the brightest thing on
-     screen was the HUD. Seventy percent of every frame was unlit asphalt.
-
-     The road is now always wet. `wet` deepens it rather than switching it on,
-     because a surface that only catches light during one weather event is a
-     surface that is black the rest of the time. */
-  const wetness = LVL().wet ? 1 : 0.62;
-
+  /* the barriers spill light onto the surface they enclose */
   ctx.save();
   ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
@@ -8247,38 +7574,10 @@ function drawRoad(){
     ctx.clip();
     ctx.globalCompositeOperation = 'lighter';
     for (const side of [-1, 1]) {
-      const col = side < 0 ? envCol('left') : envCol('right');
-      const edge = () => {
-        ctx.beginPath();
-        for (let i = a; i <= b; i++) {
-          const p = pts[i];
-          const hw = roadHalf(p) * side;
-          const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-          if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
-        }
-      };
-      /* wide atmospheric wash, then a tight hot line where the barrier meets
-         the surface — one pass alone reads as fog, two read as a light source */
-      edge();
-      ctx.strokeStyle = hexA(col, 0.13 * wetness);
-      ctx.lineWidth = 160;
-      ctx.stroke();
-      edge();
-      ctx.strokeStyle = hexA(col, 0.26 * wetness);
-      ctx.lineWidth = 44;
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-  }
-
-  /* and the long broken streaks the neon throws back off the surface */
-  for (const side of [-1, 1]) {
-    for (const [reach, width, alpha] of [[0.62, 46, 0.20], [0.34, 26, 0.12]]) {
       ctx.beginPath();
       for (let i = a; i <= b; i++) {
         const p = pts[i];
-        const hw = roadHalf(p) * side * reach;
+        const hw = roadHalf(p) * side * 0.62;
         if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
         else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
       }
@@ -8289,9 +7588,9 @@ function drawRoad(){
       ctx.stroke();
       ctx.setLineDash([]);
     }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
   }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.restore();
 
   /* lane divider + centre dashes */
   ctx.strokeStyle = 'rgba(198,210,232,0.13)';
@@ -8441,66 +7740,29 @@ function drawTrail(){
 }
 
 function drawSkids(){
-  ctx.globalCompositeOperation = 'lighter';
-  /* group by colour so mixed traffic does not force a path per decal */
-  const byCol = new Map();
-  for (const s of SKID) {
-    let arr = byCol.get(s.rgb);
-    if (!arr) { arr = []; byCol.set(s.rgb, arr); }
-    arr.push(s);
-  }
-  for (const [rgb, marks] of byCol) {
-    for (let b = 0; b < 3; b++) {
-      const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
-      let any = false;
-      ctx.beginPath();
-      for (const s of marks) {
-        if (s.life < lo || s.life >= hi) continue;
-        const q = s.q;
-        ctx.moveTo(q[0], q[1]);
-        ctx.lineTo(q[2], q[3]);
-        ctx.lineTo(q[4], q[5]);
-        ctx.lineTo(q[6], q[7]);
-        ctx.closePath();
-        any = true;
-      }
-      if (!any) continue;
-      /* fresher marks burn brighter, so the head of a slide is the hot end */
-      ctx.fillStyle = 'rgba(' + rgb + ',' + (0.05 + b * 0.11).toFixed(3) + ')';
-      ctx.fill();
+  for (let b = 0; b < 3; b++) {
+    const lo = b / 3 * 5.5, hi = (b + 1) / 3 * 5.5;
+    let any = false;
+    ctx.beginPath();
+    for (const s of SKID) {
+      if (s.life < lo || s.life >= hi) continue;
+      const q = s.q;
+      ctx.moveTo(q[0], q[1]);
+      ctx.lineTo(q[2], q[3]);
+      ctx.lineTo(q[4], q[5]);
+      ctx.lineTo(q[6], q[7]);
+      ctx.closePath();
+      any = true;
     }
+    if (!any) continue;
+    ctx.fillStyle = 'rgba(3,5,12,' + (0.14 + b * 0.13).toFixed(2) + ')';
+    ctx.fill();
   }
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-/* Particles were flat-alpha circles, which is fine at two pixels and awful at
-   sixty: tyre smoke grows past r=40 and a hard-edged disc that size reads as a
-   bubble, not as smoke. A dozen overlapping read as a bubble bath. Soft radial
-   blobs instead, baked once per colour, so the cost is a drawImage rather than
-   a gradient per particle. */
-const softCache = new Map();
-function softSprite(col){
-  let s = softCache.get(col);
-  if (s) return s;
-  const R = 48;
-  s = document.createElement('canvas');
-  s.width = s.height = R * 2;
-  const g = s.getContext('2d');
-  const rg = g.createRadialGradient(R, R, 0, R, R, R);
-  rg.addColorStop(0,    'rgba(' + col + ',1)');
-  rg.addColorStop(0.35, 'rgba(' + col + ',0.62)');
-  rg.addColorStop(0.70, 'rgba(' + col + ',0.20)');
-  rg.addColorStop(1,    'rgba(' + col + ',0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, R * 2, R * 2);
-  softCache.set(col, s);
-  return s;
 }
 
 function drawParticles(){
   for (const p of P) {
     const t = clamp(p.life / p.max, 0, 1);
-    const r = Math.max(0.6, p.r);
     ctx.globalCompositeOperation = p.add ? 'lighter' : 'source-over';
     if (p.st) {
       /* streak: a short line along the velocity — reads as a flying spark
@@ -8514,12 +7776,12 @@ function drawParticles(){
       ctx.lineTo(p.x - p.vx / sp * sl, p.y - p.vy / sp * sl);
       ctx.stroke();
     } else {
-      ctx.globalAlpha = t * (p.add ? 0.90 : 0.26);
-      ctx.drawImage(softSprite(p.col), p.x - r, p.y - r, r * 2, r * 2);
-      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(' + p.col + ',' + (t * (p.add ? 0.85 : 0.30)).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(0.5, p.r), 0, TAU);
+      ctx.fill();
     }
   }
-  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -8616,70 +7878,20 @@ function carPath(ctx, s){
   ctx.closePath();
 }
 
-/* Headlight beams were a trapezoid whose gradient faded along its length
-   only, which leaves both long sides as razor-hard straight edges. From a
-   top-down camera that is not a beam of light, it is a grey cardboard wedge —
-   the one shape in the frame that is neither emissive nor soft.
-
-   Baked once as a real beam: alpha falls off across the cone as well as along
-   it, so it has shoulders rather than edges, and the cone opens with distance.
-   Per-pixel is fine for something built one time and blitted thereafter. */
-let beamSprite = null;
-function makeBeamSprite(){
-  const N = 96;
-  const c = document.createElement('canvas');
-  c.width = c.height = N;
-  const g = c.getContext('2d');
-  const img = g.createImageData(N, N), d = img.data;
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const u = x / (N - 1);                    // along the beam
-      const vv = (y / (N - 1) - 0.5) * 2;       // across it
-      const hw = 0.22 + 0.78 * u;               // the cone opens with distance
-      const t = Math.min(1, Math.abs(vv) / hw);
-      const lat = 1 - t * t;                    // soft shoulders, no edge
-      const lon = Math.pow(1 - u, 1.6);         // and a soft end
-      const i = (y * N + x) * 4;
-      d[i] = 200; d[i + 1] = 232; d[i + 2] = 255;
-      d[i + 3] = Math.round(Math.max(0, lat) * lon * 255);
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return c;
-}
-
-/* Traffic is seeded up to ninety-six track points ahead of the player, which
-   at any sane zoom is well past the top of the screen, and every one of those
-   cars was being fully drawn into a clipped-away region. One radius test
-   covers the chassis and its streak both. */
-function onScreen(v){
-  const R = hyp(W, H) / cam.zoom * 0.72 + 260;
-  const dx = v.x - cam.x, dy = v.y - cam.y;
-  return dx * dx + dy * dy < R * R;
-}
-
 function drawVehicle(v, opt){
   const s = v.spec;
   const o = opt || {};
-  if (!onScreen(v)) return;
-  /* Strokes are authored in world units, so at the zoomed-out camera a 1.7
-     unit rim lands under one screen pixel and the car flattens into a
-     silhouette. Widths are floored in screen space. */
-  const px = 1 / Math.max(cam.zoom, 0.2);
   ctx.save();
   ctx.translate(v.x, v.y);
   ctx.rotate(v.a);
 
-  /* Underglow — ground contact, and it feeds the bloom. Tighter than it was:
-     at len*0.9 by wid*1.4 it ballooned past the chassis and merged with the
-     head of the streak into one blob with a tail. On the player it still
-     burns brighter as the chain heats up, so the car is a combo meter you can
-     read without looking at the HUD. */
+  /* underglow — reads as ground contact and feeds the bloom. On the player
+     it burns brighter as the chain heats up: the car itself is the combo meter
+     you can read without looking at the HUD. */
   if (o.glow !== false) {
     ctx.globalCompositeOperation = 'lighter';
-    const hot = v.kind === 'player' ? Math.min(0.30, (G.mult - 1) * 0.045) : 0;
-    blitGlow(s.col, 0, 0, s.len * (0.72 + hot), s.wid * (1.0 + hot),
-             (v.kind === 'player' ? 0.30 : 0.22) + hot);
+    const hot = v.kind === 'player' ? Math.min(0.35, (G.mult - 1) * 0.045) : 0;
+    blitGlow(s.col, 0, 0, s.len * (0.9 + hot), s.wid * (1.4 + hot), 0.30 + hot);
     ctx.globalCompositeOperation = 'source-over';
   }
 
@@ -8702,74 +7914,30 @@ function drawVehicle(v, opt){
   }
 
   /* body */
-  /* Flank to lit crown to flank. This used to run col2 → 55%-toward-col2 →
-     col2, which is to say the paint never actually appeared: every body was
-     within a shade of black whatever colour it claimed to be. Now the crown
-     is nearly the paint itself and only the flanks fall into shadow, so a
-     red car reads red at speed while the shading still does its work. */
   const bg = ctx.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
-  bg.addColorStop(0,    mix(s.col, s.col2, 0.58));
-  bg.addColorStop(0.42, mix(s.col, s.col2, 0.06));
-  bg.addColorStop(1,    mix(s.col, s.col2, 0.48));
+  bg.addColorStop(0, s.col2);
+  bg.addColorStop(0.45, mix(s.col, s.col2, 0.55));
+  bg.addColorStop(1, s.col2);
   carPath(ctx, s);
   ctx.fillStyle = bg; ctx.fill();
 
-  /* Rim light along the silhouette: a soft outer bleed under a hard core,
-     which is what makes an edge read as emitting rather than as outlined. */
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.lineJoin = 'round';
-  carPath(ctx, s);
-  ctx.strokeStyle = hexA(s.col, 0.20);
-  ctx.lineWidth = Math.max(5 * px, 5.5); ctx.stroke();
-  ctx.globalCompositeOperation = 'source-over';
-  carPath(ctx, s);
-  ctx.strokeStyle = hexA(s.col, 1);
-  ctx.lineWidth = Math.max(1.9 * px, 2.0); ctx.stroke();
+  /* rim light along the silhouette */
+  ctx.strokeStyle = hexA(s.col, 0.95);
+  ctx.lineWidth = 1.7; ctx.stroke();
 
-  /* flank light strips — a continuous line down the body catches the eye at
-     any zoom, unlike detail on the shell */
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = hexA(s.col, 0.72);
-  for (const sy of [-1, 1]) {
-    ctx.fillRect(-s.len * 0.34, sy * s.wid * 0.46 - s.wid * 0.035,
-                 s.len * 0.62, s.wid * 0.07);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-
-  /* cockpit — a canopy on a car, a glazed side on anything box-shaped.
-     Without this a bus is just a very long coupe, and the silhouette work
-     is wasted at the only size the player ever sees it. */
+  /* cockpit */
+  ctx.beginPath();
+  ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
+  ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
+  ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
+  ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
+  ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
+  ctx.lineTo(s.len * 0.14, s.wid * 0.30);
+  ctx.closePath();
   const cg = ctx.createLinearGradient(s.len * 0.2, 0, -s.len * 0.3, 0);
   cg.addColorStop(0, 'rgba(200,235,255,0.30)');
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
-  if (s.boxy) {
-    ctx.fillStyle = cg;
-    ctx.fillRect(-s.len * 0.34, -s.wid * 0.34, s.len * 0.66, s.wid * 0.68);
-    /* mullions: the thing that actually says "windows" rather than "panel" */
-    ctx.fillStyle = hexA(s.col2, 0.85);
-    const bays = s.len > 70 ? 5 : 3;
-    for (let i = 1; i < bays; i++) {
-      const bx = -s.len * 0.34 + (s.len * 0.66) * (i / bays);
-      ctx.fillRect(bx - s.len * 0.008, -s.wid * 0.34, s.len * 0.016, s.wid * 0.68);
-    }
-  } else {
-    ctx.beginPath();
-    ctx.moveTo(s.len * 0.14, -s.wid * 0.30);
-    ctx.lineTo(-s.len * 0.06, -s.wid * 0.36);
-    ctx.lineTo(-s.len * 0.24, -s.wid * 0.26);
-    ctx.lineTo(-s.len * 0.24, s.wid * 0.26);
-    ctx.lineTo(-s.len * 0.06, s.wid * 0.36);
-    ctx.lineTo(s.len * 0.14, s.wid * 0.30);
-    ctx.closePath();
-    ctx.fillStyle = cg; ctx.fill();
-  }
-
-  /* a lit roof sign, so one vehicle in the stream is a city rather than a
-     shape — small, but it is what makes the road look inhabited */
-  if (s.taxi) {
-    ctx.fillStyle = 'rgba(255,240,200,0.92)';
-    ctx.fillRect(-s.len * 0.02, -s.wid * 0.17, s.len * 0.12, s.wid * 0.34);
-  }
+  ctx.fillStyle = cg; ctx.fill();
 
   /* centre stripe */
   ctx.fillStyle = hexA(s.col, 0.22);
@@ -8832,7 +8000,6 @@ function drawVehicle(v, opt){
 
   /* tail lights, brighter while sliding, streaking under drift or boost */
   const tb = 0.55 + v.drift * 0.45;
-  blitGlow('#FF3C46', -s.len * 0.52, 0, s.len * 0.22, s.wid * 0.45, tb * 0.45);
   ctx.fillStyle = 'rgba(255,60,70,' + tb.toFixed(2) + ')';
   for (const sy of [-1, 1]) {
     ctx.fillRect(-s.len * 0.5, sy * s.wid * 0.28 - s.wid * 0.05, s.len * 0.05, s.wid * 0.11);
@@ -8864,8 +8031,6 @@ function drawVehicle(v, opt){
       }
     }
   }
-  ctx.fillStyle = 'rgba(255,190,195,' + (tb * 0.7).toFixed(2) + ')';
-  ctx.fillRect(-s.len * 0.5, -s.wid * 0.30, s.len * 0.03, s.wid * 0.60);
 
   /* police bar */
   if (v.kind === 'police' || v.kind === 'boss') {
@@ -8943,15 +8108,8 @@ function drawCity(){
 
   const flickT = performance.now() * 0.007;
   for (const bd of list) {
-    /* the deep rows are the first thing to go when frames slip — they are
-       what makes the city a mass, but the front row is what makes it legible */
-    if (!QF.cityDeep && bd.row > 0) continue;
-    /* Only the front rank is drawn in full. The rows behind it exist to fill
-       the void with mass, and mass needs a silhouette and a roofline, not a
-       save/clip and two additive dashed strokes per face — that detail was
-       costing 70% more frame time to render windows nobody can resolve at
-       that distance. */
-    const detail = bd.row === 0;
+    ctx.globalAlpha = bd.fade || 1;
+    if (bd.kind && bd.kind !== 'block') { drawProp(bd, rise, cx, cy); continue; }
     const ca = Math.cos(bd.a), sa = Math.sin(bd.a);
     const hw = bd.w * 0.5, hd = bd.d * 0.5;
     const corners = [[-hw,-hd],[hw,-hd],[hw,hd],[-hw,hd]].map(([lx, ly]) =>
@@ -8995,42 +8153,24 @@ function drawCity(){
                             : (i % 2 ? (bd.face1 || '#141A2D') : (bd.face2 || '#0F1424'));
       ctx.fill();
 
-      /* The vertical edge where two faces meet, lit. This is the single
-         cheapest thing that turns an extruded quad into architecture: it
-         gives the mass a corner, and a corner gives it volume. */
-      if (bd.lit && !LVL().blackout && detail) {
-        ctx.strokeStyle = hexA(bd.hue, 0.55);
-        ctx.lineWidth = Math.max(0.9, 1.8 * cam.zoom);
-        ctx.beginPath();
-        ctx.moveTo(b1[0], b1[1]); ctx.lineTo(t1[0], t1[1]);
-        ctx.stroke();
-      }
-
-      if (bd.lit && QF.windows && !LVL().blackout && detail) {
+      if ((bd.lit || crate) && QF.windows && !LVL().blackout) {
         ctx.save();
         ctx.clip();
-        /* Was one dashed stroke per floor, which reads as a scan line rather
-           than as a window. Now the rows are dashed *and* additive, so the
-           face glows from inside, and every third floor burns brighter — a
-           tower with uniform lighting reads as a texture, one with variation
-           reads as occupied. */
-        ctx.globalCompositeOperation = 'lighter';
-        const floors = 3 + Math.floor(bd.h / 120);
-        for (const [step, alpha, wid] of [[1, 0.30, 1.6], [3, 0.55, 2.4]]) {
-          ctx.strokeStyle = hexA(bd.hue, alpha);
-          ctx.lineWidth = Math.max(0.8, wid * cam.zoom);
-          ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 7 * cam.zoom)]);
-          ctx.lineDashOffset = bd.seed + step * 11;
-          ctx.beginPath();
-          for (let f = 1; f < floors; f += step) {
-            const t = f / floors;
-            ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
-            ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
-          }
-          ctx.stroke();
+        /* dashed rows read as lit windows; solid rows read as corrugation */
+        ctx.strokeStyle = hexA(bd.hue, crate ? 0.16 : 0.34);
+        ctx.lineWidth = Math.max(0.8, 1.6 * cam.zoom);
+        if (crate) ctx.setLineDash([]);
+        else ctx.setLineDash([Math.max(1.5, 3 * cam.zoom), Math.max(3, 6 * cam.zoom)]);
+        ctx.lineDashOffset = bd.seed;
+        ctx.beginPath();
+        const floors = crate ? 8 : 3 + Math.floor(bd.h / 120);
+        for (let f = 1; f < floors; f++) {
+          const t = f / floors;
+          ctx.moveTo(lerp(b0[0], t0[0], t), lerp(b0[1], t0[1], t));
+          ctx.lineTo(lerp(b1[0], t1[0], t), lerp(b1[1], t1[1], t));
         }
+        ctx.stroke();
         ctx.setLineDash([]);
-        ctx.globalCompositeOperation = 'source-over';
         ctx.restore();
       }
     }
@@ -9052,14 +8192,11 @@ function drawCity(){
       ctx.strokeStyle = hexA(bd.hue, buzz);
       ctx.lineWidth = Math.max(1.2, 2.4 * cam.zoom);
       ctx.stroke();
-      /* the wide bloom pass is the expensive one; the front rank earns it */
-      if (detail) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = hexA(bd.hue, 0.32);
-        ctx.lineWidth = Math.max(2, 9 * cam.zoom);
-        ctx.stroke();
-        ctx.globalCompositeOperation = 'source-over';
-      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = hexA(bd.hue, 0.32 * buzz);
+      ctx.lineWidth = Math.max(2, 9 * cam.zoom);
+      ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
     }
   }
   ctx.globalAlpha = 1;
@@ -9489,29 +8626,17 @@ function drawToys(){
 /* Power-ups read as hovering plates: a spinning diamond, a hard glyph and a
    pool of their own colour on the asphalt so they are visible from far
    enough back to change lanes for. */
-/* ---------------- pickups ----------------
-   These were a 19px diamond with a soft halo, which at the zoom the game
-   actually runs at is a speck you notice after you have already driven past
-   it. A power-up is one of the few things on the road worth changing line
-   for, so it now announces itself from a distance: a ground pool, a pulse
-   ring that keeps expanding, and a core large enough to aim at. */
 function drawPickups(){
   for (const k of G.pickups) {
     const kind = k.kind;
-    const bob = 1 + Math.sin(k.spin * 1.7) * 0.10;
-    /* one pulse every ~1.4s, independent of the spin so the two do not beat
-       against each other into a single confusing wobble */
-    const pulse = (k.spin * 0.42) % 1;
+    const bob = 1 + Math.sin(k.spin * 1.7) * 0.08;
     ctx.save();
     ctx.translate(k.x, k.y);
 
     ctx.globalCompositeOperation = 'lighter';
-
-    /* the pool it sits in */
-    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 84);
-    g.addColorStop(0,    'rgba(' + kind.rgb + ',0.46)');
-    g.addColorStop(0.45, 'rgba(' + kind.rgb + ',0.12)');
-    g.addColorStop(1,    'rgba(' + kind.rgb + ',0)');
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 54);
+    g.addColorStop(0, 'rgba(' + kind.rgb + ',0.38)');
+    g.addColorStop(1, 'rgba(' + kind.rgb + ',0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0, 0, 54, 0, TAU); ctx.fill();
     /* a column of light so the pickup reads through a wall of traffic */
@@ -9535,52 +8660,23 @@ function drawPickups(){
     ctx.rotate(k.spin);
     ctx.scale(bob, bob);
     ctx.beginPath();
-    ctx.moveTo(0, -27); ctx.lineTo(27, 0); ctx.lineTo(0, 27); ctx.lineTo(-27, 0);
+    ctx.moveTo(0, -19); ctx.lineTo(19, 0); ctx.lineTo(0, 19); ctx.lineTo(-19, 0);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(6,10,20,0.88)';
+    ctx.fillStyle = 'rgba(6,10,20,0.85)';
     ctx.fill();
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.strokeStyle = kind.col;
     ctx.stroke();
 
     /* the glyph stays upright — a spinning letter is unreadable */
     ctx.rotate(-k.spin);
     ctx.fillStyle = kind.col;
-    ctx.font = '800 28px ui-sans-serif,system-ui,-apple-system,sans-serif';
+    ctx.font = '800 20px ui-sans-serif,system-ui,-apple-system,sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(kind.glyph, 0, 1);
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
-  drawPops();
-}
-
-/* Expanding rings: a pickup taken, and a car going through the windscreen.
-   Same shape, different scale — a shockwave is the one piece of impact
-   feedback the game had no version of, and the reason a wreck at 400km/h
-   read as a puff of grey rather than as something you did. */
-function drawPops(){
-  ctx.globalCompositeOperation = 'lighter';
-  for (const p of G.pops) {
-    const t = clamp(p.t / p.life, 0, 1);
-    const a = (1 - t) * (1 - t);
-    const r = p.r || 96, g = p.g || 150;
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.strokeStyle = 'rgba(' + p.rgb + ',' + (a * 0.9).toFixed(3) + ')';
-    ctx.lineWidth = (p.w || 9) * a + 1;
-    ctx.beginPath(); ctx.arc(0, 0, 20 + t * r, 0, TAU); ctx.stroke();
-    /* a second, faster ring gives the blast an edge rather than a smudge */
-    if (p.hard) {
-      const t2 = clamp(t * 1.7, 0, 1);
-      ctx.strokeStyle = 'rgba(255,244,220,' + ((1 - t2) * 0.7).toFixed(3) + ')';
-      ctx.lineWidth = 5 * (1 - t2) + 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, 14 + t2 * r * 0.8, 0, TAU); ctx.stroke();
-    }
-    blitGlow(p.col, 0, 0, g * (0.4 + t), g * (0.4 + t), a * 0.55);
-    ctx.restore();
-  }
-  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* A chase you cannot see is just a random shove. Anything hunting you that
@@ -9675,13 +8771,10 @@ let streaks = null;
 function drawSpeed(){
   if (G.state !== 'play' && G.state !== 'crash') return;
   const sp = G.car ? G.car.speed : 0;
-  /* Started at 430 and topped out at 0.10 alpha, which meant the game had a
-     speed effect that only appeared once you were already flat out and was
-     invisible when it did. It reads from cruising pace now, and it reads. */
-  const t = clamp((sp - 300) / 380, 0, 1) * (G.car && G.car.boost ? 1.45 : 1);
-  if (t < 0.03) return;
+  const t = clamp((sp - 430) / 420, 0, 1) * (G.car && G.car.boost ? 1.35 : 1);
+  if (t < 0.04) return;
   if (!streaks) {
-    streaks = Array.from({ length: 72 }, () => ({
+    streaks = Array.from({ length: 46 }, () => ({
       a: Math.random() * TAU, r: 0.42 + Math.random() * 0.72, l: 0.1 + Math.random() * 0.3,
       s: 0.6 + Math.random() * 0.9
     }));
@@ -9691,29 +8784,17 @@ function drawSpeed(){
   ctx.lineCap = 'round';
   const cx = W / 2, cy = camY(), R = hyp(W, H) * 0.62;
   const phase = (G.dist * 0.0016);
-  /* streaks carry the district's accent, so going fast in Redline looks
-     different from going fast in Skyport */
-  const srgb = TH.amb2 || '190,232,255';
   for (const s of streaks) {
     const f = ((s.r + phase * s.s) % 1.1);
-    const r0 = R * f, r1 = R * (f + s.l * t * 1.6);
+    const r0 = R * f, r1 = R * (f + s.l * t);
     const ca = Math.cos(s.a), sa = Math.sin(s.a);
-    ctx.strokeStyle = 'rgba(' + srgb + ',' + (0.30 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
-    ctx.lineWidth = 1.6 + t * 3.2;
+    ctx.strokeStyle = 'rgba(190,232,255,' + (0.10 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
+    ctx.lineWidth = 1.6 + t * 2;
     ctx.beginPath();
     ctx.moveTo(cx + ca * r0, cy + sa * r0);
     ctx.lineTo(cx + ca * r1, cy + sa * r1);
     ctx.stroke();
   }
-
-  /* The edges close in as you wind up — the frame itself narrowing is what
-     sells speed, more than anything moving inside it. Additive at the rim
-     rather than a dark vignette, so it reads as light tearing past. */
-  const vg = ctx.createRadialGradient(cx, cy, R * (0.62 - t * 0.20), cx, cy, R * 1.05);
-  vg.addColorStop(0, 'rgba(' + srgb + ',0)');
-  vg.addColorStop(1, 'rgba(' + srgb + ',' + (0.20 * t).toFixed(3) + ')');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
 }
 
@@ -9760,14 +8841,6 @@ function render(){
   drawHazards();
   drawToys();
   drawPickups();
-
-  /* every streak before every car, so one never paints over a chassis */
-  for (const t of G.traffic) drawTrail(t, 0.60, false);
-  for (const v of G.convoy) drawTrail(v, 0.75, false);
-  for (const p of G.police) drawTrail(p, 0.85, true);
-  if (G.boss) drawTrail(G.boss, 1.05, true);
-  drawTrail(G.car, 1.25, true);
-
   for (const t of G.traffic) drawVehicle(t, { lights:false });
   for (const v of G.convoy) drawVehicle(v, { lights:true });
   for (const p of G.police) drawVehicle(p);
@@ -9810,12 +8883,6 @@ function blitGlow(col, x, y, rx, ry, alpha){
 }
 
 /* ---- small colour helpers ---- */
-/* "#3DE8FF" -> "61,232,255", which is the form the particle spawner wants */
-function rgbOf(hex){
-  const h = hex.replace('#', '');
-  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
-  return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255);
-}
 function hexA(hex, a){
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -10032,7 +9099,6 @@ function hide(el){ el.classList.add('hide'); }
 function toMenu(){
   G.state = 'menu';
   G.run = null;
-  Ads.clearContext();          // no district to blame once you are back out
   newWorld(true);
   /* the menu is the store screenshot: put a road's worth of traffic in the
      attract driver's path so the backdrop shows a game, not empty asphalt */
@@ -10083,45 +9149,6 @@ function startRun(){
   showMap();
 }
 
-/* ---------------- first run ----------------
-   CrazyGames require new players to be in gameplay immediately, and allow at
-   most one click if that is not feasible. The full flow — menu, garage, route
-   board, dispatch, brief — is five clicks before the car moves, which is a
-   rejection on its own. A player with no completed run skips all of it and
-   starts driving the first district straight off the loading screen. Everyone
-   who has finished a run has seen the flow already and keeps it. */
-/* ---------------- straight onto the road ----------------
-   No route board, no dispatch card, no brief — pick the opening node and
-   drive. Two callers, for two different reasons.
-
-   The first-ever run, because the platform requires a new player to be in
-   gameplay within one click. And every retry, because measuring the session
-   showed the zero-click start only ever helped run one: a wreck put the
-   player back through garage, board, dispatch and brief, five clicks and
-   four screens, every single time. A ten-minute session is seven to ten
-   runs of this game, which was forty clicks of menus — and runs per session
-   is the whole of average play time. */
-function startRunDirect(){
-  hide(UI.menu); hide(UI.over); hide(UI.garage);
-  G.run = newRun();
-  G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = 0; G.awaitingAdvance = false;
-  shownScore = 0;
-  /* the middle of the opening row: the plain Run, not an Elite */
-  const open = openNodes();
-  const pick = open[Math.floor(open.length / 2)] || open[0];
-  G.run.row = pick.row; G.run.col = pick.col;
-  G.run.node = G.run.route[pick.row][pick.col];
-  G.run.contract = null;          // no wager on a run you have not been taught yet
-  G.fastStart = true;
-  beginNode();
-}
-
-function startFirstRun(){
-  Hangar.grantStarter();
-  startRunDirect();
-}
-
 /* ============================================================
    MAP SCREEN
    ============================================================ */
@@ -10131,7 +9158,12 @@ function showMap(){
   UI.hud.classList.add('off');
   hide(UI.cleared); hide(UI.contract); hide(UI.depot); hide(UI.brief);
   $('mAct').textContent = run.act;
-  $('mTitle').textContent = themeFor(run.act).name;
+  const th = THEMES[(run.act - 1) % THEMES.length];
+  $('mTitle').textContent = th.name;
+  /* the board wears the act's colours, so act 2 feels like a new city
+     before you have driven a metre of it */
+  UI.map.style.setProperty('--mapL', th.left);
+  UI.map.style.setProperty('--mapR', th.right);
   $('mScore').textContent = fmt(G.score);
   $('mCleared').textContent = run.cleared;
   /* Quotas move with your level now, so the board has to re-read them
@@ -10424,9 +9456,7 @@ function beginNode(skipBrief){
   G.policeCool = 0;
   if (run.L.hazards) seedHazards();
 
-  /* the brief is a screen, and the first run is not allowed one */
-  if (G.fastStart) { G.fastStart = false; beginDistrict(); }
-  else showBrief();
+  if (skipBrief) beginDistrict(); else showBrief();
 }
 
 /* Roadworks scatters strips across the district up front, so the bane is
@@ -10514,18 +9544,10 @@ function beginDistrict(){
   G.state = 'play';
   UI.hud.classList.remove('off');
   if (G.run.cfg.boss) addBoss();
-  /* Attached to any feedback the player sends from the platform, so a "stuck
-     here" report arrives with the district it was sent from. */
-  Ads.context({
-    act: String(G.run.act), district: String(G.run.district),
-    level: String(G.run.level), node: String(G.run.node && G.run.node.type)
-  });
-  /* The hint is now the entire onboarding: a first-time player lands here
-     without passing the menu that used to carry the "← → Steer" line, so it
-     has to cover the keyboard as well as the touchscreen. Visual, one line,
-     and it times itself out — their guidance asks for onboarding in gameplay
-     rather than a screen in front of it. */
-  if (G.run.district === 1) showCtrlHint();
+  /* The hint used to be touch-only, on the assumption that a keyboard player
+     would have read the menu. Landing straight in gameplay removes that menu,
+     so desktop needs it too. */
+  if (G.run.district === 1) showControlHint();
 }
 
 /* ---- a gate: the end of one stretch and the terms of the next ----
@@ -10676,33 +9698,45 @@ function endRun(won){
   /* a rank is a more useful thing to see than a badge you may never earn */
   $('ovPlace').textContent = rank ? 'Personal best #' + rank : 'Outside your top ' + BOARD_MAX;
   $('ovPlace').classList.toggle('in', !!rank);
-  /* one revive per run, and only when the run was worth saving */
-  const reviveOffered = !G.revived && G.score >= 400;
+  $('btnDouble').disabled = false;
+  refreshOverOffers();
 
-  /* Their ad policy forbids pairing a midgame ad with a "watch a rewarded ad
-     to keep playing" offer at the same break: between two attempts you may
-     run a midgame and restart, or offer the revive, but not both. The revive
-     button is precisely that offer, so it suppresses the midgame whenever it
-     is live. Double-your-coins is not affected — it rewards a run that is
-     already over rather than continuing the current one, so it may sit
-     alongside a midgame. */
   /* guarded so a deferred ad callback can never draw a stale over-panel
      across a run the player has already restarted */
-  const showOver = () => { if (G.state === 'over') { show(UI.over); refreshAdOffers(); } };
-  /* no point pausing the game for a request we already know cannot fill */
-  if (!reviveOffered && Ads.canServe() && Ads.caps().midgame && Save.data.runs % 3 === 0) Ads.midroll(showOver);
-  else showOver();
+  const showOver = () => { if (G.state === 'over') show(UI.over); };
+  /* Every 3rd run end, never within 4 minutes of the last ad — three
+     20-second learning deaths must not read as three ad breaks — and never on
+     a transition that is also offering a rewarded continue. CrazyGames allows
+     one or the other between levels, not both: "you can have either a midgame
+     ad and restart, or a 'watch rewarded to keep playing', but not both". The
+     revive is the continue, so it wins. */
+  if (!offeringRevive() && Save.data.runs % 3 === 0 && G.playSinceAd > 240) {
+    G.playSinceAd = 0;
+    Ads.midroll(showOver);
+  } else showOver();
 }
 
-/* ---- progress reporting ----
-   NEON HEAT is endless, which their docs explicitly allow for: a developer
-   may define their own 100% as long as it is applied consistently. Ours is
-   the far end of the last authored act — three acts of five rows — so a
-   player who has driven every district the game contains reads as complete.
-   Reported on every run end, and never allowed to move backwards. */
-const RUN_DISTRICTS = ROWS * THEMES.length;
-function reportProgress(){
-  Ads.progress((Save.data.deepest || 0) / RUN_DISTRICTS * 100);
+/* one revive per run, and only when the run was worth saving */
+function canRevive(){ return !G.revived && G.score >= 400; }
+function offeringRevive(){ return canRevive() && Ads.rewardOffered(); }
+
+/* Keeps the game-over offers honest. A rewarded button that does nothing is
+   grounds for rejection, so an offer that cannot be served is withdrawn and
+   explained rather than left sitting there disabled and unexplained. */
+function refreshOverOffers(note){
+  const live = Ads.rewardOffered();
+  const rev  = canRevive();
+  $('btnRevive').classList.toggle('hide', !(rev && live));
+  $('btnDouble').classList.toggle('hide', !live);
+
+  const coin = $('btnRevCoin');
+  coin.classList.toggle('hide', !rev);
+  coin.disabled = Save.data.coins < REVIVE_COST;
+  coin.innerHTML = 'Revive for ' + fmt(REVIVE_COST) + ' coins';
+
+  const el = $('ovAdNote');
+  el.textContent = note || (live ? '' : 'Ad-funded bonuses are unavailable — an ad blocker, or ads are off for this build.');
+  el.classList.toggle('hide', !el.textContent);
 }
 
 function commitCoins(mult){
@@ -10757,8 +9791,7 @@ $('btnPlay').onclick   = () => {
   if (dailyReady() && Save.data.runs > 0) { hide(UI.menu); claimDaily(); }
   else toGarage();
 };
-$('btnAgain').onclick  = () => { commitCoins(1); startRunDirect(); };
-$('btnOvGarage').onclick = () => { commitCoins(1); toGarage(); };
+$('btnAgain').onclick  = () => { commitCoins(1); toGarage(); };
 $('btnMenu').onclick   = () => { commitCoins(1); toMenu(); };
 $('btnGarage').onclick = () => toGarage();
 $('btnRecords').onclick = () => { NHAudio.ui(true); showBoard('menu'); };
@@ -10767,74 +9800,14 @@ $('btnBdBack').onclick  = () => { NHAudio.ui(true); closeBoard(); };
 $('btnBack').onclick   = () => { hide(UI.garage); toMenu(); };
 $('btnRace').onclick   = () => { hide(UI.garage); startRun(); };
 
-/* What a revive costs if you would rather not watch anything. Their rewarded
-   rules require an alternative to the ad, and coins are the currency the
-   player already earns, so the offer scales with how deep the run got. */
-function revivePrice(){
-  const d = (G.run && G.run.district) || 1;
-  return 500 + d * 250;
-}
-
-/* ---- ad offers ----
-   Rebuilt whenever the game-over screen opens, and again if adblock detection
-   lands late. Nothing here may leave a live-looking button that does nothing. */
-function refreshAdOffers(){
-  const over = UI.over && !UI.over.classList.contains('hide');
-  const price = revivePrice();
-  /* a network with no rewarded placements is the same case as ads being
-     blocked: the offers come down and the coin route carries the screen */
-  const serve = Ads.canServe() && Ads.caps().rewarded;
-  const reviveOK = !G.revived && G.score >= 400;
-
-  const pEl = $('revivePrice');
-  if (pEl) pEl.textContent = fmt(price);
-
-  const bRev  = $('btnRevive');
-  const bCoin = $('btnReviveCoins');
-  const bDbl  = $('btnDouble');
-  if (!bRev || !bCoin || !bDbl) return;
-
-  /* the ad routes go away entirely when no ad can serve */
-  bRev.disabled = !reviveOK || !serve;
-  bDbl.disabled = !serve;
-  bRev.classList.toggle('hide', !serve);
-  bDbl.classList.toggle('hide', !serve);
-
-  /* the paid route survives an adblocker, which is what keeps the screen
-     playable rather than punishing the player for their extension */
-  bCoin.disabled = !reviveOK || Save.data.coins < price;
-  bCoin.classList.toggle('hide', !reviveOK);
-
-  const note = $('ovAdNote');
-  if (note) {
-    const msg = serve ? '' : Ads.blockedNote();
-    note.textContent = msg;
-    note.classList.toggle('hide', !msg || !over);
-  }
-}
-
-/* Username and avatar come from the platform account; a guest stays a guest
-   and nothing on screen asks them to sign in. */
-function refreshIdentity(){
-  const who = $('bdWho');
-  if (who) who.textContent = Ads.playerName || 'Your runs';
-  const pic = $('bdPic');
-  if (!pic) return;
-  /* A guest has neither, and is never asked for either. If the image itself
-     fails we drop it rather than leave a broken frame on the board. */
-  if (Ads.avatar) {
-    pic.onerror = () => pic.classList.add('hide');
-    pic.src = Ads.avatar;
-    pic.alt = Ads.playerName || '';
-    pic.classList.remove('hide');
-  } else {
-    pic.classList.add('hide');
-    pic.removeAttribute('src');
-  }
-}
+/* The price of the non-ad revive. CrazyGames requires an alternative to
+   watching a rewarded ad, and coins are the currency the game already pays
+   out on every run, win or lose — so the alternative is one the player has
+   been earning towards whether or not they ever watch an ad. It is also the
+   only revive on offer when ads are unavailable. */
+const REVIVE_COST = 250;
 
 function doRevive(){
-  {
     hide(UI.over);
     G.revived = true;
     G.state = 'play';
@@ -10867,25 +9840,20 @@ function doRevive(){
     G.heat = Math.max(0, G.heat - 1);
     G.slow = 1;
     toast('Back in the race', 'gold');
-  }
-}
-
-/* An ad that never filled must say so and leave the player somewhere to go —
-   their docs ask us to encourage a retry rather than fail silently. */
-function adUnavailable(){
-  refreshAdOffers();
-  toast(Ads.canServe() ? 'No ad available — try again in a moment'
-                       : Ads.blockedNote(), 'gold');
 }
 
 $('btnRevive').onclick = () => {
-  Ads.rewarded('Reviving your run', ok => ok ? doRevive() : adUnavailable());
+  Ads.rewarded('Reviving your run', ok => {
+    /* No reward on adError — their rules are explicit about that. Say so and
+       leave the coin option standing. */
+    if (!ok) { refreshOverOffers('No ad available right now — try again later'); return; }
+    doRevive();
+  });
 };
 
-$('btnReviveCoins').onclick = () => {
-  const price = revivePrice();
-  if (G.revived || Save.data.coins < price) return;
-  Save.data.coins -= price;
+$('btnRevCoin').onclick = () => {
+  if (Save.data.coins < REVIVE_COST) return;
+  Save.data.coins -= REVIVE_COST;
   Save.flush();
   NHAudio.ui(true);
   doRevive();
@@ -10893,7 +9861,7 @@ $('btnReviveCoins').onclick = () => {
 
 $('btnDouble').onclick = () => {
   Ads.rewarded('Doubling your coins', ok => {
-    if (!ok) { adUnavailable(); return; }
+    if (!ok) { refreshOverOffers('No ad available right now — try again later'); return; }
     commitCoins(2);
     $('btnDouble').disabled = true;
     $('ovCoins').textContent = '0';
@@ -10905,46 +9873,21 @@ $('btnDouble').onclick = () => {
 /* ---- garage ---- */
 /* Only the bay draws this now, and it draws it at roughly 8x, so the stroke
    has to be expressed in pre-scale units or the outline reads as a cartoon. */
-/* The bay draws the car through its own context, so nothing done to
-   drawVehicle reaches it — which is how this ended up two changes behind the
-   road. It still carried the flank-to-flank body gradient that drawVehicle
-   dropped for making the paint never actually appear, and it never got the
-   emissive rim, so the garage was showing a car that no longer exists.
-   Widths divide by the bay scale, the same as every other stroke here, so a
-   rim stays a rim rather than growing with the zoom. */
 function previewCar(g, v, sc){
   const s = v.spec;
   const lw = 2.6 / (sc || 1);
   g.save();
   const bg = g.createLinearGradient(0, -s.wid * 0.6, 0, s.wid * 0.6);
-  bg.addColorStop(0,    mix(s.col, s.col2, 0.58));
-  bg.addColorStop(0.42, mix(s.col, s.col2, 0.06));
-  bg.addColorStop(1,    mix(s.col, s.col2, 0.48));
+  bg.addColorStop(0, s.col2);
+  bg.addColorStop(0.45, mix(s.col, s.col2, 0.55));
+  bg.addColorStop(1, s.col2);
   g.fillStyle = '#12161F';
   const wr = s.len * 0.13, ww = s.wid * 0.14;
   for (const [fx, fy] of [[0.30,0.54],[0.30,-0.54],[-0.30,0.54],[-0.30,-0.54]])
     g.fillRect(s.len * fx - wr, s.wid * fy - ww, wr * 2, ww * 2);
   carPath(g, s);
   g.fillStyle = bg; g.fill();
-
-  /* the same rim the car wears on the road: a soft bleed under a hard core */
-  g.globalCompositeOperation = 'lighter';
-  g.lineJoin = 'round';
-  carPath(g, s);
-  g.strokeStyle = hexA(s.col, 0.20); g.lineWidth = lw * 3.2; g.stroke();
-  g.globalCompositeOperation = 'source-over';
-  carPath(g, s);
-  g.strokeStyle = hexA(s.col, 1); g.lineWidth = lw; g.stroke();
-
-  /* flank strips */
-  g.globalCompositeOperation = 'lighter';
-  g.fillStyle = hexA(s.col, 0.72);
-  for (const sy of [-1, 1]) {
-    g.fillRect(-s.len * 0.34, sy * s.wid * 0.46 - s.wid * 0.035,
-               s.len * 0.62, s.wid * 0.07);
-  }
-  g.globalCompositeOperation = 'source-over';
-
+  g.strokeStyle = hexA(s.col, 0.95); g.lineWidth = lw; g.stroke();
   g.beginPath();
   g.moveTo(s.len * 0.14, -s.wid * 0.30);
   g.lineTo(-s.len * 0.06, -s.wid * 0.36);
@@ -10957,21 +9900,8 @@ function previewCar(g, v, sc){
   cg.addColorStop(0, 'rgba(200,235,255,0.32)');
   cg.addColorStop(1, 'rgba(10,16,32,0.85)');
   g.fillStyle = cg; g.fill();
-
-  /* dorsal spine */
-  g.globalCompositeOperation = 'lighter';
-  g.fillStyle = hexA(s.col, 0.42);
-  g.fillRect(-s.len * 0.42, -s.wid * 0.045, s.len * 0.84, s.wid * 0.09);
-  g.globalCompositeOperation = 'source-over';
-
-  /* Tail lamps, painted rather than added. On the road the body under them is
-     dark and additive red reads as red; in the bay it is the paint at full
-     strength, and red added to a lit cyan panel saturates straight to white —
-     two white pads on the back of the car. */
-  g.fillStyle = 'rgba(226,58,72,0.92)';
-  for (const sy of [-1, 1]) {
-    g.fillRect(-s.len * 0.52, sy * s.wid * 0.28 - s.wid * 0.07, s.len * 0.07, s.wid * 0.15);
-  }
+  g.fillStyle = hexA(s.col, 0.25);
+  g.fillRect(-s.len * 0.5, -s.wid * 0.055, s.len, s.wid * 0.11);
   g.restore();
 }
 
@@ -11107,7 +10037,7 @@ function showBoard(from){
           '<span class="bdT">' + relDay(r.t) + '</span>' +
         '</div>').join('')
     : '<div class="bdEmpty">No runs on the board yet. Go and put one there.</div>';
-  refreshIdentity();          // name and avatar, whenever the board opens
+  $('bdWho').textContent = Ads.playerName ? Ads.playerName : 'Your runs';
   G.boardFrom = from;
   hide(UI.menu); hide(UI.over);
   show(UI.board);
@@ -11773,13 +10703,7 @@ function toGarage(){
    LOOP
    ============================================================ */
 let last = performance.now();
-let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = 0;
-/* setQuality already defines three rungs, but the tuner only ever called
-   'low' — the middle one was dead code. These are the rungs, in order. */
-const TIERS = ['low', 'med', 'high'];
-let tierI = 2;        // index into TIERS
-let demotions = 0;    // how many times we have had to give a tier back
-let goodMs = 0;       // how long we have been comfortably inside budget
+let ftAvg = 16, workAvg = 8, ftN = 0, demoted = false, tuneAt = 0;
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
    lever because it is continuous and nearly invisible; dropping effects is
@@ -11790,21 +10714,10 @@ let goodMs = 0;       // how long we have been comfortably inside budget
    a perfect frame still reads 16.7ms, so it can never indicate headroom.
    Work time (what we actually spend in step + render) is vsync-independent
    and is what tells us it is safe to give resolution back. */
-function autoTune(now, dt){
-  const missing = ftAvg > 19.5;                    // below ~51fps
-  /* Headroom was `workAvg < 6.5`, an absolute figure from when the renderer
-     was cheaper. With the city drawing depth and the streaks in the air,
-     nothing reaches 6.5ms any more, so this test could never pass and the
-     climb back was dead code: a session that dipped once stayed dipped, often
-     holding a rock-solid 60fps at half resolution with milliseconds a frame
-     going spare. The budget is 16.7ms and the test is written against it. */
-  const roomy = ftAvg < 17.6 && workAvg < 10.5;
-
-  /* sustained, not instantaneous: one quiet second in a fight is not proof
-     the machine can hold the next minute */
-  goodMs = roomy ? goodMs + dt * 1000 : 0;
-
+function autoTune(now){
   if (now < tuneAt) return;
+  const missing = ftAvg > 19.5;                    // below ~51fps
+  const roomy   = ftAvg < 18 && workAvg < 6.5;     // hitting vsync, cheaply
 
   if (missing && renderScale > 0.5) {
     /* Come down in proportion to how far off budget we are, not in a fixed
@@ -11819,26 +10732,13 @@ function autoTune(now, dt){
     renderScale = clamp(Math.min(stepped, want), 0.5, 1);
     applyBackingStore();
     tuneAt = now + (ftAvg > 28 ? 320 : 700);
-  } else if (missing && tierI > 0) {
-    /* out of resolution to give: step down one rung, not straight to the
-       floor. Demotion used to latch to 'low' for the rest of the session,
-       which meant the backing store and every optional pass went in the same
-       instant and never came back. */
-    setQuality(TIERS[--tierI]);
-    demotions++; goodMs = 0;
-    tuneAt = now + 1500;
+  } else if (missing && !demoted) {
+    setQuality('low'); demoted = true;
+    tuneAt = now + 1200;
   } else if (roomy && renderScale < 1) {
     renderScale = Math.min(1, renderScale + 0.05);
     applyBackingStore();
     tuneAt = now + 1400;              // creep back up slowly to avoid hunting
-  } else if (tierI < TIERS.length - 1 && goodMs > 5000 * (demotions + 1)) {
-    /* Give a rung back, but only after real sustained headroom, and demand
-       progressively more of it each time we have been wrong — effects
-       flickering on and off every few seconds is worse to look at than
-       simply staying on the lower tier. */
-    setQuality(TIERS[++tierI]);
-    goodMs = 0;
-    tuneAt = now + 3000;
   }
 }
 
@@ -11873,7 +10773,7 @@ function frame(now){
 
   workAvg = workAvg * 0.9 + (performance.now() - workT0) * 0.1;
   ftAvg   = ftAvg   * 0.9 + Math.min(ms, 120) * 0.1;
-  if (++ftN > 40) autoTune(now, raw);
+  if (++ftN > 40) autoTune(now);
 
   requestAnimationFrame(frame);
 }
@@ -11892,10 +10792,7 @@ setCtrlLabel();
 setEngineLabel();
 setMute();
 if (hasTouch) $('btnCtrl').classList.add('show');
-/* Never played: straight into the first district, no clicks. Otherwise the
-   menu, which a returning player expects and which their rule is not about. */
-if (Save.data.runs > 0) toMenu();
-else { toMenu(); startFirstRun(); }
+bootIntoPlay();
 requestAnimationFrame(frame);
 
 /* debug handle for tuning passes and automated playtests */
@@ -11908,13 +10805,10 @@ window.__NH = {
   takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
   get offers(){ return G.offers; },
   setTheme, theme: () => ({ id:TH.id, name:TH.name, asphalt:TH.asphalt, left:TH.left }),
-  /* pin every act of the run to one district, for art passes and screenshots */
-  forceTheme: i => { themeOrder = [i, i, i]; setTheme(1); },
-  THEMES, BOSSES, addBoss, skid, addTraffic,
   ZONES, zoneById, zoneEnv, pickZones, zoneRules, passGate,
   env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
   get stage(){ return G.stage; },
-  bossDamage, BOSS_BITE,
+  addBoss, bossDamage, BOSS_BITE,
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
@@ -11922,5 +10816,3 @@ window.__NH = {
 })();
 
 </script>
-</body>
-</html>

@@ -118,6 +118,7 @@ function resume(){
     try { ac.resume(); } catch (e) {}
   }
 }
+addEventListener('touchend', () => { if (ready) resume(); }, { passive: true });
 
 /* ---------------------------------------------------------- engine voice
    An electric drivetrain, not a combustion one. The first version was two
@@ -313,7 +314,7 @@ const A = {
   /* browsers throttle a hidden tab's timers; stop the sequencer outright */
   setActive(on){
     if (!ready) return;
-    if (on) { if (ac.state === 'suspended') ac.resume(); }
+    if (on) { if (ac.state === 'suspended' || ac.state === 'interrupted') ac.resume(); }
     else if (ac.state === 'running') ac.suspend();
   },
 
@@ -482,6 +483,32 @@ const A = {
       o.frequency.value = semi(523.25, n);
       const g = env(sfxBus, 0.16, 0.004, 0.42, t + k * 0.06);
       o.connect(g); o.start(t + k * 0.06); o.stop(t + k * 0.06 + 0.55);
+    });
+  },
+  /* Levelling used to borrow chip() — the same four notes a perk *pick*
+     makes — so the one moment the run hands you something arrived sounding
+     like the moment you spent it. This is the only cue in the game that
+     sweeps: two detuned saws climbing an octave under a major triad that
+     lands late, so the ear hears the rise before the arrival. */
+  levelUp(){
+    if (!ready) return;
+    const t = ac.currentTime;
+    for (const det of [-5, 5]) {
+      const o = ac.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(semi(196, det / 100), t);
+      o.frequency.exponentialRampToValueAtTime(semi(392, det / 100), t + 0.34);
+      const f = ac.createBiquadFilter(); f.type = 'lowpass';
+      f.frequency.setValueAtTime(600, t);
+      f.frequency.exponentialRampToValueAtTime(4200, t + 0.34);
+      f.Q.value = 3;
+      const g = env(sfxBus, 0.20, 0.02, 0.42, t);
+      o.connect(f); f.connect(g); o.start(t); o.stop(t + 0.5);
+    }
+    [0, 4, 7, 12].forEach((n, k) => {
+      const o = ac.createOscillator(); o.type = 'triangle';
+      o.frequency.value = semi(523.25, n);
+      const g = env(sfxBus, 0.15, 0.006, 0.75, t + 0.30 + k * 0.045);
+      o.connect(g); o.start(t + 0.30 + k * 0.045); o.stop(t + 0.30 + k * 0.045 + 0.9);
     });
   },
   curse(){
