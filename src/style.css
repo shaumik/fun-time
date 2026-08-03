@@ -347,6 +347,16 @@ body{
 @keyframes fade{from{opacity:0}to{opacity:1}}
 
 /* menu */
+/* The title card is the only screen whose copy is large enough to survive a
+   thinner scrim, and it is the one screen where the attract driver behind it
+   is worth seeing — more so now the city has depth and the cars leave light.
+   The first thing a player looks at should be that, not a black sheet with a
+   logo on it. The dense text screens (map, contract, depot) keep the heavy
+   scrim above. */
+#menu{
+  background:radial-gradient(120% 88% at 50% 45%,
+    rgba(5,6,14,.80) 0%, rgba(4,5,12,.74) 46%, rgba(2,3,9,.46) 100%);
+}
 .menuIn{text-align:center;max-width:calc(var(--u)*82)}
 .eyebrow{
   font-size:max(10px,calc(var(--u)*1.3));letter-spacing:.42em;text-transform:uppercase;
