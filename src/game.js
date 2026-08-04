@@ -921,8 +921,24 @@ function setQuality(t){
      rung it is the same trade as the bloom and goes the same way */
   QF.plate = low ? 0 : 1;
   QF.city = 1; QF.glow = 1;
-  /* the bloom composite is fill-rate bound, so pixels are the lever */
-  QF.dpr = high ? 1.5 : low ? 0.9 : 1.15;
+  /* ---- the resolution ceiling per rung ----
+     These were 1.5 / 1.15 / 0.9, which on a phone is the whole problem. A
+     3x display asked to render at 0.9 is being handed less than a third of
+     its linear resolution — measured on a 411px-wide portrait stage, a 370px
+     canvas — and it looks exactly as soft as that sounds. Worse, it was a
+     *ceiling*, so no amount of headroom could undo it: the same measurement
+     had the frame costing 0.8ms against a 13.5ms budget while the picture
+     stayed blurry, because the tuner's lever only scales down from here.
+
+     The ceilings are generous and close together now, and the tuner does the
+     deciding — it can afford to, since the roomy test became predictive and
+     climbs only when the *next* step is affordable. Keeping them close also
+     stops a demotion double-dipping: a rung is supposed to buy frames by
+     dropping an effect, and when it slashed the resolution ceiling as well,
+     the picture took the hit twice for one decision and could not get it back
+     without a promotion. Effects are what the ladder trades; pixels are what
+     renderScale trades. MAX_PIXELS still bounds a big window. */
+  QF.dpr = high ? 2 : low ? 1.5 : 1.8;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -958,12 +974,21 @@ let renderScale = 1;           // adaptive, 0.5 .. 1
 let painted = false;           // has a first frame been drawn yet
 
 function applyBackingStore(){
-  const want = Math.min(window.devicePixelRatio || 1, QF.dpr) * renderScale;
+  /* The pixel ceiling and the adaptive scale are two different things and the
+     order matters. This used to fold renderScale into `want` and then, if the
+     ceiling bound, throw the result away for sqrt(MAX_PIXELS / area) — which
+     has no renderScale in it at all. On any window large enough for the cap to
+     bite, that silently disconnected the tuner's main lever: it could move
+     renderScale all it liked and the backing store never changed.
+
+     So: the ceiling is a property of the tier and the display, the cap is a
+     property of the window, and renderScale scales whatever survives both. */
+  const ceiling = Math.min(window.devicePixelRatio || 1, QF.dpr);
   const area = W * H;
-  const capped = area * want * want > MAX_PIXELS
+  const capped = area * ceiling * ceiling > MAX_PIXELS
     ? Math.sqrt(MAX_PIXELS / area)
-    : want;
-  DPR = clamp(capped, 0.5, 3);
+    : ceiling;
+  DPR = clamp(capped * renderScale, 0.5, 3);
   cv.width  = Math.max(1, Math.round(W * DPR));
   cv.height = Math.max(1, Math.round(H * DPR));
   /* the bloom buffers follow the real backing store, not the CSS size */
@@ -1728,7 +1753,7 @@ const G = {
   hp:100, hpMax:100, freeze:0, hitCool:0,
   pickups:[], pops:[],   // pops: the short-lived flare left where one was taken
   power:{ shield:0, surge:0, magnet:0, frenzy:0, slowmo:0, ball:0, arc:0, drones:0, phase:0, draft:0 }, missileT:0, shockAt:5,
-  rockets:0, rocketT:0, lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
+  rockets:0, rocketT:0, shots:[], lastingPlate:0, lastingClock:0, lastingPayday:0, worldSlow:1,
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0, policeCool:0, playSinceAd:9999, trail:[],
@@ -2104,7 +2129,7 @@ function newWorld(ai){
   G.power.phase = 0; G.power.draft = 0;
   G.power.ball = 0; G.power.arc = 0; G.ball = null; G.wells = []; G.arcs = []; G.ballHits = 0;
   G.power.drones = 0; G.drones = []; G.scav = null; G.lastingScav = 0;
-  G.rockets = Tree.has('t_salvo') ? 2 : 0; G.rocketT = 0;
+  G.rockets = Tree.has('t_salvo') ? 2 : 0; G.rocketT = 0; G.shots.length = 0;
   G.firstBlood = Tree.has('t_first') ? 1 : 0;
   /* the lasting pickups are exactly that — for *this* district only */
   G.lastingPlate = 0; G.lastingClock = 0; G.lastingPayday = 0; G.lastingScav = 0;
@@ -3213,6 +3238,7 @@ function stepPowers(dt){
   stepPickups(dt);
   stepMagnet(dt);
   stepRockets(dt);
+  stepShots(dt);
 
   /* Scrap Welder: the hull creeps back while you are between chains, so
      hanging back to recover is a real alternative to pushing on */
@@ -3541,6 +3567,102 @@ function stepMagnet(dt){
   }
 }
 
+/* ============================================================
+   PROJECTILES
+   Both the Bazooka and the Harpoon used to reach across the road and wreck
+   their target on the frame they fired: the sparks appeared on a car forty
+   metres away, the sound played, and nothing ever crossed the gap. Which is
+   exactly what it looked like from the driver's seat — a weapon with no shot,
+   and cars that exploded for no visible reason.
+
+   They launch something now. The ammo is still spent at the trigger, but the
+   kill, the sparks, the shake and the smash all move to the moment the round
+   arrives. It leads its target rather than tracking it perfectly, so a car
+   that changes lane can be missed — which is what makes a hit read as a hit.
+   ============================================================ */
+const SHOT_SPEED = 1500;
+
+function launchShot(target, kind){
+  const car = G.car;
+  /* out of the nose, not the centre of the car */
+  const cs = Math.cos(car.a), sn = Math.sin(car.a);
+  const dx = target.x - car.x, dy = target.y - car.y;
+  const d = hyp(dx, dy) || 1;
+  G.shots.push({
+    x: car.x + cs * car.spec.len * 0.5, y: car.y + sn * car.spec.len * 0.5,
+    vx: dx / d * SHOT_SPEED, vy: dy / d * SHOT_SPEED,
+    t: target, kind, life: 1.4,
+    /* the trail is drawn from where it was last frame, so it needs a memory */
+    px: car.x, py: car.y
+  });
+}
+
+function detonateShot(s){
+  const t = s.t;
+  const heavy = s.kind === 'harpoon';
+  const x = (t && !t.wrecked) ? t.x : s.x, y = (t && !t.wrecked) ? t.y : s.y;
+  for (let i = 0; i < (heavy ? 34 : 30); i++) {
+    const a = rnd(0, TAU), sp = rnd(200, heavy ? 700 : 680);
+    spawn(x, y, Math.cos(a) * sp, Math.sin(a) * sp,
+          rnd(0.28, heavy ? 0.75 : 0.7), rnd(4, heavy ? 11 : 10),
+          i % 3 ? (heavy ? '255,196,120' : '255,180,110') : (heavy ? '255,90,70' : '255,90,60'),
+          true, -6);
+  }
+  /* A round that arrives after something else has already wrecked the car
+     still goes off — it just does not get to claim a kill it did not make. */
+  if (t && !t.wrecked) {
+    const nx = s.vx / SHOT_SPEED, ny = s.vy / SHOT_SPEED;
+    killCar(t, nx * (heavy ? 820 : 760), ny * (heavy ? 820 : 760), 240);
+    hitstop(heavy ? 0.05 : 0.04, heavy ? 16 : 14);
+    NHAudio.smash(heavy ? 1.2 : 1.1);
+  } else {
+    NHAudio.smash(0.6);
+  }
+}
+
+function stepShots(dt){
+  for (let i = G.shots.length - 1; i >= 0; i--) {
+    const s = G.shots[i];
+    s.px = s.x; s.py = s.y;
+    /* mild homing: enough that a round fired at a car doing its own thing
+       still connects, not so much that it can never be dodged out from under */
+    const t = s.t;
+    if (t && !t.wrecked) {
+      const dx = t.x - s.x, dy = t.y - s.y, d = hyp(dx, dy) || 1;
+      s.vx = damp(s.vx, dx / d * SHOT_SPEED, 6, dt);
+      s.vy = damp(s.vy, dy / d * SHOT_SPEED, 6, dt);
+    }
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    s.life -= dt;
+
+    const hit = t && !t.wrecked &&
+                hyp(t.x - s.x, t.y - s.y) < (t.spec.len + t.spec.wid) * 0.4 + 14;
+    if (hit || s.life <= 0) { detonateShot(s); G.shots.splice(i, 1); }
+  }
+}
+
+function drawShots(){
+  if (!G.shots.length) return;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const s of G.shots) {
+    const [x0, y0] = w2s(s.px, s.py);
+    const [x1, y1] = w2s(s.x, s.y);
+    const heavy = s.kind === 'harpoon';
+    const col = heavy ? '255,196,120' : '255,150,90';
+    /* the streak behind it does most of the reading at speed; the head is
+       what tells you where it actually is */
+    ctx.strokeStyle = 'rgba(' + col + ',0.55)';
+    ctx.lineWidth = (heavy ? 5 : 4) * cam.zoom;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.95)';
+    ctx.beginPath();
+    ctx.arc(x1, y1, (heavy ? 4.2 : 3.4) * cam.zoom, 0, TAU);
+    ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 /* Bazooka: a burst of four, fired on a fast cycle. The Harpoon rack is the
    permanent version of this on a much slower clock, so the two stack without
    either making the other pointless. */
@@ -3560,17 +3682,8 @@ function stepRockets(dt){
 
   G.rockets--;
   G.rocketT = 0.9;
-  const M = G.run.M;
-  for (let i = 0; i < 30; i++) {
-    const a = rnd(0, TAU), sp = rnd(200, 680);
-    spawn(best.x, best.y, Math.cos(a) * sp, Math.sin(a) * sp,
-          rnd(0.28, 0.7), rnd(4, 10),
-          i % 3 ? '255,180,110' : '255,90,60', true, -6);
-  }
-  const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
-  killCar(best, nx * 760, ny * 760, 240);
-  hitstop(0.04, 14);
-  NHAudio.smash(1.1);
+  launchShot(best, 'rocket');
+  NHAudio.pickup(1);              // the launch, not the hit
 }
 
 /* Harpoon: picks the nearest car ahead and detonates it. No button — an
@@ -3586,17 +3699,9 @@ function fireMissile(){
   }
   if (!best || bd > 780) { G.missileT = 1.2; return; }   // retry shortly
 
-  for (let i = 0; i < 34; i++) {
-    const a = rnd(0, TAU), sp = rnd(200, 700);
-    spawn(best.x, best.y, Math.cos(a) * sp, Math.sin(a) * sp,
-          rnd(0.3, 0.75), rnd(4, 11),
-          i % 3 ? '255,196,120' : '255,90,70', true, -6);
-  }
-  const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
-  /* a free link: it pays and extends, but never costs hull */
-  killCar(best, nx * 820, ny * 820, 240);
-  hitstop(0.05, 16);
-  NHAudio.smash(1.2);
+  /* a free link: it pays and extends, but never costs hull — see detonate */
+  launchShot(best, 'harpoon');
+  NHAudio.pickup(1);              // the launch, not the hit
   toast('Harpoon', 'pink');
 }
 
@@ -6236,6 +6341,7 @@ function render(){
   drawHazards();
   drawToys();
   drawPickups();
+  drawShots();
 
   /* every streak before every car, so one never paints over a chassis */
   for (const t of G.traffic) drawTrail(t, 0.60, false);
@@ -8389,7 +8495,7 @@ function autoTune(now, dt){
     lastWasClimb = false;
     goodMs = 0;
     tuneAt = now + 700;
-  } else if (renderScale < 1 && goodMs > climbNeed) {
+  } else if (renderScale < 0.99 && goodMs > climbNeed) {
     /* Sustained headroom, not an instantaneous reading. This used to fire on
        `roomy` alone — a single frame inside budget was enough to give
        resolution back, which on a borderline machine is true every other
@@ -8413,11 +8519,18 @@ function autoTune(now, dt){
     lastWasClimb = true;
     goodMs = 0;                       // earn the next step from scratch
     tuneAt = now + 1400;
-  } else if (tierI < TIERS.length - 1 && goodMs > 5000 * (demotions + 1)) {
+  } else if (tierI < TIERS.length - 1 && goodMs > 4000 + 3000 * demotions) {
     /* Give a rung back, but only after real sustained headroom, and demand
        progressively more of it each time we have been wrong — effects
        flickering on and off every few seconds is worse to look at than
-       simply staying on the lower tier. */
+       simply staying on the lower tier.
+
+       It was 5000 * (demotions + 1), which reaches fifteen seconds after two
+       demotions and thirty after five, and sits behind the resolution climb
+       — so a machine that dipped early could sit on the bottom rung for the
+       rest of the session with the frame costing a fraction of its budget.
+       Escalating additively still discourages flapping without making the
+       rung effectively unrecoverable. */
     setQuality(TIERS[++tierI]);
     goodMs = 0;
     tuneAt = now + 3000;
