@@ -944,7 +944,20 @@ function setQuality(t){
      so the honest frame time went 16.7ms to 23.5ms while workAvg still read
      under 3. Do not raise these on the strength of workAvg alone — ftAvg is
      the number that sees it. */
-  QF.dpr = high ? 2 : low ? 1.5 : 1.8;
+  /* ---- rungs trade effects FOR pixels, not alongside them ----
+     This had the ladder backwards. The bottom rung switches off bloom and the
+     vignette plate — the two full-screen passes, measured at 74% of the frame
+     between them — and then *also* lowered the resolution ceiling, so a
+     machine that fell to it got a picture that was soft AND flat: it paid
+     twice and got nothing back. The saving is enormous and it has to go
+     somewhere, so it goes into pixels. Bloom off at 2.6 is still roughly a
+     third of the cost of bloom on at 1.8, which is what makes this a rung and
+     not a bluff.
+
+     Sharpness is the thing a player actually sees. A glow they lose is a
+     different look; a resolution they lose is the game being blurry, which is
+     the complaint every single time. */
+  QF.dpr = high ? 1.8 : low ? 2.6 : 1.9;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -980,7 +993,12 @@ const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
    knobs and both are needed: the ceiling decides how sharp good hardware gets,
    the floor decides whether weak hardware can still reach a frame it can
    hold. */
-const SCALE_FLOOR = 0.34;
+/* Lowered again alongside the bottom rung ceiling of 2.6: floor times ceiling
+   is what a struggling machine actually ends up rendering at, and 0.34 x 2.6
+   would have left the worst case 1.7x more expensive than before this change.
+   0.28 x 2.6 puts it back where it was, so the emergency escape is as deep as
+   it ever was while the ordinary case is several times sharper. */
+const SCALE_FLOOR = 0.28;
 let renderScale = 1;           // adaptive, SCALE_FLOOR .. 1
 /* Resizing a canvas resets its bitmap to transparent black, and every caller
    of applyBackingStore() runs *after* the frame has already been drawn — the
@@ -1328,7 +1346,7 @@ function dismissCtrlHint(){
    ============================================================ */
 const SEG = 56;
 /* Overhead gantries, sign frames and tunnel ribs. See the generation site. */
-const SPANS = false;
+const SPANS = true;
 const REVERSE_TOP = 190;   // how fast the car will back itself off a rail
 
 class Track {
@@ -4864,24 +4882,19 @@ function drawRoad(){
     ctx.restore();
   }
 
-  /* and the long broken streaks the neon throws back off the surface */
-  for (const side of [-1, 1]) {
-    for (const [reach, width, alpha] of [[0.62, 46, 0.20], [0.34, 26, 0.12]]) {
-      ctx.beginPath();
-      for (let i = a; i <= b; i++) {
-        const p = pts[i];
-        const hw = roadHalf(p) * side * reach;
-        if (i === a) ctx.moveTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
-        else ctx.lineTo(p.x - Math.sin(p.a) * hw, p.y + Math.cos(p.a) * hw);
-      }
-      ctx.strokeStyle = hexA(side < 0 ? envCol('left') : envCol('right'), 0.13);
-      ctx.lineWidth = 46;
-      ctx.setLineDash([70, 34]);
-      ctx.lineDashOffset = -(G.dist * 0.35) % 104;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
+  /* THE YELLOW STREAKS, removed. These were "the long broken streaks the neon
+     throws back off the surface": four dashed lines running the length of the
+     road, 46px wide, dash [70,34], in whichever colour the barrier on that
+     side is. On a district whose edge colour is amber they are blunt tan rods,
+     evenly spaced, scrolling past at speed. And because they are drawn at 0.34
+     and 0.62 of the road half-width they sit out in the middle of the lane
+     rather than near the barrier they are supposedly reflecting, so they never
+     read as a reflection of anything — they read as debris on the screen.
+
+     Found by bisecting the render passes, one build per draw call, after two
+     wrong guesses from reading the palette. The barrier still throws the wide
+     wash and the tight hot line above it, which is the part that does read as
+     light on wet asphalt. */
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
 
@@ -6280,7 +6293,6 @@ function drawStick(){
 
 /* Streaks pulled from the edges toward the centre. Cheap, and the single
    clearest read of speed a top-down camera can give. */
-let streaks = null;
 function drawSpeed(){
   if (G.state !== 'play' && G.state !== 'crash') return;
   const sp = G.car ? G.car.speed : 0;
@@ -6294,31 +6306,22 @@ function drawSpeed(){
      speed does rather than something that happens to the screen. */
   const t = clamp((sp - 300) / 380, 0, 1) * (1 + 0.45 * (G.boostFX || 0));
   if (t < 0.03) return;
-  if (!streaks) {
-    streaks = Array.from({ length: 72 }, () => ({
-      a: Math.random() * TAU, r: 0.42 + Math.random() * 0.72, l: 0.1 + Math.random() * 0.3,
-      s: 0.6 + Math.random() * 0.9
-    }));
-  }
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.lineCap = 'round';
   const cx = W / 2, cy = camY(), R = hyp(W, H) * 0.62;
-  const phase = (G.dist * 0.0016);
-  /* streaks carry the district's accent, so going fast in Redline looks
+  /* the rim carries the district's accent, so going fast in Redline looks
      different from going fast in Skyport */
   const srgb = TH.amb2 || '190,232,255';
-  for (const s of streaks) {
-    const f = ((s.r + phase * s.s) % 1.1);
-    const r0 = R * f, r1 = R * (f + s.l * t * 1.6);
-    const ca = Math.cos(s.a), sa = Math.sin(s.a);
-    ctx.strokeStyle = 'rgba(' + srgb + ',' + (0.30 * t * Math.min(1, f * 2.2)).toFixed(3) + ')';
-    ctx.lineWidth = 1.6 + t * 3.2;
-    ctx.beginPath();
-    ctx.moveTo(cx + ca * r0, cy + sa * r0);
-    ctx.lineTo(cx + ca * r1, cy + sa * r1);
-    ctx.stroke();
-  }
+  /* The radial streaks are gone. They were 72 strokes fanning out from the
+     car in the district ambient colour, and in a warm district that ambient
+     is a dull yellow — so at speed the screen filled with pale tan slivers
+     lying at every angle across road, city and sky alike. That is the second
+     source of "yellow streaks", the first being the dashed road reflections
+     removed above, and it is the one that survives off the road surface.
+
+     The rim below is what actually sells speed — the frame closing in is a
+     stronger read than anything moving inside it, which the comment there
+     already said. The slivers were the part that read as dirt on the lens. */
 
   /* The edges close in as you wind up — the frame itself narrowing is what
      sells speed, more than anything moving inside it. Additive at the rim
