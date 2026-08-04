@@ -4854,7 +4854,7 @@ function dismissCtrlHint(){
    ============================================================ */
 const SEG = 56;
 /* Overhead gantries, sign frames and tunnel ribs. See the generation site. */
-const SPANS = true;
+const SPANS = false;
 const REVERSE_TOP = 190;   // how fast the car will back itself off a rail
 
 class Track {
@@ -9430,46 +9430,33 @@ function bloom(){
   bB.drawImage(bufA, 0, 0);
   bB.globalCompositeOperation = 'source-over';
 
-  /* ---- the blur, by resampling ----
-     This was two ctx.filter = 'blur(Npx)' taps, and a CPU profile of twenty
-     seconds of real driving put 46.6% of all time in drawImage because of
-     them: a Canvas2D filter blur is a per-frame convolution that drops the
-     whole composite off the accelerated path, and it was running twice on a
-     buffer the size of a quarter of the screen. It is the single reason the
-     renderer could not hold full resolution, which is what the player sees
-     as the picture being soft.
+  /* ---- the blur: tight on purpose ----
+     Two mistakes were stacked here. The original used ctx.filter blur, which
+     profiled at 46% of the frame, so it was replaced with a resample through
+     a half-size buffer — cheap, but a down-and-up through 1/8 scale is a very
+     wide kernel, and it was then run a second time for the "wide" tap and
+     composited at 0.95. The result was a halo several times the width of the
+     line that threw it, over every lit edge in the frame at once. That is
+     what turns a neon game into a blur of coloured mush: the line stops being
+     a line and becomes the middle of a glow.
 
-     A bilinear downscale followed by an upscale is the same operation done
-     by the sampler, for free. Halving into bufC and coming back is one wide,
-     smooth tap; doing it twice widens the kernel further and still costs
-     less than one filtered blit. The look is if anything softer and rounder
-     than the 4px/9px pair — a Gaussian is what the two-pass resample
-     approximates — and there is no filter left anywhere in the frame. */
-  const cw = bufC.width, ch = bufC.height;
-  bC.setTransform(1, 0, 0, 1, 0, 0);
-  bC.globalCompositeOperation = 'source-over';
-  bC.clearRect(0, 0, cw, ch);
-  bC.drawImage(bufB, 0, 0, cw, ch);            // down: 1/4 -> 1/8
-
+     A neon look is a hard bright filament with a tight halo sitting against
+     it. So the tap is a four-sample box at quarter res — one quarter-res
+     pixel of offset, four full-res pixels of spread, and no second pass. It
+     costs four small blits and it stays where the light is. */
   bA.clearRect(0, 0, bw, bh);
-  bA.drawImage(bufC, 0, 0, bw, bh);            // up: the tight tap
-
-  if (QF.wide) {
-    /* a second round-trip for the atmospheric haze: wider still, and added
-       into bufA at quarter res so the upscale to the main canvas — the one
-       genuinely full-screen blit — happens exactly once */
-    bC.clearRect(0, 0, cw, ch);
-    bC.drawImage(bufA, 0, 0, cw, ch);
-    bA.globalCompositeOperation = 'lighter';
-    bA.globalAlpha = 0.55;
-    bA.drawImage(bufC, 0, 0, bw, bh);
-    bA.globalAlpha = 1;
-    bA.globalCompositeOperation = 'source-over';
-  }
+  bA.globalAlpha = 0.25;
+  bA.drawImage(bufB, -1,  0);
+  bA.drawImage(bufB,  1,  0);
+  bA.drawImage(bufB,  0, -1);
+  bA.drawImage(bufB,  0,  1);
+  bA.globalAlpha = 1;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = 0.95;
+  /* and quieter: at 0.95 the halo was competing with the filament it came
+     from. The line should be the brightest thing on screen. */
+  ctx.globalAlpha = 0.62;
   ctx.drawImage(bufA, 0, 0, cv.width, cv.height);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
