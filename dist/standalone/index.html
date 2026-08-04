@@ -5720,7 +5720,30 @@ function newWorld(ai){
 }
 /* Zoom is bounded by width as well as height, otherwise a portrait phone
    frames less than half the street and you cannot see what you are aiming at. */
-const baseZoom = () => clamp(Math.min(H / 640, W / 900), 0.40, 1.5)
+/* ---- portrait framing ----
+   A phone held upright is about 411 CSS px across and the road is 541 world
+   units wide, so the camera has to sit at 0.40 zoom just to fit the road on
+   the screen. That draws the player's car 19px long, against 45-61px on a
+   desktop: the same game at under half the size, on the smallest screen there
+   is, which is what reads as "still blurry" long after the last real
+   resolution problem was fixed.
+
+   Zoom alone cannot fix it. At a zoom where the car reads properly the road
+   is 86% of the screen width — barriers hard against both edges, no room to
+   see anything coming. So the road narrows with the screen instead, and the
+   zoom comes up by exactly the same proportion: the road keeps the share of
+   the width it always had, and everything drawn on it gets a third larger.
+
+   The lane really is tighter to thread on a phone, and that is the trade.
+   Against it: a phone still sees further up the road than a desktop does even
+   after this, because a portrait screen is tall. Nothing here touches a
+   landscape or desktop viewport, which are limited by height and were never
+   part of the problem. */
+const portraitView = () => W / H < 1.15;
+const PORTRAIT_ROAD = 0.75;
+const roadNarrow = () => portraitView() ? PORTRAIT_ROAD : 1;
+
+const baseZoom = () => clamp(Math.min(H / 640, W / (900 * roadNarrow())), 0.40, 1.5)
   * (G.run ? G.run.M.zoomMul : 1);
 /* sit the car lower when there is vertical room to spare, to see further ahead */
 const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
@@ -5776,7 +5799,7 @@ try {
   if (v !== null && SHAKE_STEPS.some(s => s.mul === +v)) SHAKE_MUL = +v;
 } catch (e) {}
 const shakeMul = () => REDUCE_MOTION.matches ? 0 : SHAKE_MUL;
-const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
+const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1) * roadNarrow();
 /* level conditions set by the chosen contract, reset when the district ends */
 const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults());
 
