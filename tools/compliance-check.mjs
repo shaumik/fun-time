@@ -88,6 +88,17 @@ async function session(opts = {}, fn) {
   /* The sandbox has no route to sdk.crazygames.com, so the real <script> tag
      in dist/index.html always fails to fetch. That is this harness, not the
      game — the mock is injected separately — so it is not counted. */
+  /* The avatar is a real <img> pointed at the platform's CDN, and the game
+     hides it on error — correct behaviour, and on a sandbox with no outbound
+     network it fires every time, so the "avatar shown" check failed whenever
+     the error beat the assertion. That was a flake in this harness rather
+     than anything wrong with the game. Serve a 1x1 so the element behaves the
+     way it will on the portal and the check means something. */
+  const PIXEL = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64');
+  await page.route('**/images.crazygames.com/**', r =>
+    r.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
   const noise = t => /ERR_TUNNEL_CONNECTION_FAILED|sdk\.crazygames\.com|ERR_NAME_NOT_RESOLVED/.test(t);
   page.on('console', m => { if (m.type() === 'error' && !noise(m.text())) errors.push(m.text()); });
   page.on('pageerror', e => { if (!noise(e.message)) errors.push('pageerror: ' + e.message); });

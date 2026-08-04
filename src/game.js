@@ -938,6 +938,12 @@ function setQuality(t){
      the picture took the hit twice for one decision and could not get it back
      without a promotion. Effects are what the ladder trades; pixels are what
      renderScale trades. MAX_PIXELS still bounds a big window. */
+  /* Held at the values that were actually validated end to end. A later attempt
+     at 3 / 2.4 / 1.8 looked affordable on the JS clock and was not: workAvg
+     measures step + render, and compositing a larger backing store is not JS,
+     so the honest frame time went 16.7ms to 23.5ms while workAvg still read
+     under 3. Do not raise these on the strength of workAvg alone — ftAvg is
+     the number that sees it. */
   QF.dpr = high ? 2 : low ? 1.5 : 1.8;
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
@@ -964,7 +970,18 @@ let vignette = null, grain = null;
    backing store is scaled adaptively to hold the frame budget, and CSS
    scales the result back up to fill the stage. */
 const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
-let renderScale = 1;           // adaptive, 0.5 .. 1
+/* The floor the adaptive scale can reach. It was 0.5, which paired with the
+   old 0.9 bottom-rung DPR ceiling to give a worst case of 0.45 device pixels
+   per CSS pixel. Raising those ceilings to keep good hardware sharp moved the
+   worst case up to 0.75 as a side effect, and a genuinely weak device then
+   ran out of levers holding a resolution it could not afford — measured on an
+   emulated 3x phone as 23.5ms a frame with the tuner pinned at the floor and
+   the bottom rung, nothing left to give. Ceiling and floor are independent
+   knobs and both are needed: the ceiling decides how sharp good hardware gets,
+   the floor decides whether weak hardware can still reach a frame it can
+   hold. */
+const SCALE_FLOOR = 0.34;
+let renderScale = 1;           // adaptive, SCALE_FLOOR .. 1
 /* Resizing a canvas resets its bitmap to transparent black, and every caller
    of applyBackingStore() runs *after* the frame has already been drawn — the
    tuner from the tail of frame(), resize() from an event. So the compositor
@@ -988,7 +1005,7 @@ function applyBackingStore(){
   const capped = area * ceiling * ceiling > MAX_PIXELS
     ? Math.sqrt(MAX_PIXELS / area)
     : ceiling;
-  DPR = clamp(capped * renderScale, 0.5, 3);
+  DPR = clamp(capped * renderScale, 0.4, 3);
   cv.width  = Math.max(1, Math.round(W * DPR));
   cv.height = Math.max(1, Math.round(H * DPR));
   /* the bloom buffers follow the real backing store, not the CSS size */
@@ -8464,7 +8481,7 @@ function autoTune(now, dt){
     if (lastWasClimb) climbNeed = Math.min(climbNeed * 2, CLIMB_NEED_MAX);
     const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
     const stepped = renderScale - 0.09;
-    renderScale = clamp(Math.min(stepped, want), 0.5, 1);
+    renderScale = clamp(Math.min(stepped, want), SCALE_FLOOR, 1);
     applyBackingStore();
     if (painted) render();
     lastWasClimb = false;
@@ -8484,12 +8501,12 @@ function autoTune(now, dt){
     setQuality(TIERS[--tierI]);
     demotions++; goodMs = 0;
     tuneAt = now + 1500;
-  } else if (missing && renderScale > 0.5) {
+  } else if (missing && renderScale > SCALE_FLOOR) {
     /* rungs exhausted: the floor comes off and the rest of the resolution
        goes, because a game that holds a frame beats a game that looks right
        and does not */
     const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
-    renderScale = clamp(Math.min(renderScale - 0.09, want), 0.5, 1);
+    renderScale = clamp(Math.min(renderScale - 0.09, want), SCALE_FLOOR, 1);
     applyBackingStore();
     if (painted) render();
     lastWasClimb = false;
