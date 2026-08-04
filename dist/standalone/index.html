@@ -4444,6 +4444,13 @@ let vignette = null, grain = null;
    scales the result back up to fill the stage. */
 const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
 let renderScale = 1;           // adaptive, 0.5 .. 1
+/* Resizing a canvas resets its bitmap to transparent black, and every caller
+   of applyBackingStore() runs *after* the frame has already been drawn — the
+   tuner from the tail of frame(), resize() from an event. So the compositor
+   was being handed one completely blank frame every time either fired, which
+   the player sees as the whole screen blinking out. Each of those callers
+   redraws before returning; this says when that is safe to do. */
+let painted = false;           // has a first frame been drawn yet
 
 function applyBackingStore(){
   const want = Math.min(window.devicePixelRatio || 1, QF.dpr) * renderScale;
@@ -4479,6 +4486,7 @@ function resize(){
   /* plates are drawn at CSS size, so a resolution tweak must not rebuild
      them — that is three full-screen canvases of work */
   if (moved || !plates.length) buildOverlays();
+  if (painted) render();       // never composite the cleared bitmap
 }
 
 /* Vignette and film grain are both static per-pixel effects, so they are
@@ -6104,11 +6112,21 @@ function hitstop(secs, shake){
    margin is small but real: something just past the edge is close enough
    that the eye still reads the flash as belonging to it. */
 const FLASH_MARGIN = 90;
+/* And at most one of these in any 400ms. A drone kill, a cook-off and a ball
+   hit can land within a few frames of each other, and three washes in a third
+   of a second is a strobe however faint each one is alone. The loud
+   run-level flashes — a unit down, the crash, a bank wiped — do not come
+   through here and are never suppressed. */
+const FLASH_GAP = 400;
+let flashLast = -1e9;
 function flashAt(x, y, v){
+  const t = performance.now();
+  if (t - flashLast < FLASH_GAP) return;
   const [sx, sy] = w2s(x, y);
   const m = FLASH_MARGIN;
-  if (sx >= -m && sx <= W + m && sy >= -m && sy <= H + m)
-    G.flash = Math.max(G.flash, v);
+  if (sx < -m || sx > W + m || sy < -m || sy > H + m) return;
+  flashLast = t;
+  G.flash = Math.max(G.flash, v);
 }
 
 /* ---------------- the early leash ----------------
@@ -6176,7 +6194,12 @@ function smash(v, rel){
   v.wrecked = 1; v.hitFlash = 1;
 
   hitstop(0.055 + power * 0.045, 18 + power * 16);
-  G.flash = Math.max(G.flash, 0.35 * power);
+  /* No screen wash here. Ramming traffic is not an event, it is the verb —
+     several a second in a live chain — and washing the whole screen for the
+     thing the player does constantly is what turned the flash from a punch
+     into a flicker. The hit is already carried by the freeze, the shake, the
+     smash, the car's own hitFlash and twenty-six sparks off the wreck; the
+     one thing it did not need was the background going brighter. */
   NHAudio.smash(power);
   car.hitFlash = 1;
   G.hitCool = 0.1;
@@ -11745,6 +11768,11 @@ const TIERS = ['low', 'med', 'high'];
 let tierI = 2;        // index into TIERS
 let demotions = 0;    // how many times we have had to give a tier back
 let goodMs = 0;       // how long we have been comfortably inside budget
+/* How much sustained headroom to demand before handing resolution back, and
+   whether the last thing the tuner did was hand some back. See the reversal
+   note in autoTune: without these the tuner oscillates. */
+let climbNeed = 2500;
+let lastWasClimb = false;
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
    lever because it is continuous and nearly invisible; dropping effects is
@@ -11779,10 +11807,28 @@ function autoTune(now, dt){
        scale that would hit the target is roughly sqrt(target/actual), and
        overshooting down is cheap because the climb back is gentle and
        continuous. Badly-over cases also re-check sooner.  */
+    /* ---- the reversal rule ----
+       Arriving here straight after a climb means the climb is what broke the
+       budget. A machine whose real cost sits between two scales will then
+       oscillate between them forever — measured at 0.77 adjustments a second
+       on a mid-range box, and since each adjustment resizes the backing store
+       and repaints at a different resolution, the player sees the whole image
+       popping about once a second. That, not the cost of any one frame, was
+       what read as "the performance got worse".
+
+       So each time a climb has to be undone, demand geometrically more proof
+       before trying again. A machine that genuinely has headroom loses
+       nothing — it clears the bar on the first try and never comes back
+       here. A machine that does not settles within a few reversals and then
+       holds one scale, which is what it should have done from the start. */
+    if (lastWasClimb) climbNeed = Math.min(climbNeed * 2, 30000);
     const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
     const stepped = renderScale - 0.09;
     renderScale = clamp(Math.min(stepped, want), 0.5, 1);
     applyBackingStore();
+    if (painted) render();
+    lastWasClimb = false;
+    goodMs = 0;
     tuneAt = now + (ftAvg > 28 ? 320 : 700);
   } else if (missing && tierI > 0) {
     /* out of resolution to give: step down one rung, not straight to the
@@ -11792,10 +11838,24 @@ function autoTune(now, dt){
     setQuality(TIERS[--tierI]);
     demotions++; goodMs = 0;
     tuneAt = now + 1500;
-  } else if (roomy && renderScale < 1) {
-    renderScale = Math.min(1, renderScale + 0.05);
+  } else if (renderScale < 1 && goodMs > climbNeed) {
+    /* Sustained headroom, not an instantaneous reading. This used to fire on
+       `roomy` alone — a single frame inside budget was enough to give
+       resolution back, which on a borderline machine is true every other
+       frame and is the other half of the oscillation. goodMs only accumulates
+       while roomy holds, so this is "it has been comfortable for climbNeed
+       milliseconds without interruption". */
+    /* A larger step than the old 0.05, because each one now costs a real wait
+       rather than a frame: at 0.05 a machine that dipped to the floor needed
+       ten steps and twenty-five seconds of sustained headroom to look right
+       again. The reversal rule above is what makes the bigger step safe —
+       overshoot is paid for once, not forever. */
+    renderScale = Math.min(1, renderScale + 0.08);
     applyBackingStore();
-    tuneAt = now + 1400;              // creep back up slowly to avoid hunting
+    if (painted) render();
+    lastWasClimb = true;
+    goodMs = 0;                       // earn the next step from scratch
+    tuneAt = now + 1400;
   } else if (tierI < TIERS.length - 1 && goodMs > 5000 * (demotions + 1)) {
     /* Give a rung back, but only after real sustained headroom, and demand
        progressively more of it each time we have been wrong — effects
@@ -11835,6 +11895,7 @@ function frame(now){
   syncHUD();
   syncTouch();
   render();
+  painted = true;
 
   workAvg = workAvg * 0.9 + (performance.now() - workT0) * 0.1;
   ftAvg   = ftAvg   * 0.9 + Math.min(ms, 120) * 0.1;
