@@ -6082,6 +6082,35 @@ function hitstop(secs, shake){
   G.shake = Math.max(G.shake, shake);
 }
 
+/* ---------------- an impact flash with a place ----------------
+   G.flash washes the entire canvas, which is right for the things that are
+   about the whole run — a unit going down, a bank wiped, the crash. It is
+   wrong for a wreck, because a wreck happens somewhere, and by the time you
+   own drones, a harpoon, a wrecking ball and cars that cook off a beat after
+   they land, plenty of your kills happen behind you or off to one side.
+
+   Washing the screen for one of those is a glow with no cause on screen,
+   which reads as a display glitch rather than as feedback — and it is the
+   same complaint as the shake was: brightness the player did not ask for and
+   cannot attribute. So the world-positioned flashes are gated on being able
+   to see the thing that fired them. Off screen, the wreck still pays, still
+   sounds, still shakes; it just does not flash a screen it is not in.
+
+   Deliberately not the renderer's onScreen() culler. That one is a generous
+   radius — about twice the screen's half-diagonal — because its job is to
+   stop cars popping in at the edge, and a wreck it admits can still be a
+   whole screen away. This asks the narrower question of whether the player
+   could actually see the thing, so it is a screen-space bounds test. The
+   margin is small but real: something just past the edge is close enough
+   that the eye still reads the flash as belonging to it. */
+const FLASH_MARGIN = 90;
+function flashAt(x, y, v){
+  const [sx, sy] = w2s(x, y);
+  const m = FLASH_MARGIN;
+  if (sx >= -m && sx <= W + m && sy >= -m && sy <= H + m)
+    G.flash = Math.max(G.flash, v);
+}
+
 /* ---------------- the early leash ----------------
    Simulated sessions: the average run lasted under ninety seconds, cleared
    1.8 districts of the fifteen that exist, and half of all deaths were
@@ -6318,7 +6347,7 @@ function stepPunt(p){
     const nx = (t.x - p.x) / (r || 1), ny = (t.y - p.y) / (r || 1);
     if (!killCar(t, nx * 300 + p.vx * 0.5, ny * 300 + p.vy * 0.5, 230)) continue;
     NHAudio.smash(0.8);
-    G.flash = Math.max(G.flash, 0.22);
+    flashAt(t.x, t.y, 0.22);
     /* the strike passes on, one hop shorter, and the striker loses steam */
     if (p.punt > 1) { t.vx = p.vx * 0.8; t.vy = p.vy * 0.8; t.punt = p.punt - 1; t.spin = rnd(-4, 4); }
     p.vx *= 0.55; p.vy *= 0.55;
@@ -6341,7 +6370,7 @@ function stepCook(v, dt){
   /* a tanker's payload blasts half again as wide as a perk-cooked wreck */
   const M = G.run.M, R = (M.cookR || 165) * (v.tank ? 1.5 : 1)
           * (v.tank && Tree.has('t_chain') ? 1.3 : 1);
-  G.flash = Math.max(G.flash, 0.3);
+  flashAt(v.x, v.y, 0.3);
   hitstop(0.04, 14);
   NHAudio.smash(1.15);
   for (let i = 0; i < 34; i++) {
@@ -6767,7 +6796,7 @@ function stepDrones(dt){
     const t = dr.target;
     const nx = (t.x - dr.x), ny = (t.y - dr.y), nd = hyp(nx, ny) || 1;
     killCar(t, nx / nd * 560, ny / nd * 560, 230);
-    G.flash = Math.max(G.flash, 0.24);
+    flashAt(t.x, t.y, 0.24);
     NHAudio.smash(0.85);
     for (let i = 0; i < 22; i++) {
       const a = rnd(0, TAU), sp = rnd(140, 580);
@@ -6879,7 +6908,7 @@ function stepBall(dt){
     G.ballHits = (G.ballHits || 0) + 1;
     killCar(t, nx / nd * 900, ny / nd * 900, 300);
     hitstop(0.045, 20);
-    G.flash = Math.max(G.flash, 0.3);
+    flashAt(t.x, t.y, 0.3);
     NHAudio.smash(clamp(swing / 900, 0.6, 1.6));
     for (let i = 0; i < 26; i++) {
       const a = rnd(0, TAU), sp = rnd(160, 700);
@@ -7043,7 +7072,7 @@ function stepRockets(dt){
   }
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
   killCar(best, nx * 760, ny * 760, 240);
-  G.flash = Math.max(G.flash, 0.35);
+  flashAt(best.x, best.y, 0.35);
   hitstop(0.04, 14);
   NHAudio.smash(1.1);
 }
@@ -7070,7 +7099,7 @@ function fireMissile(){
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
   /* a free link: it pays and extends, but never costs hull */
   killCar(best, nx * 820, ny * 820, 240);
-  G.flash = Math.max(G.flash, 0.4);
+  flashAt(best.x, best.y, 0.4);
   hitstop(0.05, 16);
   NHAudio.smash(1.2);
   toast('Harpoon', 'pink');
@@ -11857,6 +11886,7 @@ window.__NH = {
   get shake(){ return SHAKE_MUL; },
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
+  flashAt,                    // the impact-flash guard, for playtest probes
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();
