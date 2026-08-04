@@ -4845,6 +4845,8 @@ function dismissCtrlHint(){
    stable as you drive past it.
    ============================================================ */
 const SEG = 56;
+/* Overhead gantries, sign frames and tunnel ribs. See the generation site. */
+const SPANS = false;
 const REVERSE_TOP = 190;   // how fast the car will back itself off a rail
 
 class Track {
@@ -4941,8 +4943,18 @@ class Track {
     }
 
     /* something passing overhead is the single cheapest read of speed the
-       scene has, and the one thing a flat top-down road never gives you */
-    if (E.span && E.span.every && this.n % E.span.every === 0 && this.n > 6) {
+       scene has, and the one thing a flat top-down road never gives you —
+       but it was landing every four to twelve segments, which at speed is a
+       warm bar sweeping across the whole frame more or less continuously.
+       From the driver's seat that does not read as architecture passing
+       overhead, it reads as yellow rain falling through the scene, and it is
+       the busiest thing on a screen that already has traffic, streaks and a
+       city projecting outward.
+
+       Off by default. The per-zone span data is deliberately left in place —
+       Sodium Row's signage and the Spillway's ribs are what those districts
+       are described by — so this is one flag to put back. */
+    if (SPANS && E.span && E.span.every && this.n % E.span.every === 0 && this.n > 6) {
       p.span = { kind:E.span.kind, h:E.span.h || 180, seed:Math.random() * 1000 };
     }
     this.pts.push(p);
