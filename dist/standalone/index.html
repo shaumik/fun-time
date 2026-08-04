@@ -2256,6 +2256,7 @@ body{
         <button class="mute" id="btnRecords" aria-label="Your records">Records</button>
         <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
         <button class="mute" id="btnSharp" aria-label="Render resolution">Sharpness: auto</button>
+        <button class="mute" id="btnShake" aria-label="Screen shake amount">Screen shake: on</button>
         <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
         <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
       </div>
@@ -5781,9 +5782,26 @@ const camY = () => H * (W / H < 1.15 ? 0.72 : 0.62);
    without a reload. */
 const REDUCE_MOTION = (window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)'))
                       || { matches:false };
-/* Live rather than const so a tuning pass can try values in the console
-   without a rebuild: __NH.setShake(0.2). */
-let SHAKE_MUL = 0.30;
+/* ---- how much of it the player wants ----
+   CrazyGames raised the shake as something that could make players dizzy, and
+   0.55 then 0.30 both still read as too much to the person actually holding
+   the phone. There is no value that is right for everyone here — motion
+   sensitivity is not a setting you can infer from hardware — so the default
+   comes down again and the rest is a control in the menu.
+
+   SHAKE_STEPS are multipliers on every hitstop amplitude in the game. Full is
+   the tuned default, half is for anyone who feels it, off is off. A player who
+   has asked their OS for reduced motion gets none of it whatever this says. */
+const SHAKE_STEPS = [
+  { mul:0.15, label:'Screen shake: on' },
+  { mul:0.07, label:'Screen shake: low' },
+  { mul:0,    label:'Screen shake: off' },
+];
+let SHAKE_MUL = 0.15;
+try {
+  const v = localStorage.getItem('neonheat.shake');
+  if (v !== null && SHAKE_STEPS.some(s => s.mul === +v)) SHAKE_MUL = +v;
+} catch (e) {}
 const shakeMul = () => REDUCE_MOTION.matches ? 0 : SHAKE_MUL;
 const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 /* level conditions set by the chosen contract, reset when the district ends */
@@ -10917,6 +10935,23 @@ $('btnSharp').onclick = e => {
   setSharpLabel(); NHAudio.ui(true);
 };
 setSharpLabel();
+
+/* ---------------- screen shake ----------------
+   Same reasoning as sharpness: motion sensitivity is not something that can
+   be inferred, so it stops being a number tuned by proxy and becomes a
+   control. Reduced motion at the OS level still overrides all three. */
+function setShakeLabel(){
+  const st = SHAKE_STEPS.find(x => x.mul === SHAKE_MUL) || SHAKE_STEPS[0];
+  $('btnShake').textContent = REDUCE_MOTION.matches ? 'Screen shake: off' : st.label;
+}
+$('btnShake').onclick = e => {
+  e.stopPropagation();
+  const i = SHAKE_STEPS.findIndex(x => x.mul === SHAKE_MUL);
+  SHAKE_MUL = SHAKE_STEPS[(i < 0 ? 0 : i + 1) % SHAKE_STEPS.length].mul;
+  try { localStorage.setItem('neonheat.shake', String(SHAKE_MUL)); } catch (err) {}
+  setShakeLabel(); NHAudio.ui(true);
+};
+setShakeLabel();
 $('btnGo').onclick     = () => beginDistrict();
 $('btnCleared').onclick = () => { NHAudio.ui(true); leaveCleared(); };
 $('btnLoop').onclick = () => {
