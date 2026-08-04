@@ -2255,6 +2255,7 @@ body{
       <div class="opts">
         <button class="mute" id="btnRecords" aria-label="Your records">Records</button>
         <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
+        <button class="mute" id="btnSharp" aria-label="Render resolution">Sharpness: auto</button>
         <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
         <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
       </div>
@@ -4526,6 +4527,15 @@ let renderScale = 1;           // adaptive, SCALE_FLOOR .. 1
    redraws before returning; this says when that is safe to do. */
 let painted = false;           // has a first frame been drawn yet
 
+/* ---- the manual override ----
+   Every automatic decision in here is a guess about hardware I cannot see,
+   and when the guess is wrong the player has no way to say so. This is the
+   way to say so: __NH.sharp(2.5) pins the backing store to 2.5 device pixels
+   per CSS pixel and takes the tuner out of the resolution business entirely.
+   __NH.sharp(0) hands it back. Persisted, so it survives a reload. */
+let sharpPin = 0;
+try { sharpPin = +(localStorage.getItem("neonheat.sharp") || 0) || 0; } catch (e) {}
+
 function applyBackingStore(){
   /* The pixel ceiling and the adaptive scale are two different things and the
      order matters. This used to fold renderScale into `want` and then, if the
@@ -4536,12 +4546,18 @@ function applyBackingStore(){
 
      So: the ceiling is a property of the tier and the display, the cap is a
      property of the window, and renderScale scales whatever survives both. */
-  const ceiling = Math.min(window.devicePixelRatio || 1, QF.dpr);
+  const native = window.devicePixelRatio || 1;
+  const ceiling = sharpPin ? Math.min(sharpPin, native) : Math.min(native, QF.dpr);
   const area = W * H;
-  const capped = area * ceiling * ceiling > MAX_PIXELS
+  /* MAX_PIXELS is a safety valve against a maximised window on a retina
+     desktop asking for eight million pixels a frame. It does not apply to an
+     explicit pin: a player who picks Native has said what they want, and a
+     control labelled Native that quietly delivers 90% of it is a control that
+     lies. The DPR clamp below is still the backstop. */
+  const capped = (!sharpPin && area * ceiling * ceiling > MAX_PIXELS)
     ? Math.sqrt(MAX_PIXELS / area)
     : ceiling;
-  DPR = clamp(capped * renderScale, 0.4, 3);
+  DPR = clamp(capped * (sharpPin ? 1 : renderScale), 0.4, 3);
   cv.width  = Math.max(1, Math.round(W * DPR));
   cv.height = Math.max(1, Math.round(H * DPR));
   /* the bloom buffers follow the real backing store, not the CSS size */
@@ -10869,6 +10885,38 @@ $('btnCtrl').onclick = e => {
   Save.data.ctrl = Save.data.ctrl === 'pads' ? 'swipe' : 'pads';
   Save.flush(); setCtrlLabel(); NHAudio.ui(true);
 };
+
+/* ---------------- sharpness ----------------
+   The adaptive tuner is a guess about hardware nobody here can see, and when
+   it guesses wrong the game is blurry and the player has no way to say so.
+   Auto is still the default and still adapts. The two fixed steps take the
+   tuner out of the resolution business and render at a share of the display's
+   real pixels — Sharp is most of the way to native, Native is all of it. They
+   cost frames on a weak device, which is exactly the trade the player is
+   being handed rather than having it made for them. */
+const SHARP_STEPS = [
+  { pin:0,    label:'Sharpness: auto' },
+  { pin:2,    label:'Sharpness: sharp' },
+  { pin:99,   label:'Sharpness: native' },   // clamped to devicePixelRatio
+];
+function setSharpLabel(){
+  const i = SHARP_STEPS.findIndex(s => s.pin === sharpPin);
+  $('btnSharp').textContent = (SHARP_STEPS[i] || SHARP_STEPS[0]).label;
+}
+$('btnSharp').onclick = e => {
+  e.stopPropagation();
+  const i = SHARP_STEPS.findIndex(s => s.pin === sharpPin);
+  const next = SHARP_STEPS[(i < 0 ? 0 : i + 1) % SHARP_STEPS.length];
+  sharpPin = next.pin;
+  try { localStorage.setItem('neonheat.sharp', String(sharpPin)); } catch (err) {}
+  /* a pinned resolution starts from a clean slate rather than inheriting
+     whatever scale the tuner had wound down to */
+  renderScale = 1;
+  applyBackingStore();
+  if (painted) render();
+  setSharpLabel(); NHAudio.ui(true);
+};
+setSharpLabel();
 $('btnGo').onclick     = () => beginDistrict();
 $('btnCleared').onclick = () => { NHAudio.ui(true); leaveCleared(); };
 $('btnLoop').onclick = () => {
@@ -11926,6 +11974,21 @@ const CLIMB_STEP = 0.08;
 /* What the frame can afford to spend in step + render. The budget is 16.7ms;
    the rest is the browser's — compositing, input, the HUD's own layout. */
 const WORK_BUDGET = 13.5;
+/* ---- what the tuner is allowed to spend resolution on ----
+   These were 17.6 / 19.5 / 28, which is a tuner defending 60fps with the
+   player's pixels. On anything fill-limited — a phone, a big window — the
+   game dips under 51fps constantly, so it spent resolution until it stopped
+   dipping and converged on the one outcome nobody wants: a blurry game
+   running at 60.
+
+   For a game you steer with one axis, a steady 45 that is sharp beats a
+   blurry 60. So the bad threshold moves out to 23ms and the good one to 20,
+   leaving a 3ms dead band, and the picture is what gets defended. A machine
+   that can genuinely hold 60 still climbs to the ceiling and stays there —
+   nothing here stops it. */
+const FRAME_GOOD  = 20;    // under this, headroom to give resolution back
+const FRAME_BAD   = 23;    // over this for FRAME_BAD_MS, start giving it up
+const FRAME_AWFUL = 34;    // over this, act immediately, do not wait
 let climbNeed = CLIMB_NEED_BASE;
 let lastWasClimb = false;
 
@@ -11954,15 +12017,15 @@ function autoTune(now, dt){
      correct at every scale, and it stops climbing on its own at the point
      where the next step would not fit rather than at an arbitrary number. */
   const nextCost = workAvg * Math.pow((renderScale + CLIMB_STEP) / renderScale, 2);
-  const roomy = ftAvg < 17.6 && nextCost < WORK_BUDGET;
+  const roomy = ftAvg < FRAME_GOOD && nextCost < WORK_BUDGET;
 
   /* A hitch is not a verdict. One GC pause, one level-up screen, one ad
      tearing down pushes the average over the line for a few frames — and
      because the drop was instant while the climb needs seconds, treating
      every transient as proof ratchets the picture down over a session and it
      never comes back. Sustained, unless it is genuinely catastrophic. */
-  badMs  = ftAvg > 19.5 ? badMs + dt * 1000 : 0;      // below ~51fps
-  const missing = badMs > 600 || ftAvg > 28;
+  badMs  = ftAvg > FRAME_BAD ? badMs + dt * 1000 : 0;
+  const missing = badMs > 600 || ftAvg > FRAME_AWFUL;
   /* badMs is deliberately never cleared by an action, only by frames that
      come good — it measures how long the machine has actually been outside
      budget, not how long since the tuner last did something. Clearing it per
@@ -11989,7 +12052,7 @@ function autoTune(now, dt){
      are gone does the floor come off and the last of the resolution go. */
   const SOFT_FLOOR = 0.78;
 
-  if (missing && renderScale > SOFT_FLOOR) {
+  if (!sharpPin && missing && renderScale > SOFT_FLOOR) {
     /* Come down in proportion to how far off budget we are, not in a fixed
        step. A machine at 12fps needs four fixed steps and nearly five seconds
        of visible chop to reach a scale it can hold — and those five seconds
@@ -12019,7 +12082,7 @@ function autoTune(now, dt){
     if (painted) render();
     lastWasClimb = false;
     goodMs = 0;
-    tuneAt = now + (ftAvg > 28 ? 320 : 700);
+    tuneAt = now + (ftAvg > FRAME_AWFUL ? 320 : 700);
   } else if (missing && tierI > 0) {
     /* Reached only once the branch above has run out of soft floor, so the
        invisible resolution has already been spent and the machine still
@@ -12034,7 +12097,7 @@ function autoTune(now, dt){
     setQuality(TIERS[--tierI]);
     demotions++; goodMs = 0;
     tuneAt = now + 1500;
-  } else if (missing && renderScale > SCALE_FLOOR) {
+  } else if (!sharpPin && missing && renderScale > SCALE_FLOOR) {
     /* rungs exhausted: the floor comes off and the rest of the resolution
        goes, because a game that holds a frame beats a game that looks right
        and does not */
@@ -12045,7 +12108,7 @@ function autoTune(now, dt){
     lastWasClimb = false;
     goodMs = 0;
     tuneAt = now + 700;
-  } else if (renderScale < 0.99 && goodMs > climbNeed) {
+  } else if (!sharpPin && renderScale < 0.99 && goodMs > climbNeed) {
     /* Sustained headroom, not an instantaneous reading. This used to fire on
        `roomy` alone — a single frame inside budget was enough to give
        resolution back, which on a borderline machine is true every other
@@ -12168,6 +12231,18 @@ window.__NH = {
   env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
   get stage(){ return G.stage; },
   bossDamage, BOSS_BITE,
+  /* Pin the render resolution in device pixels per CSS pixel, or 0 for auto.
+     __NH.sharp() reports what it is actually rendering at right now. */
+  sharp(v){
+    if (v === undefined) return { pin:sharpPin, native:window.devicePixelRatio || 1,
+                                  actual:+DPR.toFixed(2), scale:+renderScale.toFixed(2),
+                                  tier:QF.tier, frameMs:+ftAvg.toFixed(1) };
+    sharpPin = Math.max(0, +v || 0);
+    try { localStorage.setItem("neonheat.sharp", String(sharpPin)); } catch (e) {}
+    applyBackingStore();
+    if (painted) render();
+    return this.sharp();
+  },
   /* screen shake, for tuning by feel: 0 is off, 1 is the original amplitude.
      Whatever value ends up feeling right is SHAKE_MUL in src/game.js. */
   setShake: v => { SHAKE_MUL = Math.max(0, Math.min(1, +v || 0)); return SHAKE_MUL; },
