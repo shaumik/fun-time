@@ -2274,7 +2274,6 @@ body{
       <div class="opts">
         <button class="mute" id="btnRecords" aria-label="Your records">Records</button>
         <button class="mute" id="btnCtrl" aria-label="Toggle control scheme">Controls: swipe</button>
-        <button class="mute" id="btnSharp" aria-label="Render resolution">Sharpness: auto</button>
         <button class="mute" id="btnShake" aria-label="Screen shake amount">Screen shake: on</button>
         <button class="mute" id="btnEngine" aria-label="Toggle engine sound">Engine on</button>
         <button class="mute" id="btnMute" aria-label="Toggle sound">Sound on</button>
@@ -4422,7 +4421,7 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
-const QF = { bloom:1, wide:1, plate:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
+const QF = { bloom:1, wide:1, plate:1, wash:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, tier:'high' };
 /* The ladder had two rungs pretending to be three: 'med' and 'low' set
    exactly the same flags, and bloom/city/glow were pinned to 1 at every
    tier, so the only thing that ever fell away was the backing-store scale.
@@ -4459,44 +4458,12 @@ function setQuality(t){
   /* the vignette+grain plate is a second full-screen blit; at the bottom
      rung it is the same trade as the bloom and goes the same way */
   QF.plate = low ? 0 : 1;
+  /* the road's widest additive stroke — see drawRoad() */
+  QF.wash  = low ? 0 : 1;
   QF.city = 1; QF.glow = 1;
-  /* ---- the resolution ceiling per rung ----
-     These were 1.5 / 1.15 / 0.9, which on a phone is the whole problem. A
-     3x display asked to render at 0.9 is being handed less than a third of
-     its linear resolution — measured on a 411px-wide portrait stage, a 370px
-     canvas — and it looks exactly as soft as that sounds. Worse, it was a
-     *ceiling*, so no amount of headroom could undo it: the same measurement
-     had the frame costing 0.8ms against a 13.5ms budget while the picture
-     stayed blurry, because the tuner's lever only scales down from here.
-
-     The ceilings are generous and close together now, and the tuner does the
-     deciding — it can afford to, since the roomy test became predictive and
-     climbs only when the *next* step is affordable. Keeping them close also
-     stops a demotion double-dipping: a rung is supposed to buy frames by
-     dropping an effect, and when it slashed the resolution ceiling as well,
-     the picture took the hit twice for one decision and could not get it back
-     without a promotion. Effects are what the ladder trades; pixels are what
-     renderScale trades. MAX_PIXELS still bounds a big window. */
-  /* Held at the values that were actually validated end to end. A later attempt
-     at 3 / 2.4 / 1.8 looked affordable on the JS clock and was not: workAvg
-     measures step + render, and compositing a larger backing store is not JS,
-     so the honest frame time went 16.7ms to 23.5ms while workAvg still read
-     under 3. Do not raise these on the strength of workAvg alone — ftAvg is
-     the number that sees it. */
-  /* ---- rungs trade effects FOR pixels, not alongside them ----
-     This had the ladder backwards. The bottom rung switches off bloom and the
-     vignette plate — the two full-screen passes, measured at 74% of the frame
-     between them — and then *also* lowered the resolution ceiling, so a
-     machine that fell to it got a picture that was soft AND flat: it paid
-     twice and got nothing back. The saving is enormous and it has to go
-     somewhere, so it goes into pixels. Bloom off at 2.6 is still roughly a
-     third of the cost of bloom on at 1.8, which is what makes this a rung and
-     not a bluff.
-
-     Sharpness is the thing a player actually sees. A glow they lose is a
-     different look; a resolution they lose is the game being blurry, which is
-     the complaint every single time. */
-  QF.dpr = high ? 1.8 : low ? 2.6 : 1.9;
+  /* No per-rung resolution any more: the backing store is native at every
+     rung, and a rung buys frames by dropping an effect rather than by
+     dropping pixels. QF.dpr is gone with it. */
   if (typeof applyBackingStore === 'function') applyBackingStore();
 }
 
@@ -4521,7 +4488,9 @@ let vignette = null, grain = null;
    one. Rather than pick a fixed cap that is wrong on most machines, the
    backing store is scaled adaptively to hold the frame budget, and CSS
    scales the result back up to fill the stage. */
-const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
+/* Sanity valve only — see applyBackingStore(). High enough that a phone or
+   an ordinary desktop window never reaches it. */
+const MAX_PIXELS = 9e6;
 /* The floor the adaptive scale can reach. It was 0.5, which paired with the
    old 0.9 bottom-rung DPR ceiling to give a worst case of 0.45 device pixels
    per CSS pixel. Raising those ceilings to keep good hardware sharp moved the
@@ -4532,13 +4501,6 @@ const MAX_PIXELS = 2.6e6;      // hard ceiling regardless of how fast the GPU is
    knobs and both are needed: the ceiling decides how sharp good hardware gets,
    the floor decides whether weak hardware can still reach a frame it can
    hold. */
-/* Lowered again alongside the bottom rung ceiling of 2.6: floor times ceiling
-   is what a struggling machine actually ends up rendering at, and 0.34 x 2.6
-   would have left the worst case 1.7x more expensive than before this change.
-   0.28 x 2.6 puts it back where it was, so the emergency escape is as deep as
-   it ever was while the ordinary case is several times sharper. */
-const SCALE_FLOOR = 0.28;
-let renderScale = 1;           // adaptive, SCALE_FLOOR .. 1
 /* Resizing a canvas resets its bitmap to transparent black, and every caller
    of applyBackingStore() runs *after* the frame has already been drawn — the
    tuner from the tail of frame(), resize() from an event. So the compositor
@@ -4547,37 +4509,29 @@ let renderScale = 1;           // adaptive, SCALE_FLOOR .. 1
    redraws before returning; this says when that is safe to do. */
 let painted = false;           // has a first frame been drawn yet
 
-/* ---- the manual override ----
-   Every automatic decision in here is a guess about hardware I cannot see,
-   and when the guess is wrong the player has no way to say so. This is the
-   way to say so: __NH.sharp(2.5) pins the backing store to 2.5 device pixels
-   per CSS pixel and takes the tuner out of the resolution business entirely.
-   __NH.sharp(0) hands it back. Persisted, so it survives a reload. */
-let sharpPin = 0;
-try { sharpPin = +(localStorage.getItem("neonheat.sharp") || 0) || 0; } catch (e) {}
 
 function applyBackingStore(){
-  /* The pixel ceiling and the adaptive scale are two different things and the
-     order matters. This used to fold renderScale into `want` and then, if the
-     ceiling bound, throw the result away for sqrt(MAX_PIXELS / area) — which
-     has no renderScale in it at all. On any window large enough for the cap to
-     bite, that silently disconnected the tuner's main lever: it could move
-     renderScale all it liked and the backing store never changed.
+  /* Native, always. There is no adaptive scale here any more and no setting
+     for it: the backing store is the display's own pixel grid, so the bitmap
+     the game draws into is the bitmap the screen shows and nothing is ever
+     stretched. Blur was the single most-reported problem with this game and
+     every instance of it traced back to this one number being below the
+     device's devicePixelRatio.
 
-     So: the ceiling is a property of the tier and the display, the cap is a
-     property of the window, and renderScale scales whatever survives both. */
+     The frame budget is defended by the effect ladder in autoTune() instead —
+     bloom and the vignette plate are 74% of the frame between them, which is
+     a far larger lever than resolution ever was, and losing a glow is a
+     different look where losing pixels is just a worse picture.
+
+     MAX_PIXELS survives only as a sanity valve for a maximised window on a
+     high-DPI desktop, where native can mean sixteen million pixels a frame.
+     It is set high enough that no phone or ordinary window reaches it. */
   const native = window.devicePixelRatio || 1;
-  const ceiling = sharpPin ? Math.min(sharpPin, native) : Math.min(native, QF.dpr);
   const area = W * H;
-  /* MAX_PIXELS is a safety valve against a maximised window on a retina
-     desktop asking for eight million pixels a frame. It does not apply to an
-     explicit pin: a player who picks Native has said what they want, and a
-     control labelled Native that quietly delivers 90% of it is a control that
-     lies. The DPR clamp below is still the backstop. */
-  const capped = (!sharpPin && area * ceiling * ceiling > MAX_PIXELS)
+  const capped = area * native * native > MAX_PIXELS
     ? Math.sqrt(MAX_PIXELS / area)
-    : ceiling;
-  DPR = clamp(capped * (sharpPin ? 1 : renderScale), 0.4, 3);
+    : native;
+  DPR = clamp(capped, 0.5, 3);
   cv.width  = Math.max(1, Math.round(W * DPR));
   cv.height = Math.max(1, Math.round(H * DPR));
   /* the bloom buffers follow the real backing store, not the CSS size */
@@ -8407,17 +8361,31 @@ function drawRoad(){
   ctx.clip();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'butt';
-  for (const side of [-1, 1]) {
-    ctx.beginPath();
-    for (let i = a; i <= b; i++) {
-      const p = pts[i];
-      const hw = roadHalf(p) * side;
-      const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
-      if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+  /* The barrier's atmospheric wash: a 90-unit additive stroke down the length
+     of the road on each side. It is the single widest thing the frame paints
+     and it is pure fill — at native resolution on a phone that is a couple of
+     million additively-blended pixels a frame for an effect that reads as a
+     faint haze.
+
+     Now that the backing store is always native, this is what a rung buys.
+     The tuner cannot trade the player's pixels any more, so the things it
+     trades have to be the things that cost pixels, and this is the largest of
+     them left once bloom and the plate are gone. The tight hot line at the
+     barrier below is kept at every rung — that is the part that reads as a
+     light source rather than as fog. */
+  if (QF.wash) {
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      for (let i = a; i <= b; i++) {
+        const p = pts[i];
+        const hw = roadHalf(p) * side;
+        const nx = -Math.sin(p.a) * hw, ny = Math.cos(p.a) * hw;
+        if (i === a) ctx.moveTo(p.x + nx, p.y + ny); else ctx.lineTo(p.x + nx, p.y + ny);
+      }
+      ctx.strokeStyle = hexA(side < 0 ? envCol('left') : envCol('right'), 0.10);
+      ctx.lineWidth = 90;
+      ctx.stroke();
     }
-    ctx.strokeStyle = hexA(side < 0 ? envCol('left') : envCol('right'), 0.10);
-    ctx.lineWidth = 90;
-    ctx.stroke();
   }
   ctx.globalCompositeOperation = 'source-over';
   ctx.restore();
@@ -10943,38 +10911,6 @@ $('btnCtrl').onclick = e => {
   Save.flush(); setCtrlLabel(); NHAudio.ui(true);
 };
 
-/* ---------------- sharpness ----------------
-   The adaptive tuner is a guess about hardware nobody here can see, and when
-   it guesses wrong the game is blurry and the player has no way to say so.
-   Auto is still the default and still adapts. The two fixed steps take the
-   tuner out of the resolution business and render at a share of the display's
-   real pixels — Sharp is most of the way to native, Native is all of it. They
-   cost frames on a weak device, which is exactly the trade the player is
-   being handed rather than having it made for them. */
-const SHARP_STEPS = [
-  { pin:0,    label:'Sharpness: auto' },
-  { pin:2,    label:'Sharpness: sharp' },
-  { pin:99,   label:'Sharpness: native' },   // clamped to devicePixelRatio
-];
-function setSharpLabel(){
-  const i = SHARP_STEPS.findIndex(s => s.pin === sharpPin);
-  $('btnSharp').textContent = (SHARP_STEPS[i] || SHARP_STEPS[0]).label;
-}
-$('btnSharp').onclick = e => {
-  e.stopPropagation();
-  const i = SHARP_STEPS.findIndex(s => s.pin === sharpPin);
-  const next = SHARP_STEPS[(i < 0 ? 0 : i + 1) % SHARP_STEPS.length];
-  sharpPin = next.pin;
-  try { localStorage.setItem('neonheat.sharp', String(sharpPin)); } catch (err) {}
-  /* a pinned resolution starts from a clean slate rather than inheriting
-     whatever scale the tuner had wound down to */
-  renderScale = 1;
-  applyBackingStore();
-  if (painted) render();
-  setSharpLabel(); NHAudio.ui(true);
-};
-setSharpLabel();
-
 /* ---------------- screen shake ----------------
    Same reasoning as sharpness: motion sensitivity is not something that can
    be inferred, so it stops being a number tuned by proxy and becomes a
@@ -12034,37 +11970,17 @@ let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = performance.now() + 2500;
 /* setQuality already defines three rungs, but the tuner only ever called
    'low' — the middle one was dead code. These are the rungs, in order. */
 const TIERS = ['low', 'med', 'high'];
+/* ---- what counts as holding the frame ----
+   The tuner cannot spend resolution any more, so these are purely about when
+   an effect rung is worth giving up. A 3ms dead band between good and bad
+   stops it flapping a rung on and off across a single threshold. */
+const FRAME_GOOD  = 20;    // under this, headroom to take a rung back
+const FRAME_BAD   = 23;    // over this for 600ms, give one up
+const FRAME_AWFUL = 34;    // over this, act immediately, do not wait
 let tierI = 2;        // index into TIERS
 let demotions = 0;    // how many times we have had to give a tier back
 let goodMs = 0;       // how long we have been comfortably inside budget
 let badMs = 0;        // how long we have been outside it
-/* How much sustained headroom to demand before handing resolution back, and
-   whether the last thing the tuner did was hand some back. See the reversal
-   note in autoTune: without these the tuner oscillates. The ceiling is low
-   enough that the penalty is always recoverable within a run. */
-const CLIMB_NEED_BASE = 2500;
-const CLIMB_NEED_MAX = 12000;
-const CLIMB_STEP = 0.08;
-/* What the frame can afford to spend in step + render. The budget is 16.7ms;
-   the rest is the browser's — compositing, input, the HUD's own layout. */
-const WORK_BUDGET = 13.5;
-/* ---- what the tuner is allowed to spend resolution on ----
-   These were 17.6 / 19.5 / 28, which is a tuner defending 60fps with the
-   player's pixels. On anything fill-limited — a phone, a big window — the
-   game dips under 51fps constantly, so it spent resolution until it stopped
-   dipping and converged on the one outcome nobody wants: a blurry game
-   running at 60.
-
-   For a game you steer with one axis, a steady 45 that is sharp beats a
-   blurry 60. So the bad threshold moves out to 23ms and the good one to 20,
-   leaving a 3ms dead band, and the picture is what gets defended. A machine
-   that can genuinely hold 60 still climbs to the ceiling and stays there —
-   nothing here stops it. */
-const FRAME_GOOD  = 20;    // under this, headroom to give resolution back
-const FRAME_BAD   = 23;    // over this for FRAME_BAD_MS, start giving it up
-const FRAME_AWFUL = 34;    // over this, act immediately, do not wait
-let climbNeed = CLIMB_NEED_BASE;
-let lastWasClimb = false;
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
    lever because it is continuous and nearly invisible; dropping effects is
@@ -12076,35 +11992,19 @@ let lastWasClimb = false;
    Work time (what we actually spend in step + render) is vsync-independent
    and is what tells us it is safe to give resolution back. */
 function autoTune(now, dt){
-  /* Headroom was `workAvg < 6.5`, an absolute figure from when the renderer
-     was cheaper. With the city drawing depth and the streaks in the air,
-     nothing reaches 6.5ms any more, so this test could never pass and the
-     climb back was dead code. Then it was a flat 10.5, which is the same
-     mistake one notch along: a constant tuned at one resolution is wrong at
-     every other, and at half scale it is far too strict — the picture parks
-     low and stays there while the machine holds 60fps with milliseconds a
-     frame going spare, which is exactly "why does the quality look worse".
+  /* Resolution is not a lever any more — see applyBackingStore(). The only
+     thing this can spend is effects, which is the larger lever anyway: bloom
+     and the vignette plate are 74% of the frame between them, against the
+     3-8% that the rest of the ladder was ever worth. */
+  const roomy = ftAvg < FRAME_GOOD;
 
-     Predict instead. Cost goes with area, so the next step multiplies the
-     work by ((s + STEP) / s)^2 — a third more at half resolution, a tenth
-     near the top. Ask whether *that* still fits the budget. The test is then
-     correct at every scale, and it stops climbing on its own at the point
-     where the next step would not fit rather than at an arbitrary number. */
-  const nextCost = workAvg * Math.pow((renderScale + CLIMB_STEP) / renderScale, 2);
-  const roomy = ftAvg < FRAME_GOOD && nextCost < WORK_BUDGET;
-
-  /* A hitch is not a verdict. One GC pause, one level-up screen, one ad
-     tearing down pushes the average over the line for a few frames — and
-     because the drop was instant while the climb needs seconds, treating
-     every transient as proof ratchets the picture down over a session and it
-     never comes back. Sustained, unless it is genuinely catastrophic. */
-  badMs  = ftAvg > FRAME_BAD ? badMs + dt * 1000 : 0;
-  const missing = badMs > 600 || ftAvg > FRAME_AWFUL;
   /* badMs is deliberately never cleared by an action, only by frames that
      come good — it measures how long the machine has actually been outside
      budget, not how long since the tuner last did something. Clearing it per
      action, which is the obvious thing to write, is what makes any counter
      built on it unreachable. */
+  badMs  = ftAvg > FRAME_BAD ? badMs + dt * 1000 : 0;
+  const missing = badMs > 600 || ftAvg > FRAME_AWFUL;
 
   /* sustained, not instantaneous: one quiet second in a fight is not proof
      the machine can hold the next minute */
@@ -12112,112 +12012,19 @@ function autoTune(now, dt){
 
   if (now < tuneAt) return;
 
-  /* ---- which lever, and in what order ----
-     This used to spend resolution all the way to the 0.5 floor before it
-     would consider dropping a rung, on the reasoning that resolution is
-     "continuous and nearly invisible". The first half is true and the second
-     is not: half scale is the single most visible thing in the frame, and it
-     is precisely what a player notices and calls the quality getting worse.
-
-     So resolution is the cheap lever only while it is genuinely cheap. Down
-     to SOFT_FLOOR the loss really is hard to see and it goes first. Below
-     that, a rung of effects — which is now a rung that actually costs
-     something, see setQuality — is the better trade, and only once the rungs
-     are gone does the floor come off and the last of the resolution go. */
-  const SOFT_FLOOR = 0.78;
-
-  if (!sharpPin && missing && renderScale > SOFT_FLOOR) {
-    /* Come down in proportion to how far off budget we are, not in a fixed
-       step. A machine at 12fps needs four fixed steps and nearly five seconds
-       of visible chop to reach a scale it can hold — and those five seconds
-       are the first thing the player sees. Since cost goes with area, the
-       scale that would hit the target is roughly sqrt(target/actual), and
-       overshooting down is cheap because the climb back is gentle and
-       continuous. Badly-over cases also re-check sooner.  */
-    /* ---- the reversal rule ----
-       Arriving here straight after a climb means the climb is what broke the
-       budget. A machine whose real cost sits between two scales will then
-       oscillate between them forever — measured at 0.77 adjustments a second
-       on a mid-range box, and since each adjustment resizes the backing store
-       and repaints at a different resolution, the player sees the whole image
-       popping about once a second. That, not the cost of any one frame, was
-       what read as "the performance got worse".
-
-       So each time a climb has to be undone, demand geometrically more proof
-       before trying again. A machine that genuinely has headroom loses
-       nothing — it clears the bar on the first try and never comes back
-       here. A machine that does not settles within a few reversals and then
-       holds one scale, which is what it should have done from the start. */
-    if (lastWasClimb) climbNeed = Math.min(climbNeed * 2, CLIMB_NEED_MAX);
-    const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
-    const stepped = renderScale - 0.09;
-    renderScale = clamp(Math.min(stepped, want), SCALE_FLOOR, 1);
-    applyBackingStore();
-    if (painted) render();
-    lastWasClimb = false;
-    goodMs = 0;
-    tuneAt = now + (ftAvg > FRAME_AWFUL ? 320 : 700);
-  } else if (missing && tierI > 0) {
-    /* Reached only once the branch above has run out of soft floor, so the
-       invisible resolution has already been spent and the machine still
-       cannot hold the frame. A rung is the right price now; more resolution
-       is not. The 2.5s startup grace plus the three resolution steps it takes
-       to walk down to the floor give a cold JIT about four and a half seconds
-       to settle before anything here is reachable. */
-    /* out of resolution to give: step down one rung, not straight to the
-       floor. Demotion used to latch to 'low' for the rest of the session,
-       which meant the backing store and every optional pass went in the same
-       instant and never came back. */
+  if (missing && tierI > 0) {
+    /* Step down one rung, not straight to the floor. Demotion used to latch
+       to 'low' for the rest of the session, which meant every optional pass
+       went in the same instant and never came back. */
     setQuality(TIERS[--tierI]);
     demotions++; goodMs = 0;
     tuneAt = now + 1500;
-  } else if (!sharpPin && missing && renderScale > SCALE_FLOOR) {
-    /* rungs exhausted: the floor comes off and the rest of the resolution
-       goes, because a game that holds a frame beats a game that looks right
-       and does not */
-    const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
-    renderScale = clamp(Math.min(renderScale - 0.09, want), SCALE_FLOOR, 1);
-    applyBackingStore();
-    if (painted) render();
-    lastWasClimb = false;
-    goodMs = 0;
-    tuneAt = now + 700;
-  } else if (!sharpPin && renderScale < 0.99 && goodMs > climbNeed) {
-    /* Sustained headroom, not an instantaneous reading. This used to fire on
-       `roomy` alone — a single frame inside budget was enough to give
-       resolution back, which on a borderline machine is true every other
-       frame and is the other half of the oscillation. goodMs only accumulates
-       while roomy holds, so this is "it has been comfortable for climbNeed
-       milliseconds without interruption". */
-    /* Two climbs in a row means the last one held, so relax the requirement
-       again. The reversal penalty has to be forgettable: held forever it is
-       just the ratchet by another route, and a machine that had one bad
-       minute early would spend the rest of the session refusing to try while
-       the player looks at a soft picture on hardware that could carry it. */
-    if (lastWasClimb) climbNeed = Math.max(CLIMB_NEED_BASE, climbNeed * 0.5);
-    /* A larger step than the old 0.05, because each one now costs a real wait
-       rather than a frame: at 0.05 a machine that dipped to the floor needed
-       ten steps and twenty-five seconds of sustained headroom to look right
-       again. The reversal rule above is what makes the bigger step safe —
-       overshoot is paid for once, not forever. */
-    renderScale = Math.min(1, renderScale + CLIMB_STEP);
-    applyBackingStore();
-    if (painted) render();
-    lastWasClimb = true;
-    goodMs = 0;                       // earn the next step from scratch
-    tuneAt = now + 1400;
   } else if (tierI < TIERS.length - 1 && goodMs > 4000 + 3000 * demotions) {
     /* Give a rung back, but only after real sustained headroom, and demand
        progressively more of it each time we have been wrong — effects
        flickering on and off every few seconds is worse to look at than
-       simply staying on the lower tier.
-
-       It was 5000 * (demotions + 1), which reaches fifteen seconds after two
-       demotions and thirty after five, and sits behind the resolution climb
-       — so a machine that dipped early could sit on the bottom rung for the
-       rest of the session with the frame costing a fraction of its budget.
-       Escalating additively still discourages flapping without making the
-       rung effectively unrecoverable. */
+       simply staying on the lower tier. Escalating additively rather than
+       multiplicatively keeps a rung recoverable inside one session. */
     setQuality(TIERS[++tierI]);
     goodMs = 0;
     tuneAt = now + 3000;
@@ -12292,7 +12099,7 @@ requestAnimationFrame(frame);
 window.__NH = {
   G, cam, CARS, Save, QF, setQuality, startRun, toMenu, GS, IN, Ads, setPause,
   MS, get adMuted(){ return adMuted; },   // ad audio must not dip before adStarted
-  get renderScale(){ return renderScale; }, get ftAvg(){ return ftAvg; },
+  get ftAvg(){ return ftAvg; },
   get workAvg(){ return workAvg; },
   beginDistrict, takePerk, districtCfg, bank, showMap, enterNode,
   takeContract, openNodes, advance, addXP, leaveCleared, xpFor,
@@ -12305,18 +12112,6 @@ window.__NH = {
   env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
   get stage(){ return G.stage; },
   bossDamage, BOSS_BITE,
-  /* Pin the render resolution in device pixels per CSS pixel, or 0 for auto.
-     __NH.sharp() reports what it is actually rendering at right now. */
-  sharp(v){
-    if (v === undefined) return { pin:sharpPin, native:window.devicePixelRatio || 1,
-                                  actual:+DPR.toFixed(2), scale:+renderScale.toFixed(2),
-                                  tier:QF.tier, frameMs:+ftAvg.toFixed(1) };
-    sharpPin = Math.max(0, +v || 0);
-    try { localStorage.setItem("neonheat.sharp", String(sharpPin)); } catch (e) {}
-    applyBackingStore();
-    if (painted) render();
-    return this.sharp();
-  },
   /* screen shake, for tuning by feel: 0 is off, 1 is the original amplitude.
      Whatever value ends up feeling right is SHAKE_MUL in src/game.js. */
   setShake: v => { SHAKE_MUL = Math.max(0, Math.min(1, +v || 0)); return SHAKE_MUL; },
