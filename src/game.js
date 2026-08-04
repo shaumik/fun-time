@@ -6641,24 +6641,44 @@ function syncHUD(){
 }
 
 /* the build rail — a roguelite is unreadable if you cannot see your own deck */
+/* How many chips the in-run rail may show on a phone before it starts
+   counting instead of listing. In portrait the rail is a wrapped row floating
+   under the score, and every HUD block beneath it — the level bar, the convoy
+   counter, the heat pips — was positioned on the assumption that it stays
+   short. Fifteen levels into a run it is four rows deep and prints straight
+   through all three. Six chips is two rows at the rail's max-width, which is
+   what the space below it actually allows.
+
+   The brief and the route board render the same list with no cap: those are
+   screens you are reading, not a HUD you are driving under. */
+const HUD_CHIPS = 6;
+
 function renderBuild(target){
   const el = target || UI.build;
   const run = G.run;
   if (!run) { el.innerHTML = ''; return; }
   const counts = {};
   for (const id of run.perks) counts[id] = (counts[id] || 0) + 1;
-  let html = '';
+  const chips = [];
   for (const id in counts) {
     const p = NHChips.perkById(id);
     if (!p) continue;
-    html += '<i class="' + p.rarity + '">' + p.name +
-            (counts[id] > 1 ? '<b>&times;' + counts[id] + '</b>' : '') + '</i>';
+    chips.push('<i class="' + p.rarity + '">' + p.name +
+               (counts[id] > 1 ? '<b>&times;' + counts[id] + '</b>' : '') + '</i>');
   }
   for (const id of run.curses) {
     const c = NHChips.curseById(id);
-    html += '<i class="curse">' + c.name + '</i>';
+    chips.push('<i class="curse">' + c.name + '</i>');
   }
-  el.innerHTML = html || '<i style="opacity:.5">No perks yet</i>';
+
+  /* Trim from the front, not the back: the newest pick is the one you are
+     still deciding how to use, and a curse you just took is the thing you
+     most need reminding of. */
+  const capped = el === UI.build && W / H < 1.15 && chips.length > HUD_CHIPS;
+  const shown = capped ? chips.slice(chips.length - HUD_CHIPS) : chips;
+  const more = capped ? '<i class="more">+' + (chips.length - HUD_CHIPS) + '</i>' : '';
+
+  el.innerHTML = (more + shown.join('')) || '<i style="opacity:.5">No perks yet</i>';
 }
 
 /* The pads overlay the whole stage, so they must only exist while driving —

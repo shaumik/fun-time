@@ -241,6 +241,9 @@ body{
 .build i.rare{border-left-color:var(--amber)}
 .build i.rare b{color:var(--amber)}
 .build i.curse{border-left-color:var(--red);color:var(--red);background:rgba(255,51,85,.09)}
+/* the overflow counter: the rail is capped on a phone, and a count that does
+   not look like a perk is what stops the cap reading as perks going missing */
+.build i.more{border-left-color:var(--dim);color:var(--dim);opacity:.85}
 
 .dchip{
   display:inline-block;
@@ -1281,11 +1284,27 @@ body{
   /* toasts sit mid-screen over empty road; at 20u they landed on the score */
   #toasts{top:38%}
 
-  /* the build rail would eat the play area; float it under the score */
+  /* The build rail would eat the play area, so it floats. It used to float at
+     13u, "under the score" — but the score is only the top of the left column,
+     and the centre column keeps going: quota, chain, level bar, wreck banner,
+     convoy, heat pips, down to about 26u. The rail is full width, so at 13u it
+     was laid straight across all of them, and every one of those is live
+     information you read while driving. Measured on a 411x867 phone fifteen
+     levels in, it was overlapping the level bar by 17px and the wreck banner
+     by 5.
+
+     Measured in u, the top HUD runs from 2.2 down to 35.5 — quota, chain,
+     level, wreck, convoy, heat, score, coins, district chip — and the bottom
+     HUD starts around 96. The rail goes in the gap, at 37, capped to two rows
+     by renderBuild() and by the max-height below. Nothing else is there. */
   #hud .build{
-    position:absolute;top:calc(var(--u)*13);left:0;
+    position:absolute;top:calc(var(--u)*37);left:0;
     flex-direction:row;flex-wrap:wrap;max-width:calc(var(--u)*46);
     margin-top:0;gap:calc(var(--u)*.35);
+    /* Two rows, hard. renderBuild() caps the chip count to match, and this is
+       the backstop for a long perk name that wraps wider than expected —
+       whatever happens here it cannot reach the level bar below it. */
+    max-height:calc(var(--u)*5.4);overflow:hidden;
   }
   #hud .build i{font-size:max(10px,calc(var(--u)*.95));padding:calc(var(--u)*.22) calc(var(--u)*.55)}
 
