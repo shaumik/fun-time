@@ -4404,7 +4404,7 @@ function activeSpec(){
 /* ---------------- quality ----------------
    CrazyGames traffic skews to low-end laptops and mid-range phones, so the
    expensive passes are switchable and the game demotes itself if frames slip. */
-const QF = { bloom:1, wide:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
+const QF = { bloom:1, wide:1, plate:1, city:1, cityDeep:1, windows:1, glow:1, grain:1, dpr:1.5, tier:'high' };
 /* The ladder had two rungs pretending to be three: 'med' and 'low' set
    exactly the same flags, and bloom/city/glow were pinned to 1 at every
    tier, so the only thing that ever fell away was the backing-store scale.
@@ -4421,7 +4421,27 @@ function setQuality(t){
   /* the ranks behind the front one are mass rather than architecture, so
      they are the first thing worth losing and the last thing anyone misses */
   QF.cityDeep = low ? 0 : 1;
-  QF.bloom = 1; QF.city = 1; QF.glow = 1;
+  /* ---- bloom is the whole budget ----
+     This said `QF.bloom = 1` at every rung, so the one pass that actually
+     costs anything was the one thing the ladder could never drop. A CPU
+     profile of real driving put 45% of all time inside bloom()'s blits, and
+     switching it off measured 7.81ms of a 10.49ms frame — 74%. Against that,
+     the things the ladder *did* drop measured 3-8%, which is inside the
+     noise: window rows and city depth were being taken away from the player
+     for nothing.
+
+     The consequence is the complaint. With no effect worth dropping, the
+     tuner's only working lever was resolution, so a machine that could not
+     hold the budget ground the picture down to half scale and kept it there
+     — the game got blurrier and blurrier over a session while the effect
+     responsible stayed on at full strength. A soft glow is not worth a soft
+     image. It comes off at the bottom rung now, which is what lets the
+     resolution stay up. */
+  QF.bloom = low ? 0 : 1;
+  /* the vignette+grain plate is a second full-screen blit; at the bottom
+     rung it is the same trade as the bloom and goes the same way */
+  QF.plate = low ? 0 : 1;
+  QF.city = 1; QF.glow = 1;
   /* the bloom composite is fill-rate bound, so pixels are the lever */
   QF.dpr = high ? 1.5 : low ? 0.9 : 1.15;
   if (typeof applyBackingStore === 'function') applyBackingStore();
@@ -4436,6 +4456,9 @@ let W = 1280, H = 720, DPR = 1;
 /* quarter-res buffers for the bloom chain */
 const bufA = document.createElement('canvas'), bA = bufA.getContext('2d');
 const bufB = document.createElement('canvas'), bB = bufB.getContext('2d');
+/* A third buffer at half the others' size. The bloom blurs by resampling
+   through this rather than by ctx.filter — see bloom(). */
+const bufC = document.createElement('canvas'), bC = bufC.getContext('2d');
 let vignette = null, grain = null;
 
 /* ---------------- resolution ----------------
@@ -4467,6 +4490,8 @@ function applyBackingStore(){
   /* the bloom buffers follow the real backing store, not the CSS size */
   bufA.width  = bufB.width  = Math.max(1, Math.round(cv.width  / 4));
   bufA.height = bufB.height = Math.max(1, Math.round(cv.height / 4));
+  bufC.width  = Math.max(1, Math.round(cv.width  / 8));
+  bufC.height = Math.max(1, Math.round(cv.height / 8));
 }
 
 function resize(){
@@ -5216,7 +5241,7 @@ const G = {
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
-  crashT:0, slow:1, flash:0, revived:false, pendingLevels:0, awaitingAdvance:false,
+  crashT:0, slow:1, revived:false, pendingLevels:0, awaitingAdvance:false,
   shake:0, shakeT:0, shakePrev:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   env:null, envPrev:null, envT:1, stage:0,
@@ -5592,7 +5617,7 @@ function newWorld(ai){
   G.car.idx = 6; G.car.boostT = 0;
   G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0; G.shockAt = 5;
   G.heat = 0; G.tier = 0; G.topMult = G.topMult || 1;
-  G.slow = 1; G.flash = 0; G.shake = 0; G.shakePrev = 0; G.dist = 0;
+  G.slow = 1;  G.shake = 0; G.shakePrev = 0; G.dist = 0;
   G.ghost = 0; G.pulseWarn = 0;
   G.freeze = 0; G.hitCool = 0; G.hurt = 0;
   G.pickups = []; G.power.shield = 0; G.power.surge = 0; G.shockAt = 5;
@@ -5860,7 +5885,7 @@ function bossDamage(amount){
       spawn(b.x, b.y, Math.cos(a) * s, Math.sin(a) * s,
             rnd(0.4, 1.1), rnd(4, 12), i % 2 ? '255,170,80' : '255,70,90', true, -6);
     }
-    G.flash = 1; G.shake = 30;
+  G.shake = 30;
     G.boss = null;
     G.police.length = 0;
     Ads.celebrate();
@@ -5877,7 +5902,6 @@ function bossPhase(b, phase){
   b.breakT = 4.2;
   b.atk = 1.2;
   b.charge = 0;
-  G.flash = Math.max(G.flash, 0.7);
   G.shake = Math.max(G.shake, 26);
   NHAudio.boss();
   for (let i = 0; i < 46; i++) {
@@ -5948,7 +5972,6 @@ function stepBoss(dt){
           G.pending = 0; G.chain = 0; G.mult = 1;
           toast('Bank wiped', 'red');
           NHAudio.curse();
-          G.flash = 0.6;
         } else {
           toast('Pulse — bank held', 'pink');
         }
@@ -6088,49 +6111,25 @@ function barrier(v, loc){
    gap is the harder skill; it just does not cost anything. Two live ways
    to treat every car on the road is the whole loop.
    ============================================================ */
+/* Every hitstop in the game is scaled by this. The durations were authored
+   one at a time, and each is defensible alone — but ramming is the verb, so
+   in a live chain they arrive back to back and the game spends a large share
+   of its time not simulating. Held together with the near-stop in frame(),
+   this is the knob that decides how much of a run is spent frozen. */
+const HITSTOP_MUL = 0.6;
 function hitstop(secs, shake){
-  G.freeze = Math.max(G.freeze, secs);
+  G.freeze = Math.max(G.freeze, secs * HITSTOP_MUL);
   G.shake = Math.max(G.shake, shake);
 }
 
-/* ---------------- an impact flash with a place ----------------
-   G.flash washes the entire canvas, which is right for the things that are
-   about the whole run — a unit going down, a bank wiped, the crash. It is
-   wrong for a wreck, because a wreck happens somewhere, and by the time you
-   own drones, a harpoon, a wrecking ball and cars that cook off a beat after
-   they land, plenty of your kills happen behind you or off to one side.
-
-   Washing the screen for one of those is a glow with no cause on screen,
-   which reads as a display glitch rather than as feedback — and it is the
-   same complaint as the shake was: brightness the player did not ask for and
-   cannot attribute. So the world-positioned flashes are gated on being able
-   to see the thing that fired them. Off screen, the wreck still pays, still
-   sounds, still shakes; it just does not flash a screen it is not in.
-
-   Deliberately not the renderer's onScreen() culler. That one is a generous
-   radius — about twice the screen's half-diagonal — because its job is to
-   stop cars popping in at the edge, and a wreck it admits can still be a
-   whole screen away. This asks the narrower question of whether the player
-   could actually see the thing, so it is a screen-space bounds test. The
-   margin is small but real: something just past the edge is close enough
-   that the eye still reads the flash as belonging to it. */
-const FLASH_MARGIN = 90;
-/* And at most one of these in any 400ms. A drone kill, a cook-off and a ball
-   hit can land within a few frames of each other, and three washes in a third
-   of a second is a strobe however faint each one is alone. The loud
-   run-level flashes — a unit down, the crash, a bank wiped — do not come
-   through here and are never suppressed. */
-const FLASH_GAP = 400;
-let flashLast = -1e9;
-function flashAt(x, y, v){
-  const t = performance.now();
-  if (t - flashLast < FLASH_GAP) return;
-  const [sx, sy] = w2s(x, y);
-  const m = FLASH_MARGIN;
-  if (sx < -m || sx > W + m || sy < -m || sy > H + m) return;
-  flashLast = t;
-  G.flash = Math.max(G.flash, v);
-}
+/* The screen-wide impact flash is gone. It washed the whole canvas warm
+   white on a list of events that grew until it was firing on the core verb,
+   and every attempt to make it behave — gating it on the wreck being visible,
+   then putting a floor between consecutive washes — was tuning something that
+   should not have been there. Impact is carried by the hitstop freeze, the
+   camera, the audio, the car's own hitFlash and the sparks off the wreck,
+   all of which happen where the hit happened rather than over the entire
+   screen. Nothing replaced it, and nothing should. */
 
 /* ---------------- the early leash ----------------
    Simulated sessions: the average run lasted under ninety seconds, cleared
@@ -6318,7 +6317,6 @@ function killPolice(p, idx){
   G.coinsRun += 120;
   G.heat = Math.max(0, G.heat - 0.6);
   G.policeCool = 6;
-  G.flash = Math.max(G.flash, 0.5);
   G.shake = Math.max(G.shake, 22);
   hitstop(0.07, 24);
   NHAudio.smash(1.5);
@@ -6373,7 +6371,6 @@ function stepPunt(p){
     const nx = (t.x - p.x) / (r || 1), ny = (t.y - p.y) / (r || 1);
     if (!killCar(t, nx * 300 + p.vx * 0.5, ny * 300 + p.vy * 0.5, 230)) continue;
     NHAudio.smash(0.8);
-    flashAt(t.x, t.y, 0.22);
     /* the strike passes on, one hop shorter, and the striker loses steam */
     if (p.punt > 1) { t.vx = p.vx * 0.8; t.vy = p.vy * 0.8; t.punt = p.punt - 1; t.spin = rnd(-4, 4); }
     p.vx *= 0.55; p.vy *= 0.55;
@@ -6396,7 +6393,6 @@ function stepCook(v, dt){
   /* a tanker's payload blasts half again as wide as a perk-cooked wreck */
   const M = G.run.M, R = (M.cookR || 165) * (v.tank ? 1.5 : 1)
           * (v.tank && Tree.has('t_chain') ? 1.3 : 1);
-  flashAt(v.x, v.y, 0.3);
   hitstop(0.04, 14);
   NHAudio.smash(1.15);
   for (let i = 0; i < 34; i++) {
@@ -6497,7 +6493,6 @@ function chainTime(){
    Free wrecks, so it pays into the same chain rather than starting a new one. */
 function shockwave(){
   const car = G.car;
-  G.flash = Math.max(G.flash, 0.5);
   hitstop(0.06, 24);
   NHAudio.smash(1.4);
   for (let i = 0; i < 40; i++) {
@@ -6668,7 +6663,6 @@ function takePickup(k){
       G.lastingPayday++;
       break;
   }
-  G.flash = Math.max(G.flash, 0.3);
   NHAudio.pickup(k.id === 'boost' ? 1 : 0);
   toast(k.name + (k.lasting ? ' — rest of the district' : '!'),
         k.lasting ? 'pink' : k.id === 'repair' ? 'gold' : k.id === 'surge' ? 'pink' : '');
@@ -6822,7 +6816,6 @@ function stepDrones(dt){
     const t = dr.target;
     const nx = (t.x - dr.x), ny = (t.y - dr.y), nd = hyp(nx, ny) || 1;
     killCar(t, nx / nd * 560, ny / nd * 560, 230);
-    flashAt(t.x, t.y, 0.24);
     NHAudio.smash(0.85);
     for (let i = 0; i < 22; i++) {
       const a = rnd(0, TAU), sp = rnd(140, 580);
@@ -6934,7 +6927,6 @@ function stepBall(dt){
     G.ballHits = (G.ballHits || 0) + 1;
     killCar(t, nx / nd * 900, ny / nd * 900, 300);
     hitstop(0.045, 20);
-    flashAt(t.x, t.y, 0.3);
     NHAudio.smash(clamp(swing / 900, 0.6, 1.6));
     for (let i = 0; i < 26; i++) {
       const a = rnd(0, TAU), sp = rnd(160, 700);
@@ -7098,7 +7090,6 @@ function stepRockets(dt){
   }
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
   killCar(best, nx * 760, ny * 760, 240);
-  flashAt(best.x, best.y, 0.35);
   hitstop(0.04, 14);
   NHAudio.smash(1.1);
 }
@@ -7125,7 +7116,6 @@ function fireMissile(){
   const nx = (best.x - car.x) / (bd || 1), ny = (best.y - car.y) / (bd || 1);
   /* a free link: it pays and extends, but never costs hull */
   killCar(best, nx * 820, ny * 820, 240);
-  flashAt(best.x, best.y, 0.4);
   hitstop(0.05, 16);
   NHAudio.smash(1.2);
   toast('Harpoon', 'pink');
@@ -7211,7 +7201,6 @@ function armLevelFlare(){
   if (el) $('lvlUpNum').textContent = G.run.level;
   if (G.levelFlare > 0) return;
   G.levelFlare = FLARE_HOLD;
-  G.flash = Math.max(G.flash, 0.4);
   NHAudio.levelUp();
   if (!el) return;
   el.classList.remove('on');
@@ -7402,7 +7391,6 @@ function convoyHit(v, rel){
   if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1) * rampCost()), 'traffic');
 
   hitstop(0.09, 30);
-  G.flash = Math.max(G.flash, 0.6);
   NHAudio.smash(1.6);
   for (let i = 0; i < 44; i++) {
     const a = rnd(0, TAU), sp = rnd(180, 760);
@@ -7421,7 +7409,6 @@ function convoyHit(v, rel){
     const bonus = Math.round(G.run.quota * 0.25);
     G.pending += bonus;
     G.convoyState = 'done';
-    G.flash = Math.max(G.flash, 0.85);
     toast('CONVOY TAKEN +' + fmt(bonus), 'pink');
     NHAudio.bank(G.mult);
   }
@@ -7532,7 +7519,6 @@ function bank(){
   if (!G.boss && G.run.cfg && !G.run.cfg.boss && !G.run.overtime
       && G.run.banked >= G.run.quota) {
     G.run.overtime = true;
-    G.flash = Math.max(G.flash, 0.5);
     toast('QUOTA MET — overtime, ×1.5 XP', 'gold');
     NHAudio.bank(3);
   }
@@ -7597,7 +7583,7 @@ function crash(reason){
     }
     G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0;
     G.hp = Math.round(G.hpMax * 0.35);
-    G.flash = 0.8; G.shake = 24;
+  G.shake = 24;
     NHAudio.hit(1.4);
     toast('Limped to the checkpoint', 'gold');
     clearDistrict();
@@ -7612,7 +7598,7 @@ function crash(reason){
     G.car.inv = 2.2;
     G.car.hitFlash = 1;
     G.pending = 0; G.chain = 0; G.mult = 1;
-    G.shake = 22; G.flash = 0.7;
+    G.shake = 22;
     G.car.vx *= 0.45; G.car.vy *= 0.45;
     NHAudio.hit(1.4);
     toast('Crumple zone spent — hull patched', 'gold');
@@ -7632,7 +7618,6 @@ function crash(reason){
   }
   G.state = 'crash';
   G.crashT = 0;
-  G.flash = 1;
   G.shake = 26;
   G.pending = 0; G.chain = 0; G.mult = 1;
   G.car.hitFlash = 1;
@@ -8002,7 +7987,10 @@ function step(dt){
   /* damping is asymptotic, so park it rather than leaving the world a fraction
      of a pixel off centre for the rest of the run */
   if (!amp && Math.abs(cam.sx) < 0.05 && Math.abs(cam.sy) < 0.05) cam.sx = cam.sy = 0;
-  G.flash = Math.max(0, G.flash - dt * 2.4);
+
+  /* Boost is a hard on/off, and the speed rim reads off it. Eased here so the
+     renderer gets a continuous value — see drawSpeed(). */
+  G.boostFX = damp(G.boostFX || 0, (car.boost ? 1 : 0), 7, dt);
 
   T.ensure(car.idx + 140);
 }
@@ -9277,22 +9265,39 @@ function bloom(){
   bB.drawImage(bufA, 0, 0);
   bB.globalCompositeOperation = 'source-over';
 
-  /* tight tap */
-  bA.clearRect(0, 0, bw, bh);
-  bA.filter = 'blur(4px)';
-  bA.drawImage(bufB, 0, 0);
-  bA.filter = 'none';
+  /* ---- the blur, by resampling ----
+     This was two ctx.filter = 'blur(Npx)' taps, and a CPU profile of twenty
+     seconds of real driving put 46.6% of all time in drawImage because of
+     them: a Canvas2D filter blur is a per-frame convolution that drops the
+     whole composite off the accelerated path, and it was running twice on a
+     buffer the size of a quarter of the screen. It is the single reason the
+     renderer could not hold full resolution, which is what the player sees
+     as the picture being soft.
 
-  /* wide tap for atmospheric haze, added into bufA at quarter res so the
-     upscale to the main canvas — the expensive part — happens exactly once */
+     A bilinear downscale followed by an upscale is the same operation done
+     by the sampler, for free. Halving into bufC and coming back is one wide,
+     smooth tap; doing it twice widens the kernel further and still costs
+     less than one filtered blit. The look is if anything softer and rounder
+     than the 4px/9px pair — a Gaussian is what the two-pass resample
+     approximates — and there is no filter left anywhere in the frame. */
+  const cw = bufC.width, ch = bufC.height;
+  bC.setTransform(1, 0, 0, 1, 0, 0);
+  bC.globalCompositeOperation = 'source-over';
+  bC.clearRect(0, 0, cw, ch);
+  bC.drawImage(bufB, 0, 0, cw, ch);            // down: 1/4 -> 1/8
+
+  bA.clearRect(0, 0, bw, bh);
+  bA.drawImage(bufC, 0, 0, bw, bh);            // up: the tight tap
+
   if (QF.wide) {
-    bB.clearRect(0, 0, bw, bh);
-    bB.filter = 'blur(9px)';
-    bB.drawImage(bufA, 0, 0);
-    bB.filter = 'none';
+    /* a second round-trip for the atmospheric haze: wider still, and added
+       into bufA at quarter res so the upscale to the main canvas — the one
+       genuinely full-screen blit — happens exactly once */
+    bC.clearRect(0, 0, cw, ch);
+    bC.drawImage(bufA, 0, 0, cw, ch);
     bA.globalCompositeOperation = 'lighter';
     bA.globalAlpha = 0.55;
-    bA.drawImage(bufB, 0, 0);
+    bA.drawImage(bufC, 0, 0, bw, bh);
     bA.globalAlpha = 1;
     bA.globalCompositeOperation = 'source-over';
   }
@@ -9669,7 +9674,12 @@ function drawSpeed(){
   /* Started at 430 and topped out at 0.10 alpha, which meant the game had a
      speed effect that only appeared once you were already flat out and was
      invisible when it did. It reads from cruising pace now, and it reads. */
-  const t = clamp((sp - 300) / 380, 0, 1) * (G.car && G.car.boost ? 1.45 : 1);
+  /* The boost multiplier used to be applied raw, so the pale blue rim and the
+     streaks jumped 45% brighter on the frame boost engaged and dropped back
+     just as hard when it lapsed — a blue flash on a toggle that flips several
+     times a chain. It is eased now, so the frame brightening is something the
+     speed does rather than something that happens to the screen. */
+  const t = clamp((sp - 300) / 380, 0, 1) * (1 + 0.45 * (G.boostFX || 0));
   if (t < 0.03) return;
   if (!streaks) {
     streaks = Array.from({ length: 72 }, () => ({
@@ -9710,14 +9720,10 @@ function drawSpeed(){
 
 function post(){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (plates.length) {
+  if (QF.plate && plates.length) {
     /* cycling the plate every third frame animates the grain without cost */
     if (QF.grain) plateI = (plateI + 1) % (plates.length * 3);
     ctx.drawImage(plates[Math.floor(plateI / 3)], 0, 0, W, H);
-  }
-  if (G.flash > 0.01) {
-    ctx.fillStyle = 'rgba(255,240,220,' + (G.flash * 0.55).toFixed(3) + ')';
-    ctx.fillRect(0, 0, W, H);
   }
   /* the hull talks: a red rim on damage, and a permanent one when critical */
   /* Taking a hit is now the thing you do on purpose several times a minute,
@@ -10550,7 +10556,6 @@ function passGate(){
   G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.14));
   G.heat = Math.min(3.0, G.heat + 0.9);
   addXP(8);
-  G.flash = Math.max(G.flash, 0.35);
   NHAudio.bank(2);
   toast('Checkpoint ' + G.stage + ' cleared — ' + zone.name, 'gold');
   /* the next stretch is already generated ahead of the car; what changes is
@@ -10624,7 +10629,7 @@ function failDistrict(why){
   G.state = 'crash';
   G.crashT = 0;
   G.crashReason = why;
-  G.flash = 0.8; G.shake = 18;
+  G.shake = 18;
   G.pending = 0; G.chain = 0; G.mult = 1;
   UI.hud.classList.add('off');
   NHAudio.curse();
@@ -11764,17 +11769,29 @@ function toGarage(){
    LOOP
    ============================================================ */
 let last = performance.now();
-let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = 0;
+/* tuneAt starts in the future: the first seconds of a session are the JIT
+   warming up and the first district being generated, and a tuner that
+   believes them spends the whole run recovering from a warm-up it mistook
+   for the machine. */
+let ftAvg = 16, workAvg = 8, ftN = 0, tuneAt = performance.now() + 2500;
 /* setQuality already defines three rungs, but the tuner only ever called
    'low' — the middle one was dead code. These are the rungs, in order. */
 const TIERS = ['low', 'med', 'high'];
 let tierI = 2;        // index into TIERS
 let demotions = 0;    // how many times we have had to give a tier back
 let goodMs = 0;       // how long we have been comfortably inside budget
+let badMs = 0;        // how long we have been outside it
 /* How much sustained headroom to demand before handing resolution back, and
    whether the last thing the tuner did was hand some back. See the reversal
-   note in autoTune: without these the tuner oscillates. */
-let climbNeed = 2500;
+   note in autoTune: without these the tuner oscillates. The ceiling is low
+   enough that the penalty is always recoverable within a run. */
+const CLIMB_NEED_BASE = 2500;
+const CLIMB_NEED_MAX = 12000;
+const CLIMB_STEP = 0.08;
+/* What the frame can afford to spend in step + render. The budget is 16.7ms;
+   the rest is the browser's — compositing, input, the HUD's own layout. */
+const WORK_BUDGET = 13.5;
+let climbNeed = CLIMB_NEED_BASE;
 let lastWasClimb = false;
 
 /* Trade pixels for frames until we hold the budget. Resolution is the first
@@ -11787,14 +11804,35 @@ let lastWasClimb = false;
    Work time (what we actually spend in step + render) is vsync-independent
    and is what tells us it is safe to give resolution back. */
 function autoTune(now, dt){
-  const missing = ftAvg > 19.5;                    // below ~51fps
   /* Headroom was `workAvg < 6.5`, an absolute figure from when the renderer
      was cheaper. With the city drawing depth and the streaks in the air,
      nothing reaches 6.5ms any more, so this test could never pass and the
-     climb back was dead code: a session that dipped once stayed dipped, often
-     holding a rock-solid 60fps at half resolution with milliseconds a frame
-     going spare. The budget is 16.7ms and the test is written against it. */
-  const roomy = ftAvg < 17.6 && workAvg < 10.5;
+     climb back was dead code. Then it was a flat 10.5, which is the same
+     mistake one notch along: a constant tuned at one resolution is wrong at
+     every other, and at half scale it is far too strict — the picture parks
+     low and stays there while the machine holds 60fps with milliseconds a
+     frame going spare, which is exactly "why does the quality look worse".
+
+     Predict instead. Cost goes with area, so the next step multiplies the
+     work by ((s + STEP) / s)^2 — a third more at half resolution, a tenth
+     near the top. Ask whether *that* still fits the budget. The test is then
+     correct at every scale, and it stops climbing on its own at the point
+     where the next step would not fit rather than at an arbitrary number. */
+  const nextCost = workAvg * Math.pow((renderScale + CLIMB_STEP) / renderScale, 2);
+  const roomy = ftAvg < 17.6 && nextCost < WORK_BUDGET;
+
+  /* A hitch is not a verdict. One GC pause, one level-up screen, one ad
+     tearing down pushes the average over the line for a few frames — and
+     because the drop was instant while the climb needs seconds, treating
+     every transient as proof ratchets the picture down over a session and it
+     never comes back. Sustained, unless it is genuinely catastrophic. */
+  badMs  = ftAvg > 19.5 ? badMs + dt * 1000 : 0;      // below ~51fps
+  const missing = badMs > 600 || ftAvg > 28;
+  /* badMs is deliberately never cleared by an action, only by frames that
+     come good — it measures how long the machine has actually been outside
+     budget, not how long since the tuner last did something. Clearing it per
+     action, which is the obvious thing to write, is what makes any counter
+     built on it unreachable. */
 
   /* sustained, not instantaneous: one quiet second in a fight is not proof
      the machine can hold the next minute */
@@ -11802,7 +11840,21 @@ function autoTune(now, dt){
 
   if (now < tuneAt) return;
 
-  if (missing && renderScale > 0.5) {
+  /* ---- which lever, and in what order ----
+     This used to spend resolution all the way to the 0.5 floor before it
+     would consider dropping a rung, on the reasoning that resolution is
+     "continuous and nearly invisible". The first half is true and the second
+     is not: half scale is the single most visible thing in the frame, and it
+     is precisely what a player notices and calls the quality getting worse.
+
+     So resolution is the cheap lever only while it is genuinely cheap. Down
+     to SOFT_FLOOR the loss really is hard to see and it goes first. Below
+     that, a rung of effects — which is now a rung that actually costs
+     something, see setQuality — is the better trade, and only once the rungs
+     are gone does the floor come off and the last of the resolution go. */
+  const SOFT_FLOOR = 0.78;
+
+  if (missing && renderScale > SOFT_FLOOR) {
     /* Come down in proportion to how far off budget we are, not in a fixed
        step. A machine at 12fps needs four fixed steps and nearly five seconds
        of visible chop to reach a scale it can hold — and those five seconds
@@ -11824,7 +11876,7 @@ function autoTune(now, dt){
        nothing — it clears the bar on the first try and never comes back
        here. A machine that does not settles within a few reversals and then
        holds one scale, which is what it should have done from the start. */
-    if (lastWasClimb) climbNeed = Math.min(climbNeed * 2, 30000);
+    if (lastWasClimb) climbNeed = Math.min(climbNeed * 2, CLIMB_NEED_MAX);
     const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
     const stepped = renderScale - 0.09;
     renderScale = clamp(Math.min(stepped, want), 0.5, 1);
@@ -11834,6 +11886,12 @@ function autoTune(now, dt){
     goodMs = 0;
     tuneAt = now + (ftAvg > 28 ? 320 : 700);
   } else if (missing && tierI > 0) {
+    /* Reached only once the branch above has run out of soft floor, so the
+       invisible resolution has already been spent and the machine still
+       cannot hold the frame. A rung is the right price now; more resolution
+       is not. The 2.5s startup grace plus the three resolution steps it takes
+       to walk down to the floor give a cold JIT about four and a half seconds
+       to settle before anything here is reachable. */
     /* out of resolution to give: step down one rung, not straight to the
        floor. Demotion used to latch to 'low' for the rest of the session,
        which meant the backing store and every optional pass went in the same
@@ -11841,6 +11899,17 @@ function autoTune(now, dt){
     setQuality(TIERS[--tierI]);
     demotions++; goodMs = 0;
     tuneAt = now + 1500;
+  } else if (missing && renderScale > 0.5) {
+    /* rungs exhausted: the floor comes off and the rest of the resolution
+       goes, because a game that holds a frame beats a game that looks right
+       and does not */
+    const want = renderScale * Math.sqrt(16.7 / Math.max(17, ftAvg));
+    renderScale = clamp(Math.min(renderScale - 0.09, want), 0.5, 1);
+    applyBackingStore();
+    if (painted) render();
+    lastWasClimb = false;
+    goodMs = 0;
+    tuneAt = now + 700;
   } else if (renderScale < 1 && goodMs > climbNeed) {
     /* Sustained headroom, not an instantaneous reading. This used to fire on
        `roomy` alone — a single frame inside budget was enough to give
@@ -11848,12 +11917,18 @@ function autoTune(now, dt){
        frame and is the other half of the oscillation. goodMs only accumulates
        while roomy holds, so this is "it has been comfortable for climbNeed
        milliseconds without interruption". */
+    /* Two climbs in a row means the last one held, so relax the requirement
+       again. The reversal penalty has to be forgettable: held forever it is
+       just the ratchet by another route, and a machine that had one bad
+       minute early would spend the rest of the session refusing to try while
+       the player looks at a soft picture on hardware that could carry it. */
+    if (lastWasClimb) climbNeed = Math.max(CLIMB_NEED_BASE, climbNeed * 0.5);
     /* A larger step than the old 0.05, because each one now costs a real wait
        rather than a frame: at 0.05 a machine that dipped to the floor needed
        ten steps and twenty-five seconds of sustained headroom to look right
        again. The reversal rule above is what makes the bigger step safe —
        overshoot is paid for once, not forever. */
-    renderScale = Math.min(1, renderScale + 0.08);
+    renderScale = Math.min(1, renderScale + CLIMB_STEP);
     applyBackingStore();
     if (painted) render();
     lastWasClimb = true;
@@ -11879,8 +11954,15 @@ function frame(now){
   adTick(raw);
   const live = !adCb && !G.paused;
   /* Hitstop. Freezing the simulation for a few frames on impact is what
-     turns a collision from a number change into a punch. */
-  if (G.freeze > 0) { G.freeze -= raw; }
+     turns a collision from a number change into a punch — but a hard stop
+     stops step(), and readInput() lives inside step(), so for the whole of
+     it the car does not answer the wheel. One ram is 60ms of dead controls;
+     a chain is several of those a second, and what that reads as is not
+     impact, it is the steering going sluggish.
+
+     So it is a near-stop rather than a stop. Time crawls at an eighth, which
+     still reads as a hit landing, and the player keeps steering through it. */
+  if (G.freeze > 0) { G.freeze -= raw; if (live) step(raw * 0.12); }
   else if (live) step(raw * G.slow);
   Ads.gameplay(live && G.state === 'play' && tookTheWheel);
 
@@ -11950,7 +12032,6 @@ window.__NH = {
   get shake(){ return SHAKE_MUL; },
   endRun, showBoard, recordRun, failDistrict, damage,
   POWERS, takePickup, chainTimeProbe: () => chainTime(), smash,
-  flashAt,                    // the impact-flash guard, for playtest probes
   GSdebug: () => ({ raw:+GS.raw.toFixed(3), steer:+GS.steer.toFixed(3) })
 };
 })();
