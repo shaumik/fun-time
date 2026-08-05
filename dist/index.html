@@ -1475,6 +1475,29 @@ body{
 .mapLines path.taken{stroke:rgba(198,210,232,.5);stroke-width:5}
 .mapNodes{position:absolute;inset:0}
 
+/* ---- the board when it is short ----
+   Rows are spread across the board's height, so the pitch between them
+   shrinks with the viewport while the node element — pin plus three lines of
+   label — does not. Measured at 821x462, one of their own iframe sizes: 78px
+   of pitch against a 73px element. Five pixels of clearance, so every label
+   ran into the row below it and the connectors, which are drawn between
+   element boxes, had nowhere left to go. It reads as the mess it is.
+
+   drawRoute() measures the real numbers and adds these when the pitch cannot
+   hold the element, shedding the least load-bearing line first: the three
+   zone names, then the quota, then the pin comes down in size. What survives
+   to the last rung is the node's name and its reward, which is the decision
+   the board exists to present. */
+.mapBoard.tight  .mnode .pzones{display:none}
+.mapBoard.tight  .mnode{gap:calc(var(--u)*.3)}
+.mapBoard.tight  .mnode .pin{width:calc(var(--u)*4.6);height:calc(var(--u)*4.6)}
+.mapBoard.tight  .mnode .pin i{font-size:max(10px,calc(var(--u)*1.9))}
+.mapBoard.tighter .mnode .pmeta em{display:none}
+/* the separator belongs to the pair, so it goes with the half that is gone */
+.mapBoard.tighter .mnode .pmeta b::after{display:none}
+.mapBoard.tighter .mnode .pin{width:calc(var(--u)*3.8);height:calc(var(--u)*3.8)}
+.mapBoard.tighter .mnode .plabel{gap:0}
+
 .mnode{
   position:absolute;transform:translate(-50%,-50%);
   pointer-events:auto;cursor:default;font-family:var(--sans);
@@ -10444,6 +10467,33 @@ function drawRoute(){
     if (can) el.onclick = () => enterNode(r, c);
     wrap.appendChild(el);
   }));
+
+  /* ---- fit the rows to the height there actually is ----
+     The pitch between rows falls out of the board's height; the node element
+     does not shrink with it. Measure both and shed label detail until they
+     clear, rather than letting the labels run into the row below and through
+     the connectors. See .mapBoard.tight in the stylesheet. */
+  /* Ask the real question — does anything actually collide — rather than a
+     proxy. Comparing the tallest element against the row pitch sounds
+     equivalent and is not: the boss label is the longest string on the board
+     and sets the maximum on its own, so a 720p board that had room to spare
+     was shedding its zone lines because of one node.
+
+     Boxes are inflated by 9px before testing, because the connectors are
+     drawn between them and need room to turn a corner. */
+  const collides = () => {
+    const bs = [...wrap.children].map(el => el.getBoundingClientRect());
+    for (let i = 0; i < bs.length; i++)
+      for (let j = i + 1; j < bs.length; j++) {
+        const a = bs[i], c = bs[j];
+        if (a.left < c.right && c.left < a.right &&
+            a.top - 9 < c.bottom + 9 && c.top - 9 < a.bottom + 9) return true;
+      }
+    return false;
+  };
+  board.classList.remove('tight', 'tighter');
+  if (collides()) board.classList.add('tight');
+  if (collides()) board.classList.add('tighter');
 
   /* keep every pin and its label inside the board */
   const box = {};

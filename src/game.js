@@ -6904,6 +6904,33 @@ function drawRoute(){
     wrap.appendChild(el);
   }));
 
+  /* ---- fit the rows to the height there actually is ----
+     The pitch between rows falls out of the board's height; the node element
+     does not shrink with it. Measure both and shed label detail until they
+     clear, rather than letting the labels run into the row below and through
+     the connectors. See .mapBoard.tight in the stylesheet. */
+  /* Ask the real question — does anything actually collide — rather than a
+     proxy. Comparing the tallest element against the row pitch sounds
+     equivalent and is not: the boss label is the longest string on the board
+     and sets the maximum on its own, so a 720p board that had room to spare
+     was shedding its zone lines because of one node.
+
+     Boxes are inflated by 9px before testing, because the connectors are
+     drawn between them and need room to turn a corner. */
+  const collides = () => {
+    const bs = [...wrap.children].map(el => el.getBoundingClientRect());
+    for (let i = 0; i < bs.length; i++)
+      for (let j = i + 1; j < bs.length; j++) {
+        const a = bs[i], c = bs[j];
+        if (a.left < c.right && c.left < a.right &&
+            a.top - 9 < c.bottom + 9 && c.top - 9 < a.bottom + 9) return true;
+      }
+    return false;
+  };
+  board.classList.remove('tight', 'tighter');
+  if (collides()) board.classList.add('tight');
+  if (collides()) board.classList.add('tighter');
+
   /* keep every pin and its label inside the board */
   const box = {};
   [...wrap.children].forEach(el => {

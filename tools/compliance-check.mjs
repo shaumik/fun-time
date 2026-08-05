@@ -357,6 +357,35 @@ for (const [w, h, kind] of SIZES) {
       return out;
     }, SCREENS);
     check(`${w}x${h} (${kind}): all screens fit`, bad.length === 0, bad.join(' '));
+
+    /* ---- and that they do not collide inside themselves ----
+       "Fits" was the only question being asked, and the route map passed it
+       while being unreadable: nothing spilled out of the board, but every
+       node's label ran into the row below it and through the connectors at
+       821x462, one of their own listed sizes. A screen can be entirely
+       inside its box and still be a mess. */
+    const mapHits = await page.evaluate(() => {
+      const N = window.__NH;
+      N.startRun();
+      if (N.G.run) { N.G.run.act = 3; N.G.run.level = 12; }
+      N.showMap();
+      return new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const bs = [...document.querySelectorAll('#mapNodes > *')].map(e => e.getBoundingClientRect());
+        const out = [];
+        for (let i = 0; i < bs.length; i++)
+          for (let j = i + 1; j < bs.length; j++) {
+            const a = bs[i], c = bs[j];
+            if (a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom) {
+              const ox = Math.round(Math.min(a.right, c.right) - Math.max(a.left, c.left));
+              const oy = Math.round(Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top));
+              out.push(ox + 'x' + oy);
+            }
+          }
+        res(out);
+      })));
+    });
+    check(`${w}x${h} (${kind}): route map nodes do not overlap`,
+      mapHits.length === 0, mapHits.slice(0, 4).join(' '));
   });
 }
 
