@@ -6247,7 +6247,10 @@ function hitstop(secs, shake){
    So the first districts charge less hull per wreck, at full rate by the
    fifth. It is a curve rather than a flat buff: the ceiling is untouched,
    and a player who gets that far meets exactly the game that shipped. */
-const rampCost = () => clamp(0.55 + (((G.run && G.run.district) || 1) - 1) * 0.11, 0.55, 1);
+/* The early-district discount was 0.55 — nearly half price — on top of the
+   heals below, which together meant a run could not lose. It still ramps, it
+   just starts somewhere a player can feel. */
+const rampCost = () => clamp(0.78 + (((G.run && G.run.district) || 1) - 1) * 0.06, 0.78, 1);
 
 function damage(amount, reason){
   if (G.car.inv > 0 && reason !== 'wall') return;
@@ -6342,7 +6345,8 @@ function smash(v, rel){
   if (M.cook) { v.cook = M.cook; v.cookGen = 0; }
   archWreck(v);
   arcFrom(v);
-  addXP(1);
+  /* a wreck is the verb; banking is the achievement. See addXP callers. */
+  addXP(0.35);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
   /* Momentum: every fifth link is worth two */
   if (M.chainStep && G.chain % 5 === 0) {
@@ -6396,7 +6400,7 @@ function killCar(t, vx, vy, pay){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  addXP(1);
+  addXP(0.35);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
   archWreck(t);
@@ -6418,7 +6422,7 @@ function killPolice(p, idx){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  addXP(3);
+  addXP(1);
   G.coinsRun += 120;
   G.heat = Math.max(0, G.heat - 0.6);
   G.policeCool = 6;
@@ -7327,7 +7331,18 @@ const LEVEL_CAP = 15;
    straight districts of silence, which mutes the game's own addiction
    engine for exactly the players who are winning. Early levels are still
    cheap (casual cadence unchanged); the cap now lands mid act 2 or later. */
-const xpFor = l => l <= 1 ? 26 : Math.round(18 + l * l * 2.2);
+/* ---- the level curve ----
+   Was `18 + l*l*2.2`, about 2,500 XP for the whole ladder. Against XP sources
+   that pay per wreck — and wrecking is the verb, not an achievement — that
+   made levels a function of elapsed time rather than of how well the run is
+   going. Measured: a bot pressing random arrow keys reached level 10 of 15 in
+   three minutes without dying once.
+
+   Roughly tripled, and steeper with depth so the back half of the ladder is
+   something a run has to actually get to rather than something it passes
+   through. Level 15 is meant to be the ceiling of a deep successful run, not
+   a checkpoint on the way. */
+const xpFor = l => l <= 1 ? 40 : Math.round(30 + l * l * 7);
 
 function addXP(n){
   const run = G.run;
@@ -7570,7 +7585,7 @@ function convoyHit(v, rel){
      not the individual truck. */
   const gain = Math.round(320 * G.mult * M.bankMul * M.wreckMul * (G.run.L.wreckPay || 1));
   G.pending += gain;
-  addXP(5);
+  addXP(3);
   G.chain += 1;
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
@@ -10747,7 +10762,7 @@ function passGate(){
   rebuildMods();
   /* clearing a gate welds a little hull back on — the reward for depth is
      the ability to survive more of it */
-  G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.14));
+  G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.08));
   G.heat = Math.min(3.0, G.heat + 0.9);
   addXP(8);
   NHAudio.bank(2);
@@ -10782,7 +10797,7 @@ function clearDistrict(){
      fight arrives in the next act already dead. */
   G.hp = (G.run && G.run.M && G.run.M.clearHeal) || (G.run && G.run.cfg && G.run.cfg.boss)
     ? G.hpMax
-    : Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.70));
+    : Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.38));
   /* Clearing used to open a second card screen. Chips and perks were the
      same object — run-long modifiers picked from three cards — delivered by
      two systems writing into one table, so seventeen of the twenty-two chips
