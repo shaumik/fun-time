@@ -2173,3 +2173,13 @@ body{
 .clLvl.off{display:none}
 @media (max-width:760px){ .clRow{grid-template-columns:1fr;gap:calc(var(--u)*1)}
   .clRow div{flex-direction:row;justify-content:space-between;align-items:baseline} }
+
+
+/* The build stamp: small, unglamorous, and the fastest way to answer "are we
+   even looking at the same game" when a cached page says otherwise. */
+.buildStamp{
+  display:block;margin-top:calc(var(--u)*.5);
+  font-style:normal;font-size:max(9px,calc(var(--u)*.9));
+  letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(150,170,205,.42);font-weight:700;
+}

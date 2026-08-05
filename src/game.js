@@ -2137,8 +2137,6 @@ function newRun(){
     cleared: 0, crumpleLeft: 0, cageLeft: Tree.has('t_cage') ? 1 : 0,
     overtime: false, loop: 0
   };
-  if (Tree.has('t_head')) { r.level = 2; }
-  return r;
 }
 
 /* A Depot only offers a strip when there is a curse to strip, so the label
@@ -6790,6 +6788,9 @@ function toMenu(){
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.brief); hide(UI.cleared);
   hide(UI.daily); hide(UI.board); hide(UI.levelup);
   UI.hud.classList.add('off');
+  /* which build is on the screen — see build.mjs */
+  const bs = $('buildStamp');
+  if (bs) bs.textContent = 'build ' + (window.__NH_BUILD || 'dev');
   $('menuBest').textContent = 'District ' + (Save.data.deepest || 1) +
     (Save.data.best ? '  ·  ' + fmt(Save.data.best) : '');
 }
@@ -6827,6 +6828,11 @@ function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
+  /* Head Start used to be written as `r.level = 2` after newRun()'s return
+     statement — unreachable, referencing an `r` that does not exist there, so
+     the node silently did nothing. It grants the pending level here instead,
+     which is where the run actually starts and where the perk card can be
+     offered for it. */
   G.pendingLevels = Tree.has('t_head') ? 1 : 0; G.awaitingAdvance = false; G.awaitingClear = false;
   shownScore = 0;
   showMap();

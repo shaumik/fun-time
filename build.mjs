@@ -17,6 +17,19 @@ import { execSync } from 'node:child_process';
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
+/* ---- a build stamp ----
+   Two rounds were spent on a bug that did not exist in the build being
+   discussed, because neither of us could tell which build was on the screen:
+   the artifact URL never changes and a phone webview caches aggressively. The
+   game now says. It is in the menu options row and on window.__NH.build. */
+const BUILD = (() => {
+  try {
+    const rev = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
+    const dirty = execSync('git status --porcelain', { cwd: ROOT }).toString().trim() ? '+' : '';
+    return rev + dirty;
+  } catch (e) { return 'local'; }
+})();
+
 const html = read('index.html');
 const css  = read('src/style.css');
 /* load order matters: game.js reads NHAudio and NHChips at definition time */
@@ -27,6 +40,7 @@ fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 
 fs.writeFileSync(path.join(ROOT, 'dist/index.html'),
   html
+    .replace('</head>', `<script>window.__NH_BUILD=${JSON.stringify(BUILD)}</script>\n</head>`)
     .replace('<link rel="stylesheet" href="src/style.css">', `<style>\n${css}\n</style>`)
     .replace(/<script src="src\/audio\.js"><\/script>\s*<script src="src\/chips\.js"><\/script>\s*<script src="src\/game\.js"><\/script>/,
              `<script>\n${js}\n</script>`)
