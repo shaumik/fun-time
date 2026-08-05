@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>NEON HEAT — Drift Outlaw</title>
+<title>NEON HEAT — Outrun the Wall</title>
 <style>
 /* ============================================================
    NEON HEAT — UI
@@ -2192,7 +2192,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="a5547be"</script>
+<script>window.__NH_BUILD="aa18361"</script>
 <script>window.__NH_NO_ADS = true;</script>
 </head>
 <body>
@@ -10334,12 +10334,22 @@ function drawWall(){
    shrinks. On a phone in portrait this is most of what they actually read. */
 function drawRear(){
   if (!G.run || G.state !== 'play') return;
-  const close = clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1);
+  /* Scaled off the full gap rather than off the danger threshold. Keyed to
+     danger the band only appeared below ~560m, which is a minority of the
+     time — so for most of a run the only thing that can kill you was neither
+     on screen nor hinted at, and the player was driving against a threat
+     they had to take on faith. It is always faintly present now and grows
+     from there; the danger threshold still drives the beat and the audio. */
+  const close = clamp(1 - G.wallGap / WALL_GAP_MAX, 0, 1) * 0.55
+              + clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1) * 0.45;
   if (close <= 0.01) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
-  const h = cv.height * (0.10 + close * 0.16);
-  const beat = 0.72 + 0.28 * Math.sin(G.dist * (0.03 + close * 0.06));
+  const h = cv.height * (0.07 + close * 0.19);
+  /* the beat only kicks in when they are actually close — a constant pulse
+     would make the ambient state read as an emergency */
+  const urgent = clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1);
+  const beat = 1 - urgent * 0.28 + urgent * 0.28 * Math.sin(G.dist * (0.03 + urgent * 0.06));
   const g = ctx.createLinearGradient(0, cv.height, 0, cv.height - h);
   g.addColorStop(0, 'rgba(255,50,85,' + (0.45 * close * beat).toFixed(3) + ')');
   g.addColorStop(1, 'rgba(255,50,85,0)');
