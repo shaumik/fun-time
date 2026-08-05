@@ -7454,6 +7454,15 @@ function armLevelFlare(){
 
    The delay is now the same 1.25s every single time, which is worth more
    than politeness: you learn it once. */
+/* Cut the banner short and take it off the screen with it. Zeroing the
+   countdown alone is not enough: stepFlare() early-returns once it is at zero,
+   so the element it was told to hide never gets hidden and the banner sits
+   behind the perk card until something else re-arms it. */
+function clearFlare(){
+  G.levelFlare = 0;
+  if (UI.lvlUp) UI.lvlUp.classList.remove('on');
+}
+
 function stepFlare(dt){
   if (G.levelFlare <= 0) return;
   G.levelFlare = Math.max(0, G.levelFlare - dt);
@@ -10844,7 +10853,7 @@ function clearDistrict(){
      Offering it here catches both, because everything that can grant a level
      has now happened. */
   if (G.pendingLevels > 0 && G.state === 'play') {
-    G.levelFlare = 0;                       // the banner has had its moment
+    clearFlare();                           // the banner has had its moment
     G.awaitingClear = true;
     maybeLevelUp();
     if (G.state === 'levelup') return;      // resumed by takePerk()
