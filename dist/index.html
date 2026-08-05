@@ -10856,11 +10856,29 @@ function clearDistrict(){
      Offering it here catches both, because everything that can grant a level
      has now happened. */
   if (G.pendingLevels > 0 && G.state === 'play') {
-    clearFlare();                           // the banner has had its moment
     G.awaitingClear = true;
-    maybeLevelUp();
-    if (G.state === 'levelup') return;      // resumed by takePerk()
-    G.awaitingClear = false;                // at the cap, nothing to offer
+    /* ---- the banner earns its place here now ----
+       This used to cut the banner and go straight to the cards, on the
+       reasoning that the clear screen a moment later already says "Level 4 —
+       take a perk". That held while levels arrived every few seconds; once the
+       curve was slowed, most of a run's levels land on a district clear, and
+       suppressing it there meant a player could level twice in a run and never
+       once see it announced. A level is the thing the run is for. It gets its
+       banner wherever it is earned.
+
+       Banner, then cards, then the clear screen. Timed rather than counted
+       down by stepFlare(), because the simulation is not running here. */
+    armLevelFlare();
+    const go = () => {
+      clearFlare();
+      maybeLevelUp();
+      if (G.state === 'levelup') return;    // resumed by takePerk()
+      G.awaitingClear = false;              // at the cap, nothing to offer
+      showClearScreen();
+    };
+    if (G.levelFlare > 0) { setTimeout(go, FLARE_HOLD * 1000); return; }
+    go();
+    return;
   }
   showClearScreen();
 }
