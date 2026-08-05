@@ -18,14 +18,14 @@
   <div id="hud" class="layer">
     <div class="hudTop">
       <div class="stat">
-        <div class="lbl">Score</div>
-        <div class="val" id="score">0</div>
+        <div class="lbl">Depth</div>
+        <div class="val" id="score">1 / 15</div>
         <div class="build" id="build"></div>
       </div>
 
       <div class="hudMid">
         <div class="obj" id="obj">
-          <div class="objHead"><span id="objLbl">Quota</span><b id="objVal">0 / 0</b></div>
+          <div class="objHead"><span id="objLbl">Gap</span><b id="objVal">700m</b></div>
           <div class="objBar"><i class="objPend" id="objPend"></i><i id="objFill"></i></div>
           <div class="objDist"><i id="objDist"></i></div>
         </div>
@@ -34,7 +34,7 @@
           <div class="cmult" id="cmult">&times;1.0</div>
           <div class="cpts" id="cpts">0</div>
           <div class="cbar"><i id="cfill"></i></div>
-          <div class="cnote">Chain</div>
+          <div class="cnote">On this line</div>
         </div>
 
         <div class="xp" id="xp">
@@ -62,7 +62,7 @@
     <div class="hudBot">
       <div class="hudDrv">
         <div class="hull" id="hull">
-          <div class="hullHead"><span>Hull</span><b id="hullVal">100</b></div>
+          <div class="hullHead"><span>Mistakes left</span><b id="hullVal">5</b></div>
           <div class="hullBar"><i id="hullFill"></i></div>
         </div>
         <div class="speedo">
@@ -96,7 +96,7 @@
     <div id="toasts"></div>
     <div id="gsHint" class="gsHint">
       <b>Drag anywhere to steer</b>
-      <span>Ram traffic to build the chain &middot; grab power-ups &middot; it banks itself</span>
+      <span>They are behind you &middot; wreck traffic to push them back &middot; take a whole formation on one line</span>
     </div>
   </div>
 
@@ -111,7 +111,7 @@
     <div class="menuIn">
       <div class="eyebrow">Arcade drift · Outrun division</div>
       <h1 class="title"><span class="t1">Neon</span><span class="t2">Heat</span></h1>
-      <p class="tag">Steer. Ram everything. Bank it before the chain dies.</p>
+      <p class="tag">They never stop coming. Wreck traffic to buy road. How far do you get?</p>
       <div class="btns">
         <button class="btn primary" id="btnPlay">Start Run<span class="key">Enter</span></button>
         <button class="btn" id="btnGarage">Garage</button>

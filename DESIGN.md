@@ -8,349 +8,148 @@ wreck, climbing a ladder of city districts on a hull you spend rather than prote
 
 ## Why this concept
 
-**The genre problem first.** A top-down drift game that is only score-attack has no reason
-to exist next to the hundred already on the platform. Polish alone does not differentiate —
-it has to be a different *kind* of game. Two things make it one.
+> **Something is behind you and it never stops closing. Wrecking traffic is the only
+> thing that pushes it back. How far do you get?**
 
-The roguelite ladder is the first, and it solves a concrete design failure on the way:
-without a quota, nothing forces the player to drift, so the safe line is the boring line and
-the whole game is optional. The quota makes the risk mandatory.
+**The constraint that decides everything.** There is one input: where the car is on the
+road. No throttle, no brake, no button. That is not a limitation to work around, it is
+the design brief — and it means every system has exactly one job: *give the player a
+reason to prefer one line over another, right now.*
 
-The second is that **traffic is ammunition rather than obstacle**. Dodging is the default
-verb of every top-down driving game there is, and it is a verb of avoidance: the best
-outcome is that nothing happens. That is why the first playable version of this was
-correctly called boring — a clean lap was the optimal lap, and a clean lap has no moment in
-it. Ramming inverts the sign. The best outcome is a four-car pile-up you chose to cause, and
-the cost is a hull bar that only ever goes down. What used to be a hazard to route around is
-now the thing you aim at, and the road stops being empty.
+That test is what the first version failed, underneath every other problem it had.
+Every car on the road was worth what every other car was worth, so "hit whatever is
+nearest" was optimal and an eight-line bot capped the multiplier. When the correct play
+is that legible, you have motion, not decisions.
 
-**The art constraint second.** Hand-drawn sprites made without an illustrator are the most
-common reason a self-published web game looks cheap. So there are no image files, and no
-audio files either. Everything is generated at runtime, and the polish comes from a
-rendering pipeline and a synthesiser rather than from assets. Nothing can look or sound
-amateur because there is nothing authored to be bad.
+**What the quota model got wrong**, measured with a bot driving the real input path:
 
-**The platform third.** Driving is CrazyGames' strongest evergreen category behind .io, and
-unlike .io it needs no servers and no concurrency floor to feel alive.
+| Finding | Evidence |
+|---|---|
+| The quota never bound | 4/4 districts had their full quota met inside the first stretch, at 22–34% of the road. A bot that never targeted anything cleared district one with five wrecks. |
+| No run-level arc | Hull was refilled at seven points. District 8 started as fresh as district 1. |
+| No spatial decision | Uniform lane scatter. Every target equivalent. |
 
-## The run
+A threat you have already beaten cannot apply pressure, and the gates, overtime and
+pacing curve stacked on top of it were scaffolding around a constraint that did not
+bind. See [REVAMP.md](REVAMP.md) for the full disposition.
 
-```
-menu → ROUTE MAP ─┬─ Run   ─→ event (boon + bane) → drive → clear → level → back to map
-                  ├─ Elite ─→ harder event, double XP, a bigger quota
-                  ├─ Depot ─→ a free level, a full rebuild, or strip a curse. No driving.
-                  └─ Boss  ─→ pursuit unit at the top of the act
-        3 acts, each a fresh board. Wreck or miss a quota and the run ends.
-```
+**The art constraint second.** Hand-drawn sprites made without an illustrator are the
+most common reason a self-published web game looks cheap. So there are no image files
+and no audio files. Everything is generated at runtime, and the polish comes from a
+rendering pipeline and a synthesiser rather than from assets.
 
-**The route is the strategic layer.** A branching board per act, climbed bottom to top, with
-two or three onward nodes at every step. An Elite costs more and pays more XP; a Depot
-costs you a district of scoring but hands you a level or rebuilds the hull.
+**The platform third.** Driving is CrazyGames' strongest evergreen category behind .io,
+and unlike .io it needs no servers and no concurrency floor to feel alive.
 
-Node kinds are gated by depth, because a choice can be dead as easily as it can be
-duplicated. A Depot on the opening row offers little — there are no curses to strip and a
-free level is not worth skipping your first scoring district for — so the first two rows are
-always Run against Elite, a straight safe-or-greedy opening, and Depots only appear once
-there is a build to repair. The row before the boss drops Run entirely, making it the
-familiar rest-or-push decision. A Depot also reads its own label at draw time: with nothing
-fitted it promises a level and not a repair. If the board is not visible, none of
-those are decisions — which is exactly what the first version got wrong: it was a straight
-line with a card screen bolted on the end, and calling that a roguelite was generous.
+## The three forces
 
-**Every node states its terms on its face** — the place, what clearing it pays, the quota it
-demands and the Heat it adds. The first pass drew the board as bare dots labelled RUN and
-ELITE, which meant a fork between two Runs offered the player nothing to reason about. A
-choice you cannot evaluate is not a choice, so siblings in a row are generated as *distinct*
-kinds rather than sampled independently, and every place on the board gets its own name.
+**1. The Wall — the accelerator.** A pursuit mass at a tracked gap behind the car,
+closing at a fixed rate in world units per second *independent of the player's speed*.
+It is a clock wearing a costume: you cannot outrun it and you cannot hide from it by
+driving well. It says *go*.
 
-The board is drawn as a **transit map over a street plan**, not a flowchart. Routes run as
-street sections — up, across, up — with rounded corners, because right angles are far easier
-to trace than a field of crossing diagonals, and because a city is the right metaphor for a
-game about driving through one. Stations are pins whose *ring colour, icon and size* all
-carry the node's kind: Slay the Spire's map is widely criticised for exactly the opposite —
-small symbols with no distinction in size or colour, so players have to comb each path, and
-the community's own fix was to colour-code it. Routes are anchored to the top and bottom of
-each node block rather than to the pin, so a line never crosses the label it belongs to.
+| Constant | Value |
+|---|---|
+| Opening gap | 700u — just off the bottom edge |
+| Ceiling | 900u; pushback above it pays out as score rather than vanishing |
+| Closing rate | 48 u/s at act 1 |
+| Growth | +4 u/s per stretch cleared — **this is the entire difficulty curve** |
+| Contact | run over, no grace |
 
-**Events are chosen before you drive, not after.** Each pairs a boon with a bane, both
-stated on the card, and each changes how the district *plays* rather than only what the
-numbers say — Downpour cuts grip but pays +50% a bank, Blackout kills the city lights but
-accelerates the multiplier, Ghost Town empties the streets and raises the quota 45%.
-Risk is the currency, and what it buys is levels: a risk-1 event pays half again the XP, a
-risk-2 event double. The safe opening pays none of that bonus, so playing it safe is a real
-cost rather than a free option.
+**2. Mistakes — the brake.** Five, countable, displayed as an integer. A barrier, a
+pursuit unit, or an armoured van you should have read and gone around costs exactly
+one. **Wrecking traffic costs nothing.** The old build charged hull for the core verb,
+which is precisely why it then needed seven separate places that gave hull back; stop
+charging for the thing you are telling the player to do and the entire heal economy
+becomes unnecessary. One repair source survives — the pickup — so the run has a slope.
 
-**Each act is a different city.** Every act used to drive through the same cyan-and-magenta
-downtown, so a run that was escalating numerically looked identical the whole way up — which
-is exactly what makes a roguelite feel like one level on repeat. Each act now has its own
-ground, asphalt, barrier colours, skyline and air:
+**3. Formations — the decision.** Traffic arrives in readable finite packs: single,
+pair, line-abreast, echelon, column, wedge. Nothing spawns behind you. **A pack you
+misread is gone.**
 
-| Act | Place | Reads as |
+## The pass, and why it is the whole game
+
+Pushback escalates *within a single pass* and resets after 1.2s without contact:
+
+| Cars on one line | Pushback | Cumulative |
 |---|---|---|
-| 1 | The Grid | Cyan and magenta, tall glass towers, clean air. |
-| 2 | Sunken Docks | Amber and green rails, warm dark asphalt, long low warehouses, fog banks drifting across. |
-| 3 | The Undercity | Violet and white, near-black ground, tall blocks crowding both sides, embers falling past. |
+| 1st | 95u | 95 |
+| 2nd | 162u | 257 |
+| 3rd | 275u | 532 |
+| 4th | 467u | 999 |
 
-That got three looks out of a thirteen-district run, which is not enough: by the fourth
-district the road was the act's road repainted, and "every level looks the same" was a fair
-description rather than a complaint. A colour ramp is not a location. So the act now only
-sets the *palette family*, and the place is set by a **zone**.
+Four cars on one line is worth 999u; four cars taken separately is 380u. A 2.6× edge
+for reading the formation and committing to the line through it — and that gap *is* the
+skill ceiling.
 
-**Twelve zones, four per act.** A zone owns the floor treatment under the car, how the road
-is edged, what is built beside it, what crosses over it, how hard the road bends, what
-hangs in the air, and one rule the road plays by:
+**The inequality that makes it a game.** A formation arrives every ~6.1s (spacing is set
+by *relative* closing speed — the player does ~620 and traffic ~270, so packs converge
+at about 350 u/s, not at the speedometer reading). Holding station needs ~290u from
+each one. One car pays 95 and cannot cover it. Two pay 257 and bleed slowly. Three pay
+532 and gain ground. So the road is only survivable if you take most of each formation.
 
-| | Zone | Floor | Edge | Overhead | Rule |
-|---|---|---|---|---|---|
-| 1 | Neon Blocks | lattice | neon rail | — | — |
-| 1 | Sodium Row | slab | bollards | signage every 6 | Arcade: twice the power-ups |
-| 1 | The Skyway | nothing — a deck over a drop | bollards | service gantries | Open deck: +12% top speed |
-| 1 | Glasshouse | mirrored lattice | neon rail | — | Mirror plaza: threading pays double |
-| 2 | The Wharf | black water, drifting swells | unfenced quay | dock gantries | — |
-| 2 | The Spillway | standing water | poured concrete | ribs | Standing water: −15% grip, +30% a bank |
-| 2 | Rail Yard | live rails and sleepers | chain-link | — | Shunting yard: half again the traffic |
-| 2 | Cannery Row | blown dust | bollards | service ribs | — |
-| 3 | The Undercity | slab | neon rail | — | — |
-| 3 | Underpass 9 | concrete | poured concrete | ribs every 4 | Sealed tube: lights out, threading pays double |
-| 3 | Foundry Line | blown dust | poured concrete | gantries | Pour floor: wrecks cook off |
-| 3 | The Catacombs | nothing | bollards | — | Pylon field: the multiplier ceiling comes off |
+Both numbers were measured wrong first. At 26-segment spacing the road was dense enough
+that driving straight down the middle harvested 37 cars in a minute and the do-nothing
+bot scored as well as the reading bot — the skill the game exists to train was worth
+nothing. Fewer packs, tighter, with real empty road between them is what fixed it. And
+at 110/×1.5 pushback a four-car line was worth only 1.75× four separate cars, which was
+not enough of an edge to separate the two bots at all.
 
-The generator is still the same generator — it reads the zone for the segment it is about
-to lay down rather than a global theme, so nothing in the physics or the camera changed.
-The buildings, props and spans are baked per node at generation time exactly as the skyline
-always was, which is what makes twelve places cost about what one cost.
+## What a run is
 
-**A district is three zones, not one.** It draws three without replacement and runs you
-through them in order, so the road changes under you twice on the way to the checkpoint,
-and each stretch's rule applies only while you are in it — the lights are out in the sealed
-tube, not in the glass plaza two stretches later. The board states which three a node is
-made of, because that is half of what you are choosing between.
+A route map per act with Run, Elite, Depot and Boss nodes. A district is three stretches
+with a gate between each; **a gate is a scenery change and an escalation point, never a
+verdict.** Nothing is healed there. One run-wide bar shows all fifteen stretches across
+the three acts with act boundaries marked, so the player always knows where they are
+and how far is left.
 
-Spacing is set by what is actually on screen, not by what is generated: the camera sees
-about eight and a half segments of road ahead of the car, so an overhead span every
-twenty-two segments is one you almost never see. They sit at four to twelve.
+**Depth is the score.** "Reached the Foundry" is comparable, memorable and brag-able. A
+six-figure point total is none of those, including to the player who earned it.
 
-**The convoy** is the thing in a district worth *wanting*. A district used to have exactly
-one objective and it was a number — hit the quota, move on — with nothing in it you would go
-out of your way for. A quarter of the way in, three armoured haulers are announced and run
-in formation down one lane. They outpace ordinary traffic, so catching them is a decision to
-commit; their armour bounces a bump at cruising pace, so cracking one needs Boost, a Surge,
-or genuine speed; and they are gone if you dawdle. Every district now has a second question
-in it: *did I take the convoy?*
+**Bosses are road-blocks, not health bars.** A unit sits across the road and takes the
+same damage everything else does — cars taken on the line beside it — while the Wall
+keeps closing. The old model damaged bosses only by banking, capped at a fifth of
+integrity per cash-in, which made every fight exactly five cash-ins deep whatever you
+were driving and threw away 97% of a good chain (measured: one chain swung 103,000 at a
+12,000-point unit). One verb, one economy.
 
-The completion bonus is pegged to a quarter of the district's quota rather than to the
-multiplier. Multiplied it paid 26,000 against a 7,000 target and turned the district into a
-formality; as a fraction of what you actually need it stays a strong prize at any depth
-without ever replacing playing the district. In testing a bot cracked two haulers, took the
-third, and died with 8,788 unbanked — which is the shape the event should have.
+## The garage, and the rule that keeps it honest
 
-**The road never empties.** Two things used to thin it out. Wrecked cars stayed in the
-traffic budget as debris until you had driven past them, so a good pile-up starved the next
-one — the supply dropped exactly when you were doing well. Only live cars count now. And
-Ghost Town removed traffic *entirely*, which was a boon when the game was about dodging and
-a loss condition once traffic became the thing you score on: zero cars is zero points, so
-the contract was not hard, it was unwinnable. It now leaves a third of the traffic and pays
-triple per wreck — the same flavour, inverted into a real wager.
+> Anything permanent may change **what you can do** or **how many options you get**.
+> Only six purchases change **how strong you are**, and the Wall's closing curve is
+> authored against all six being owned.
 
-**A district is three stretches with a gate between each.** It used to be one road with one
-number at the end, and it ended the instant the number was met — which against a built-up
-garage was roughly a third of the way in, so most of the road that had been generated was
-never driven and every district was the same short sprint. The quota is split across three
-gates at 30%, 64% and 100%, placed at 34%, 68% and 100% of the road. Miss one and the
-district ends *there*, so the fail state fires earlier and more often than the single
-checkpoint did. Clear one and the road turns up: hull welded back on, another five cars in
-the traffic budget, heat up almost a full tier, and a larger share of every bank — ×1.00,
-×1.14, ×1.32 by stretch. Meeting the quota early no longer ends anything; it buys overtime,
-and overtime pays coins and XP at the line. Depth has to pay, or the extra road is just
-more road.
+That inversion is the fix. The old tree was fifteen percentage nodes, and it forced
+`powerIndex()` into existence — a function whose only job was to scale difficulty back
+up in proportion to what the player had bought. When a progression system needs an
+anti-progression system, the axis is wrong, not the existence of progression. Measured,
+the index grew 2.35× against income growth of 1.9×, so a maxed save failed districts a
+fresh save cleared. Authoring against the ceiling instead means owning less makes the
+game easier and there is nothing left to compensate for. `powerIndex()` is gone.
 
-**Districts** get longer, hungrier and hotter. Quota grows 1.32× per district (×1.45 on an
-Elite) *and* scales with a power index read from the save — total tuning levels, hardware
-owned, run level. That second term matters: a fixed curve is tuned for exactly one loadout,
-and measured against a maxed garage the quota was being met in the first fifteen to thirty
-per cent of the road, so the checkpoint — the only fail state that is not a wreck — could
-never fire and the back three-quarters of every district was scenery. The scaling is
-deliberately sub-linear: power grows faster across a full save than the index does, so every
-upgrade still makes the road easier without ever making it free. All of the growth lives in
-the index rather than in the base curve, which means a brand-new save meets exactly the
-numbers that shipped — only a player who has actually banked upgrades meets a harder road,
-and the first run, the one that decides whether there is a second, is untouched.
-
-**One axis.** There is no handbrake and no nitro button. Steering is the whole control
-surface, on keyboard and on glass alike. Three things follow. The slide is *automatic* —
-lean hard on the wheel above 420 and the tail comes round on its own, so the car still
-looks and sounds like the same car without asking you to operate it. Turn authority had to
-be retuned to sit between the old gripped and drifting rates: set at the full drifting rate
-the car became twitchy, and every correction overshot into a barrier.
-
-And the car reverses itself. Square onto a rail and the nose has nowhere to go — throttle
-only presses you harder into it and the run ends sitting still, which is a failure the
-player cannot act on. There is no pedal to add, so the car backs out on its own after a
-third of a second pinned, rotating toward the road as it goes, because reversing out still
-pointing at the wall solves nothing. It triggers only when the nose is actually *aimed* at
-the barrier, so crawling along the edge on purpose does not hand you a reverse you did not
-ask for.
-
-**The chain clock.** With no button to release, the wager moved onto a timer. Every wreck
-resets a ~3.2s clock and adds a link; let it run out and the entire pending bank pays
-automatically. The question stopped being *when do I let go* and became *can I reach one
-more car before this hits zero* — the same bet, asked several times a minute instead of
-once a district. The multiplier is the chain length, so the first car pays ×1 and every one
-after it pays more than the last, and since one more wreck is also one more bite out of the
-hull, greed and survival pull against each other continuously.
-
-Getting hit burns *clock*, not links. Docking the chain itself would drop the multiplier by
-an amount the player never sees coming; taking seconds off the timer says exactly what it
-costs. Threading a gap does the reverse — it pays thin and puts a slice of the clock back,
-which is how you carry a chain across a hole in the traffic when your hull cannot afford
-another wreck.
-
-**Hull is the resource you spend, not the health you protect.** It starts at 100, a wreck
-costs about nine, and banking welds some back on — more for a big pile-up than a lone hit,
-but never as much as it cost, so the trend is always down and the run always has a clock.
-Threading a gap instead of driving through it pays thin and costs nothing, which is what
-lets a player on a thin hull keep a chain alive rather than simply losing. Walls are
-deliberately *not* the main sink: clipping a barrier while learning should not read as the
-same class of event as choosing to hit something.
-
-**Power-ups** lie on the road and fire the instant you touch them — nothing is held,
-metered or aimed, which is the only shape that fits a one-axis game. They spawn in the same
-lanes as the traffic, so going for one is a line you have to choose rather than a button you
-press.
-
-| Pickup | Lasts | Does |
+| Tier | Bounded? | Contents |
 |---|---|---|
-| Boost | 2.4s | Raw speed, and cracks convoy armour. |
-| Repair | instant | A quarter of the hull back. |
-| Ram Plate | 7s | Wrecks cost no hull. |
-| Surge | 5s | **Stops the chain clock.** A licence to be greedy. |
-| Magnet | 8s | Traffic on the road ahead steers onto your line. |
-| Adrenaline | 5s | The world drops to 42% speed. You do not. |
-| Wrecking Ball | 11s | A flail on a chain orbits your car, clearing both adjacent lanes. Costs no hull. |
-| Arc Welder | 9s | Every wreck throws current to the nearest car, up to three hops. |
-| Singularity | 5s | Plant a gravity well up the road and drive on while it harvests. |
-| Escort Drones | 11s | Two drones hold station off your shoulders and burn cars down with tracking beams. |
-| Escort Drones | 11s | Two drones hold station off your shoulders and burn cars down with tracking beams. |
-| Bazooka | 4 shots | Auto-fires at the nearest car ahead every 0.9s. Free wrecks. |
-| Frenzy | 8s | Every wreck pays double. |
-| Phase Shift | 4s | Traffic passes through you; every pass-through pays as a thread. |
-| Overdraft | 6s | Pending gains ×3, but any hit that is not a wreck halves the pending. |
-| **Reinforced** | **the district** | +30 max hull, filled. |
-| **Overclock** | **the district** | +1.2s on every chain clock. |
-| **Payday** | **the district** | Wrecks pay the garage as well as the score. |
-| **Scavenger** | **the district** | A courier drone fetches pickups and brings them to you. |
+| **A — Power** | Six purchases, ~1.4× | Reinforced Frame ×3 (+1 mistake each), Heavy Bumper (+15u per car), Pre-Draft (open with a perk), Black Box (open each district plated) |
+| **B — Choice** | Unbounded, zero inflation | Fourth perk card, one reroll per run, ban a perk from the pool for good, choose your starting city |
+| **C — Access** | Unbounded | New tools in the draft pool, new cities by depth, coin and XP rate |
+| **D — Cosmetic** | Unbounded | Six liveries, the rendered bay |
 
-The last two run to the end of the district rather than on a timer, and they are rare on
-purpose: a permanent upgrade found on the road is a much larger event than a few seconds of
-speed, and finding two in one district should feel lucky rather than routine. The HUD reads
-"level" rather than a countdown for those, and a shot count for the Bazooka.
+**Coins pay on depth, not score.** Score is superlinear in skill — measured, a god run
+paid 156,000 against a casual 1,300, a 120× spread that no price ladder can serve at
+both ends. Depth is bounded and roughly linear, so a great run pays about 2.5× a bad
+one and "three more runs to the next unlock" is a promise the garage can keep.
 
-Three of these are new mechanics rather than new numbers, and all three needed measurement
-to get right.
+## Perks
 
-The **Wrecking Ball** began as an honest pendulum: gravity toward the car, damping, a length
-constraint. That is a spring, not a chain — it collapsed onto the roof and the measured
-length fell from 190 to about ten. Fixed to pull-only it trailed correctly and hit *nothing*,
-because behind you is exactly where every car is already wrecked. It orbits now, sweeping
-both adjacent lanes, and the last problem was that it covers better than twenty units a
-frame: a point test recorded a closest approach of 58 against a radius of 52 and landed no
-hits at all in nine seconds. Sweeping the segment it travelled fixed it — seven of ten
-wrecks now come from the ball while driving straight and aiming at nothing.
+Eight levels, roughly one per stretch cleared, three cards each. Fifteen levels over a
+five-minute run is a treadmill rather than a cadence — and measured, the old curve
+delivered levels 2, 3 and 4 inside the same second, three perk screens back to back.
 
-The **Singularity** was originally dropped where you stand, which harvested almost nothing:
-you are doing 700 a second and everything behind you is already scrap, so the well spent its
-life on empty asphalt. Planted fourteen nodes up the road it catches oncoming traffic, and
-went from one kill to five.
+Every card does one of the only three useful things: **slow the Wall, shove harder per
+car, or hold the pass open longer**. A card that multiplied a score would be talking
+about a number nobody can lose to. Nine of them are weapons that grant a verb outright.
 
-The **Escort Drones** are a beam, not a turret, and the distinction is the whole design. The
-Harpoon rack and the Bazooka are one-shot detonations on a cooldown; a beam has to *dwell*,
-so it tracks its target across the road while you drive and you can watch it working, with
-the burn mark growing as it bites. Two drones acquire independently — and a side bias alone
-was not enough to keep them apart: measured, they shared a target on every frame both were
-firing, so a car already being cut is now only chosen when there is genuinely nothing else in
-range, which took overlap from 40% of frames to 11%.
-
-The **Scavenger** is the only pickup that changes your *route* rather than your firepower.
-With it aboard you stop swerving three lanes for a Boost, because the drone fetches it and
-carries it back.
-
-**Adrenaline** slows the world and not the player — traffic, pursuit and convoy all step on
-a separate clock — because slowing the car too would take the thrill out of the thing the
-power-up exists to celebrate.
-
-The Magnet took two goes. A pure force on nearby traffic measured only 20% more convergence
-than no magnet at all, because the traffic autopilot steers toward its own lane every frame
-and simply corrected the shove away. Moving the lane they are steering *to* — and gating on
-position along the road rather than a straight-line radius, which had been reaching only the
-two nearest cars — gets them driving onto your line themselves, which both works and looks
-like driving.
-
-**Heat** rises with every bank. Each tier adds a pursuit unit and multiplies every payout,
-so the correct play is always slightly more dangerous than the comfortable one.
-
-**Perks** are the build, and there is exactly one track. Wrecks, banks and district clears
-all pay XP; fifteen levels deep, three cards offered at each, drawn from a pool of
-fifty-eight. Effects are declarative — every perk writes into one flat modifier table the
-physics and scoring read each frame — so builds stack and interact without special cases
-anywhere in the engine.
-
-**Nine of them are weapons**, and that distinction is the point. The pool was forty-nine
-cards and every one was a coefficient: the table multiplied harder, the clock ran longer,
-the hull held more. Even the cards that named a toy only *extended* a toy you still had to
-find on the road, so "singularities pull half again as hard" was a dead card on a run that
-never saw a singularity. A weapon card grants the verb outright, from the moment you take
-it. Kickoff launches the car you hit down the road as live ordnance that wrecks whatever it
-bowls into — the game taking its own "traffic is ammunition" line literally, and the first
-card that makes *where the lane goes* matter as much as which car you reach. Fuel Cell
-makes your wreckage cook off a beat after it lands, so what you leave behind is a hazard
-and the shape of the pile-up starts to matter. Tailgunner lays a burning wake, and is the
-only card in the pool that points backwards — everything else rewards what is ahead, and
-pursuit sits behind. The rest hand you the ball, the arc, the drones or a self-loading
-rocket permanently, which is also what makes the eight amplifier cards worth drawing.
-
-Measured against the same bot on the same track, a weapon roughly doubles the kill rate in
-an eight-second window. So the first one is guaranteed rather than left to chance: until
-you own a weapon, one of the three slots is reserved for one. Nine cards in fifty-eight
-means an unlucky run could go six levels without seeing one, and that run would be right to
-conclude the pool is all passive buffs — because for that player it was.
-
-This used to be two systems. Chips were drafted after a district, perks on level-up, and
-both were the same object: run-long modifiers picked from three cards, writing into the same
-table. Seventeen of the twenty-two chips were literally a perk on the same axis, and the two
-counters drifted — a run could finish holding twenty-one modifiers at level twelve, which
-made the level cap meaningless and the XP bar a lie. They are one pool now, and the reward
-for a clear is a lump of XP rather than a second card screen.
-
-**Overclocked offers** pair a stronger perk with a permanent curse: narrower streets,
-heavier traffic, a hotter start, brittle chains, a dry nitro tank, a tighter camera. At most
-one per offer, never below level 4 and never on a common, and the cost is always stated on
-the card. A hidden cost is not a choice.
-
-**Bosses** at the top of every act, damaged only by *banking* into them — the fight runs on
-the game's own verb rather than bolting on a new one. Their integrity was raised with the
-switch to wreck income, and that still was not enough: banking is uncapped, so the fight
-was exactly as long as one chain. A level-fifteen build holding twenty thousand pending put
-the whole thing through a twelve-thousand-point unit on the first cash-in, and the act boss
-died before it had finished announcing itself.
-
-**No single cash-in takes more than a fifth of a unit's integrity.** That is the whole fix,
-and it is deliberately a cap rather than a bigger health bar: a bigger bar punishes the weak
-build and does nothing to the strong one, where a cap makes the fight five cash-ins deep
-whatever you are driving — five small banks or five capped ones. The overflow is not thrown
-away, because a bank that vanishes reads as a bug: it pays out as score.
-
-**Three phases, with a break between them.** At two thirds and one third of integrity the
-unit disengages: it runs ahead out of ramming reach for four seconds, does the one thing it
-is for, and comes back with its attack fuse cut by a quarter. Banking during the break still
-lands, at 35%, so the window is for building the next chain rather than for ending the fight
-while it is out of reach. Three phases is what turns a health bar into an encounter with an
-arc — you learn the pattern, it changes, you learn it again.
-
-| Unit | Division | Mechanic | Per phase |
-|---|---|---|---|
-| WARDEN | Heavy Interdiction | Telegraphed charges; salts the road behind it with spike strips. | Charges more often, and salts the road on its way out — four strips, then seven. |
-| SIREN | Signals | Pulses every 7s, wiping any bank over 2,400. Punishes hoarding, not playing. | Pulses faster and drops the hoarding ceiling to 1,730, then 1,060. |
-| REAPER | Pursuit Special | Faster than you, and it brings two escorts. | Calls in one more escort, then two, and gains 7% top speed a phase. |
+Events (boon + bane, chosen before you drive) wager the same three axes.
 
 ## Handling
 

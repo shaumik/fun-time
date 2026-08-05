@@ -1,20 +1,43 @@
 # NEON HEAT
 
-A demolition-drift **roguelite** for web distribution. Drift to charge a multiplier, ram
-traffic to cash it in, and pay for it out of a hull bar that only ever gets thinner. Pick a
-route through a branching board of city districts, pick an event that pairs a boon with a
-bane before each one, and bank a quota under those terms. Wrecks and clears pay XP; every
-level hands you a perk from three, fifteen levels deep out of a pool of fifty-eight — nine
-of which are weapons that fire on their own rather than multiplying a number.
-Three acts — The Grid, the Sunken Docks and the Undercity — built out of twelve **zones**,
-four per act. A zone owns the ground under the car, what stands beside it, what passes over
-it and one rule the road plays by, and a district is three of them in a row with a
-checkpoint between each. Every act ends in a named pursuit unit that fights in three
-phases.
+A demolition-drift **roguelite** for web distribution, played with one axis.
 
-**Around 129 KB total. Zero asset files — no images, no audio.** Every pixel and every note is
-generated at runtime. See [DESIGN.md](DESIGN.md) for why that is the central constraint
-rather than a limitation, plus the ladder design and monetization plan.
+**Something is behind you and it never stops closing. Wrecking traffic is the only
+thing that pushes it back. How far do you get?**
+
+That is the whole objective, and it is on screen from the first second. The Wall
+closes at a fixed rate in world units per second — independent of your speed, so it
+is a clock wearing a costume rather than a race you could win with a throttle you do
+not have. Every car you wreck shoves it back. A car taken on its own is worth 95m; the
+fourth car of a single pass is worth 460m, because pushback escalates *within a pass*
+and resets when you stop hitting things.
+
+So the question every few seconds is **which line takes the most cars**, and that —
+road-reading under pressure — is the skill the game trains and the only one it asks
+for.
+
+Traffic arrives in readable finite **formations**: line-abreast, echelon, column,
+wedge. Nothing spawns behind you, and a formation you misread is gone. Holding
+station needs about 290m of pushback per formation, so one car cannot cover it, two
+bleeds slowly and three gains ground.
+
+**Mistakes are a budget of five, and wrecking costs none of them.** A barrier, a
+pursuit unit or an armoured van you should have gone around costs exactly one. There
+is one way to get one back — the Repair pickup — so a run has a slope, and the eighth
+stretch is genuinely more dangerous than the first because you arrive holding what
+you have left.
+
+Three acts — The Grid, the Sunken Docks and the Undercity — built out of twelve
+**zones**, four per act, three to a district with a scenery-and-escalation gate
+between each. Every act ends in a named pursuit unit that blocks the road while the
+Wall keeps closing.
+
+**Depth is the score.** "Reached the Foundry" is comparable and brag-able; a
+six-figure point total is not. Points still accumulate, underneath.
+
+**Around 129 KB total. Zero asset files — no images, no audio.** Every pixel and every
+note is generated at runtime. See [DESIGN.md](DESIGN.md) for the art constraint and
+[REVAMP.md](REVAMP.md) for why the quota model was replaced.
 
 ## Play
 
@@ -70,11 +93,9 @@ The slide is automatic: lean hard on the wheel above 420 and the tail comes roun
 own, held at a stable angle by a self-aligning torque rather than winding up into a spin.
 You provoke the drift, you no longer operate it.
 
-**Traffic is ammunition, not obstacle.** Every wreck adds a link to the chain, resets a
-~3.2s clock and pays at the multiplier the chain has already earned. Let the clock hit zero
-and everything banks automatically; wreck your hull first and it is gone. Threading a gap
-pays thin but puts time back on the clock, so a thin hull changes how you drive rather than
-ending you.
+**Traffic is ammunition, not obstacle.** Every wreck pushes the Wall back and opens or
+extends a pass. Threading a gap pays thin but holds the pass open, which is how you carry a
+four-car line through a formation that only had three cars in it.
 
 **The convoy.** A quarter of the way into every district, three armoured haulers are
 announced and run in formation. They outpace ordinary traffic so catching them means
@@ -92,24 +113,26 @@ or catch them with a weapon — and a takedown pays coins on the spot and vents 
 road also deals exploding tankers, armored coin couriers, and (at high heat) kamikaze bikes
 that hunt you.
 
-**Meet the quota and the district goes into overtime** — the road runs to the checkpoint at
-×1.5 XP, and a wreck in overtime limps home instead of ending the run. Clearing act 3
-offers **THE LOOP**: keep driving an endless ladder through a fourth storm-front city.
+**There is one fail state and it is the Wall.** No quota, no checkpoint verdict, no
+overtime. Clearing act 3 offers **THE LOOP**: keep driving an endless ladder through a
+fourth storm-front city.
 
 **The garage sits between runs**, and it is a bay rather than a form: a rendered deck with
-your car on it, wearing every part you have bolted on — in the garage and on the road
-alike. Coins earned by a failed run buy tuning across six tracks, permanent hardware — a
-harpoon that auto-fires, plating that detonates every fifth link, a welder that repairs you
-between chains — plus a fifteen-rank **Crew** skill tree and a six-livery paint shop that
-recolors the car and its light trail. See [DESIGN.md](DESIGN.md).
+your car on it, wearing every part you have bolted on. It is built on one rule:
+
+> Anything permanent may change **what you can do** or **how many options you get**. Only
+> six purchases change **how strong you are**, and the Wall's closing curve is authored
+> against all six being owned.
+
+That inversion is why `powerIndex()` — a function whose entire job was to scale difficulty
+back up in proportion to what the player had bought — is gone. Tier A is power (six
+purchases, capped). Tier B is choice: a fourth perk card, a reroll, a permanent perk ban,
+your starting city. Tier C is access: new tools, new places. Tier D is paint. Coins pay on
+**depth**, not score, because score was a 120× spread that no price ladder could serve.
 
 **Districts are three stretches, not one road.** Each district draws three zones and runs
-you through them in order, with a gate between each: a share of the quota you must have
-banked by the time you reach it, or the district ends there. Clearing a gate welds hull
-back on, puts more traffic on the road, raises the heat and raises what the next stretch
-pays — a third of the quota by the first gate is worth ×1.00, the last stretch ×1.32. The
-district no longer ends the instant the number is met; banking past it buys overtime, and
-overtime pays coins and XP at the line.
+you through them in order, with a gate between each. A gate is escalation and a change of
+scenery — never a verdict. Nothing is healed there: the run's downward slope is the point.
 
 **Zones are places, not palettes.** Neon Blocks, Sodium Row, The Skyway, Glasshouse, The
 Wharf, The Spillway, Rail Yard, Cannery Row, The Undercity, Underpass 9, Foundry Line and
@@ -123,18 +146,17 @@ applies while you are in that stretch, not for the whole district.
 
 **Run structure.** A route map per act with Run, Elite, Depot and Boss nodes, each node
 naming the three zones it is made of; an event chosen before every district (boon + bane,
-stated up front). Risk on the event buys XP — half again at risk 1, double at risk 2 — and
-XP is the only progression track inside a run. Quotas scale with how strong you actually
-are (garage tuning, hardware, run level), so an upgrade always makes the road easier
-without ever making it free.
+stated up front). Events now wager the three things that matter: how fast the Wall closes,
+how far each car shoves it, and how long a pass stays open. Eight perk levels, roughly one
+per stretch cleared.
 
-**Pursuit units fight in phases.** Banking is still the only weapon, but no single cash-in
-can take more than a fifth of a unit's integrity — a level-fifteen build used to hold
-twenty thousand pending and end an act boss on the first bank. Five cash-ins is the floor
-whatever you are driving, and the overflow is not thrown away, it banks as score. At two
-thirds and one third it breaks off, does the one thing it is for — the WARDEN salts the
-road behind it, the SIREN re-tunes to a lower hoarding ceiling, the REAPER calls in more
-units — and comes back on a shorter fuse. See [DESIGN.md](DESIGN.md).
+A single run-wide bar shows all fifteen stretches across the three acts, with act
+boundaries marked, so you always know where you are and how far is left.
+
+**Pursuit units are road-blocks, not health bars.** A unit sits across the road and takes
+the same damage everything else does — cars taken on the line beside it — while the Wall
+keeps closing. One verb, one economy. At two thirds and one third it breaks off, does the
+one thing it is for, and comes back on a shorter fuse. See [DESIGN.md](DESIGN.md).
 
 ## Layout
 

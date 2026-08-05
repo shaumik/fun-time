@@ -14,12 +14,17 @@ window.NHChips = (() => {
 /* the full modifier surface — anything a perk can touch lives here */
 function defaults(){
   return {
-    bankMul: 1,        // payout multiplier when you cash in
+    bankMul: 1,        // legacy scale, still read by a few cards
     wreckMul: 1,       // payout multiplier on a wreck specifically
-    /* 0.60 capped the meter at chain 15 — measured, every run including a
-       casual district 1 pegged ×9.9, so the multiplier stopped being a thing
-       you climb. At 0.40 a 15-chain reads ×7.0 and the cap needs 27 links. */
-    multRate: 0.40,    // chain links -> multiplier slope
+    /* ---- the three that matter now ----
+       The wall is the run's only clock, so everything a perk can do to help
+       is one of: slow it down, shove it further per car, or hold the pass
+       open long enough to join two formations into one line. */
+    wallSpeed: 1,      // multiplier on how fast the wall closes. Lower is better.
+    pushBonus: 0,      // extra world units of pushback per car taken
+    passWindow: 0,     // extra seconds a pass stays open
+    mistakes: 0,       // extra errors the run can absorb
+    multRate: 0.40,    // legacy: chain links -> multiplier slope
     multCap: 12,
     topMul: 1,
     gripMul: 1,
@@ -92,17 +97,23 @@ function defaults(){
    ============================================================ */
 const PERKS = [
   /* ---- the chain ---- */
-  { id:'p_clock',   name:'Long Fuse',      rarity:'common',   tag:'Chain',
-    desc:'The chain clock runs 0.5s longer.', apply(M){ M.chainTime += 0.5; } },
-  { id:'p_step',    name:'Momentum',       rarity:'uncommon', tag:'Chain',
-    desc:'Every fifth wreck in a chain counts as two.', apply(M){ M.chainStep += 1; } },
-  { id:'p_thread',  name:'Needle',         rarity:'common',   tag:'Chain',
-    desc:'Threading a gap puts another 0.4s on the clock.', apply(M){ M.nearChain += 0.4; } },
-  { id:'p_rate',    name:'Snowball',       rarity:'uncommon', tag:'Chain',
-    desc:'The multiplier climbs 25% faster.', apply(M){ M.multRate += 0.15; } },
-  { id:'p_cap',     name:'No Ceiling',     rarity:'rare',     tag:'Chain',
-    desc:'The multiplier ceiling comes off — ×22.',
-    apply(M){ M.multCap = Math.max(M.multCap, 22); } },
+  /* ---- the pass ----
+     Everything here does one of the only three useful things: hold the line
+     open longer, shove harder per car, or slow the wall. A card that
+     multiplied a score would be talking about a number nobody can lose to. */
+  { id:'p_clock',   name:'Long Fuse',      rarity:'common',   tag:'Line',
+    desc:'A pass stays open 0.45s longer.', apply(M){ M.passWindow += 0.45; } },
+  { id:'p_step',    name:'Momentum',       rarity:'uncommon', tag:'Line',
+    desc:'Every car you take shoves 30m further.', apply(M){ M.pushBonus += 30; } },
+  { id:'p_thread',  name:'Needle',         rarity:'common',   tag:'Line',
+    desc:'Threading a gap holds the pass open another 0.4s.',
+    apply(M){ M.nearChain += 0.4; } },
+  { id:'p_rate',    name:'Snowball',       rarity:'uncommon', tag:'Line',
+    desc:'A pass stays open 0.8s longer — two formations become one line.',
+    apply(M){ M.passWindow += 0.8; } },
+  { id:'p_cap',     name:'Roadblock',      rarity:'rare',     tag:'Line',
+    desc:'They close 18% slower for the rest of the run.',
+    apply(M){ M.wallSpeed *= 0.82; } },
 
   /* ---- weapons: cards that hand you a verb, not a coefficient ----
      Everything else in this pool multiplies something the engine already
@@ -172,8 +183,8 @@ const PERKS = [
     desc:'Each thread adds 1.5% top speed for the district.',
     apply(M){ M.nearTop += 0.015; } },
   { id:'p_coil',    name:'Coil Pack',      rarity:'rare',     tag:'Engine',
-    desc:'Top speed +20%, but the chain clock is 0.4s shorter.',
-    apply(M){ M.topMul += 0.20; M.chainTime -= 0.40; } },
+    desc:'Top speed +20%, but a pass closes 0.35s sooner.',
+    apply(M){ M.topMul += 0.20; M.passWindow -= 0.35; } },
 
   { id:'p_well2',   name:'Collapse',       rarity:'rare',     tag:'Well',
     desc:'Singularities pull twice as hard and last 60% longer.',
@@ -199,23 +210,28 @@ const PERKS = [
     desc:'Boost pickups burn 70% longer.', apply(M){ M.boostTime += 0.7; } },
 
   /* ---- hull ---- */
-  { id:'p_h1',      name:'Spot Weld',      rarity:'common',   tag:'Hull',
-    desc:'Hull +25%.', apply(M){ M.hullMax += 0.25; } },
-  { id:'p_h2',      name:'Bull Bar',       rarity:'common',   tag:'Hull',
-    desc:'Wrecks cost 30% less hull.', apply(M){ M.hullCost *= 0.70; } },
-  { id:'p_h3',      name:'Field Kit',      rarity:'uncommon', tag:'Hull',
-    desc:'Every bank welds back an extra 10 hull.', apply(M){ M.bankHeal += 10; } },
-  { id:'p_h4',      name:'Ablative',       rarity:'rare',     tag:'Hull',
-    desc:'Hull +50%, and wrecks cost 40% less.',
-    apply(M){ M.hullMax += 0.5; M.hullCost *= 0.6; } },
-  { id:'p_h5',      name:'Crumple Zone',   rarity:'uncommon', tag:'Hull',
-    desc:'Survive one totalled hull per district.', apply(M){ M.crumple += 1; } },
+  /* ---- mistakes ----
+     A small countable budget, so a card that adds one is a large card. There
+     are deliberately few of these: the run's downward slope is what makes
+     the eighth stretch different from the first. */
+  { id:'p_h1',      name:'Spot Weld',      rarity:'common',   tag:'Panel',
+    desc:'One more mistake before the run ends.', apply(M){ M.mistakes += 1; } },
+  { id:'p_h2',      name:'Bull Bar',       rarity:'common',   tag:'Panel',
+    desc:'Barriers no longer cost you a mistake — they only cost the line.',
+    apply(M){ M.wallMul = 0; } },
+  { id:'p_h3',      name:'Field Kit',      rarity:'uncommon', tag:'Panel',
+    desc:'Repair pickups are twice as common.', apply(M){ M.pickupRate += 0.4; M.repairBias = 1; } },
+  { id:'p_h4',      name:'Ablative',       rarity:'rare',     tag:'Panel',
+    desc:'Two more mistakes.', apply(M){ M.mistakes += 2; } },
+  { id:'p_h5',      name:'Crumple Zone',   rarity:'uncommon', tag:'Panel',
+    desc:'Survive one run-ending mistake per district.', apply(M){ M.crumple += 1; } },
 
   /* ---- pay ---- */
   { id:'p_pay1',    name:'Fence',          rarity:'common',   tag:'Pay',
-    desc:'Every wreck banks 25% more.', apply(M){ M.wreckMul += 0.25; } },
+    desc:'Every car you take shoves 15m further.', apply(M){ M.pushBonus += 15; } },
   { id:'p_pay2',    name:'Blood Money',    rarity:'rare',     tag:'Pay',
-    desc:'Everything you bank pays 45% more.', apply(M){ M.scoreMul += 0.45; } },
+    desc:'Score up 45%, and every car shoves 20m further.',
+    apply(M){ M.scoreMul += 0.45; M.pushBonus += 20; } },
   { id:'p_pay3',    name:'Chop Shop',      rarity:'uncommon', tag:'Pay',
     desc:'Every wreck is worth 14 coins in the garage.',
     apply(M){ M.coinPerWreck += 14; } },
@@ -253,19 +269,19 @@ const PERKS = [
 
   /* ---- the greedy ones ---- */
   { id:'p_g1',      name:'Glass Cannon',   rarity:'rare',     tag:'Risk',
-    desc:'Wrecks pay double. Hull cut by a third.',
-    apply(M){ M.wreckMul += 1; M.hullMax *= 0.66; } },
+    desc:'Every car shoves 70m further. You start on two fewer mistakes.',
+    apply(M){ M.pushBonus += 70; M.mistakes -= 2; } },
   { id:'p_g2',      name:'Featherweight',  rarity:'uncommon', tag:'Risk',
-    desc:'Top speed +14%, but every wreck costs half again as much hull.',
-    apply(M){ M.topMul += 0.14; M.hullCost *= 1.5; } },
+    desc:'Top speed +14%, but one fewer mistake.',
+    apply(M){ M.topMul += 0.14; M.mistakes -= 1; } },
   { id:'p_g3',      name:'Redline',        rarity:'rare',     tag:'Risk',
-    desc:'The chain clock is 0.6s shorter, and every wreck pays 70% more.',
-    apply(M){ M.chainTime -= 0.6; M.wreckMul += 0.7; } },
+    desc:'A pass closes 0.5s sooner, but every car shoves 55m further.',
+    apply(M){ M.passWindow -= 0.5; M.pushBonus += 55; } },
   { id:'p_g4',      name:'Tunnel Vision',  rarity:'uncommon', tag:'Risk',
     desc:'The camera sits tighter, and scoring is up 25%.',
     apply(M){ M.zoomMul *= 0.88; M.scoreMul += 0.25; } },
-  { id:'p_g5',      name:'Last Stand',     rarity:'rare',     tag:'Hull',
-    desc:'Below a third hull, everything pays double.',
+  { id:'p_g5',      name:'Last Stand',     rarity:'rare',     tag:'Panel',
+    desc:'On your last mistake, they close 30% slower.',
     apply(M){ M.lastStand = 1; } },
   { id:'p_g6',      name:'Salvage Rights', rarity:'common',   tag:'Pay',
     desc:'Clearing a district repairs the hull completely.',
@@ -346,24 +362,24 @@ const CONTRACTS = [
     apply(M, L){} },
 
   { id:'demolition', name:'Demolition Derby', risk:2,
-    bane:'Hull cut to 60%.',
-    boon:'Wrecks pay double and cost no hull at all.',
-    apply(M, L){ M.hullMax *= 0.60; M.hullCost = 0; L.wreckPay = 2; } },
+    bane:'Two fewer mistakes.',
+    boon:'Every car shoves 60m further.',
+    apply(M, L){ M.mistakes -= 2; M.pushBonus += 60; L.wreckPay = 2; } },
 
   { id:'featherweight', name:'Featherweight', risk:2,
-    bane:'Every wreck costs triple hull.',
-    boon:'Threading a gap pays four times over.',
-    apply(M, L){ M.hullCost *= 3; M.nearMul += 3; } },
+    bane:'One fewer mistake.',
+    boon:'Threading pays four times over and holds the line much longer.',
+    apply(M, L){ M.mistakes -= 1; M.nearMul += 3; M.nearChain += 0.6; } },
 
   { id:'armoured', name:'Armoured Up', risk:1,
     bane:'Top speed down 15%.',
-    boon:'Hull doubled.',
-    apply(M, L){ M.topMul -= 0.15; M.hullMax *= 2; } },
+    boon:'Three more mistakes.',
+    apply(M, L){ M.topMul -= 0.15; M.mistakes += 3; } },
 
   { id:'downpour', name:'Downpour', risk:1,
     bane:'Wet asphalt — grip down 30%.',
-    boon:'Every bank pays +50%.',
-    apply(M, L){ M.gripMul *= 0.70; M.bankMul += 0.5; L.wet = 1; } },
+    boon:'Every car shoves 45m further.',
+    apply(M, L){ M.gripMul *= 0.70; M.pushBonus += 45; L.wet = 1; } },
 
   { id:'rush', name:'Rush Hour', risk:1,
     bane:'Twice the traffic.',
@@ -372,18 +388,18 @@ const CONTRACTS = [
 
   { id:'blackout', name:'Blackout', risk:1,
     bane:'City power is out. You drive on headlights.',
-    boon:'The multiplier climbs 60% faster.',
-    apply(M, L){ M.multRate += 0.25; L.blackout = 1; } },
+    boon:'A pass stays open 0.7s longer.',
+    apply(M, L){ M.passWindow += 0.7; L.blackout = 1; } },
 
   { id:'dragnet', name:'Dragnet', risk:2,
     bane:'Pursuit is already on you at Heat 2.',
-    boon:'Heat pays double.',
-    apply(M, L){ M.policeStart += 2; M.heatBonus += 1.0; } },
+    boon:'Every car shoves 50m further.',
+    apply(M, L){ M.policeStart += 2; M.pushBonus += 50; } },
 
   { id:'roadworks', name:'Roadworks', risk:2,
     bane:'The road is littered with spike strips.',
-    boon:'Quota cut by 35%.',
-    apply(M, L){ L.hazards = 1; L.quotaMul *= 0.65; } },
+    boon:'They close 25% slower.',
+    apply(M, L){ L.hazards = 1; M.wallSpeed *= 0.75; } },
 
   /* This used to empty the streets entirely, which was a boon back when the
      game was about dodging. Once traffic became the *scoring* verb, zero
@@ -396,9 +412,9 @@ const CONTRACTS = [
     apply(M, L){ M.trafficMul *= 0.34; L.wreckPay *= 3; } },
 
   { id:'overpressure', name:'Overpressure', risk:2,
-    bane:'Grip down 20% and the chain clock is half a second shorter.',
+    bane:'Grip down 20% and a pass closes 0.4s sooner.',
     boon:'Top speed up 30%.',
-    apply(M, L){ M.gripMul *= 0.80; M.chainTime -= 0.5; M.topMul += 0.30; } },
+    apply(M, L){ M.gripMul *= 0.80; M.passWindow -= 0.4; M.topMul += 0.30; } },
 
   { id:'scrapyard', name:'Scrapyard', risk:2,
     bane:'Touching a barrier ends your chain outright.',
@@ -407,8 +423,8 @@ const CONTRACTS = [
 
   { id:'narrows', name:'The Narrows', risk:2,
     bane:'Streets 25% tighter.',
-    boon:'The multiplier ceiling comes off — \u00d725.',
-    apply(M, L){ M.roadMul *= 0.75; M.multCap = Math.max(M.multCap, 25); } }
+    boon:'Every car shoves 90m further.',
+    apply(M, L){ M.roadMul *= 0.75; M.pushBonus += 90; } }
 ];
 
 /* Offer a safe option alongside real wagers, weighted by how deep the run

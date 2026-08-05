@@ -98,43 +98,62 @@ const Hangar = {
 };
 
 /* ============================================================
-   CREW — the permanent skill tree
-   Hardware changes a verb; the crew shifts the odds. Three doctrines,
-   fifteen nodes over twenty ranks, ~160k coins to finish — the long-term
-   sink the six hardware items alone could not carry, and every rank is
-   felt in-run.
+   THE GARAGE — four tiers, and only one of them touches power
+
+   The rule: anything permanent may change *what you can do* or *how many
+   options you get*. Only the six POWER nodes change *how strong you are*,
+   and the wall's closing curve is authored against all six being owned.
+
+   That inversion is the whole fix. The old tree was fifteen percentage
+   nodes, and it forced powerIndex() into existence — a function whose only
+   job was to scale the difficulty back up in proportion to what the player
+   had bought. Measured, it grew 2.35x against income growth of 1.9x, so a
+   maxed save failed districts a fresh save cleared. Authoring against the
+   ceiling instead means owning less makes the game easier and there is
+   nothing left to compensate for.
+
+   tier:'power'  bounded, six purchases, ~1.4x total
+   tier:'choice' unbounded, costs the balance nothing
+   tier:'access' the retention engine — new places, new tools, new cars
    ============================================================ */
 const TREE = [
-  { id:'t_prow',   br:'offense', name:'Sharpened Prow',  ranks:3, cost:[1800, 4000, 9000],
-    desc:'Wrecks pay +6% per rank.' },
-  { id:'t_first',  br:'offense', name:'First Blood',     ranks:1, cost:[6000],
-    desc:'The first wreck of every district counts as three links.' },
-  { id:'t_salvo',  br:'offense', name:'Opening Salvo',   ranks:1, cost:[12000],
+  /* ---- TIER A: power. Six purchases, and that is the entire list. ---- */
+  { id:'frame',    br:'power',  name:'Reinforced Frame', ranks:3, cost:[1800, 4200, 9000],
+    desc:'One more mistake per rank.' },
+  { id:'t_bumper', br:'power',  name:'Heavy Bumper',    ranks:1, cost:[7000],
+    desc:'Every car you take shoves them 15m further.' },
+  { id:'t_head',   br:'power',  name:'Pre-Draft',       ranks:1, cost:[14000],
+    desc:'Start every run with a perk already taken.' },
+  { id:'t_black',  br:'power',  name:'Black Box',       ranks:1, cost:[20000],
+    desc:'Start every district with a Ram Plate fitted.' },
+
+  /* ---- TIER B: choice. More agency is not more power, so this tier is
+     unbounded and costs the difficulty curve nothing. ---- */
+  { id:'t_wide',   br:'choice', name:'Wide Net',        ranks:1, cost:[6000],
+    desc:'Four perk cards on every offer instead of three.' },
+  { id:'t_reroll', br:'choice', name:'Second Opinion',  ranks:1, cost:[9000],
+    desc:'One perk reroll per run.' },
+  { id:'t_ban',    br:'choice', name:'Blacklist',       ranks:1, cost:[12000],
+    desc:'Drop one perk out of the pool for good.' },
+  { id:'t_start',  br:'choice', name:'Local Knowledge', ranks:1, cost:[15000],
+    desc:'Choose which city a run opens in.' },
+
+  /* ---- TIER C: access. New verbs and new places, never bigger numbers.
+     This is the tier that can keep shipping forever. ---- */
+  { id:'t_salvo',  br:'access', name:'Opening Salvo',   ranks:1, cost:[10000],
     desc:'Start every district with two rockets loaded.' },
-  { id:'t_chain',  br:'offense', name:'Chain Reaction',  ranks:1, cost:[15000],
+  { id:'t_chain',  br:'access', name:'Chain Reaction',  ranks:1, cost:[13000],
     desc:'Explosions reach 30% further.' },
-  { id:'t_exec',   br:'offense', name:'Executioner',     ranks:1, cost:[22000],
-    desc:'Banks hit bosses 25% harder; haulers lose one armour.' },
-  { id:'t_armor',  br:'defense', name:'Scrap Armor',     ranks:3, cost:[1500, 3500, 8000],
-    desc:'+8 max hull per rank.' },
-  { id:'t_hands',  br:'defense', name:'Gentle Hands',    ranks:1, cost:[5000],
-    desc:'Walls cost 40% less hull.' },
-  { id:'t_cool',   br:'defense', name:'Cool Head',       ranks:1, cost:[10000],
-    desc:'Below 30% hull, heat drains 40% faster.' },
-  { id:'t_wind',   br:'defense', name:'Second Wind',     ranks:1, cost:[7500],
-    desc:'Banking welds on 2 extra hull.' },
-  { id:'t_cage',   br:'defense', name:'Safety Cage',     ranks:1, cost:[18000],
-    desc:'Survive one fatal crash per run.' },
-  { id:'t_change', br:'greed',   name:'Loose Change',    ranks:3, cost:[1200, 3000, 7000],
+  { id:'t_first',  br:'access', name:'First Blood',     ranks:1, cost:[5000],
+    desc:'The first car of every district opens the pass at two.' },
+  { id:'t_cage',   br:'access', name:'Safety Cage',     ranks:1, cost:[18000],
+    desc:'Survive one run-ending mistake per run. Not the wall.' },
+  { id:'t_change', br:'access', name:'Loose Change',    ranks:3, cost:[1200, 3000, 7000],
     desc:'+8% coins per rank.' },
-  { id:'t_know',   br:'greed',   name:'Street Knowledge',ranks:1, cost:[8000],
-    desc:'+15% XP from everything.' },
-  { id:'t_int',    br:'greed',   name:'Compound Interest',ranks:1, cost:[9000],
+  { id:'t_int',    br:'access', name:'Compound Interest',ranks:1, cost:[9000],
     desc:'The daily drop pays half again.' },
-  { id:'t_roller', br:'greed',   name:'High Roller',     ranks:1, cost:[20000],
-    desc:'Heat pays +45% per tier instead of +35%.' },
-  { id:'t_head',   br:'greed',   name:'Head Start',      ranks:1, cost:[25000],
-    desc:'Every run starts at level 2 — perk in hand.' }
+  { id:'t_know',   br:'access', name:'Street Knowledge',ranks:1, cost:[8000],
+    desc:'+15% XP from everything.' }
 ];
 const Tree = {
   rank: id => (Save.data.tree || {})[id] || 0,
@@ -150,13 +169,13 @@ const Tree = {
     Save.flush();
     return true;
   },
-  /* run-modifier ranks fold into the table exactly like hardware does */
+  /* run-modifier ranks fold into the table exactly like hardware does.
+     Note what is NOT here any more: no score multipliers, no hull
+     percentages, no heat payout scaling. The only survivability node is the
+     frame, and mistakeBudget() reads it directly. */
   apply(M){
-    M.wreckMul += 0.06 * Tree.rank('t_prow');
+    if (Tree.has('t_bumper')) M.pushBonus = (M.pushBonus || 0) + 15;
     if (Tree.has('t_chain') && M.cookR) M.cookR *= 1.3;
-    if (Tree.has('t_exec')) M.convoyArmour = (M.convoyArmour || 0) + 1;
-    if (Tree.has('t_wind')) M.bankHeal = (M.bankHeal || 0) + 2;
-    M.wallMul = Tree.has('t_hands') ? 0.6 : 1;
   }
 };
 
@@ -875,7 +894,7 @@ function activeSpec(){
     boostMul: 1 + u.nitro * 0.24,
     wreckMul: 1 + u.impact * 0.10,
     crashV:   430,
-    hull:     u.armor * 16 + Tree.rank('t_armor') * 8,
+    hull:     0,
     payout:   (1 + u.payout * 0.14) * (1 + Tree.rank('t_change') * 0.08)
   });
 }
@@ -1803,6 +1822,18 @@ const G = {
   ball:null, wells:[], arcs:[], ballHits:0, drones:[], scav:null, lastingScav:0,
   convoy:[], convoyState:'pending', convoyLeft:0,
   stuckT:0, reverseT:0, policeCool:0, playSinceAd:9999, trail:[],
+  /* ---- THE WALL ----
+     The run's only clock. A pursuit mass at a tracked gap behind the car,
+     closing at a fixed rate in world units per second regardless of how fast
+     the player is going — it is a clock, not a race, so you cannot outrun it
+     and you cannot hide from it by driving well. The only thing that pushes
+     it back is wrecking traffic, which is what forces the verb the old quota
+     was supposed to force and never did. */
+  wallGap: 700, wallHit: 0, wallIdx: 0,
+  /* cars taken in the current pass, and the window that keeps it open */
+  pass: 0, passT: 0,
+  /* where the next formation goes down */
+  packIdx: 0,
   /* weapon fire counters. Five increments in hot paths, and the only way a
      test can assert that a weapon perk did something rather than that the
      modifier table changed — the difference the whole pool turns on. */
@@ -1905,28 +1936,26 @@ const bossFor = act => BOSSES[bossOrder[(act - 1) % bossOrder.length]];
    So the quota also remembers what the last district actually paid. It never
    goes below the curve, so nobody's first district gets harder, and it does
    not chase within a district — only between them, off a completed result. */
+/* The quota is gone. It was the advertised fail state and it never fired
+   once — measured, four of four districts had their full quota met inside
+   the first stretch, one of them by a bot that never targeted anything. A
+   threat you have already beaten cannot apply pressure, and the gates,
+   overtime and pacing curve built on top of it were all scaffolding around
+   a constraint that did not bind. The wall does that job now.
+
+   Kept as a nominal figure only so the brief and the board have something to
+   print for "what this stretch paid". */
 function districtQuota(n, elite){
-  const curve = Math.round(7000 * Math.pow(1.32, n - 1) * (elite ? 1.45 : 1) * powerIndex());
-  const paced = (G.run && G.run.lastBanked) ? Math.round(G.run.lastBanked * 0.62 * (elite ? 1.45 : 1)) : 0;
-  return Math.max(curve, paced);
+  return Math.round(2200 * Math.pow(1.18, n - 1) * (elite ? 1.35 : 1));
 }
 
-function powerIndex(){
-  const up = Save.data.up || {};
-  let lv = 0; for (const k in up) lv += up[k] || 0;          // 0..30
-  const gear = (Save.data.gear || []).length;                // 0..6
-  const lvl = G.run ? Math.max(0, G.run.level - 1) : 0;      // 0..14
-  /* The first run is the one that decides whether there is a second, and a
-     player on it is learning that traffic is ammunition rather than
-     optimising a build. Three runs of grace, then the full number. */
-  const green = Math.min(1, 0.62 + (Save.data.runs || 0) * 0.065);
-  /* Measured head-to-head: at 0.055/0.14 a full garage raised the quota
-     ~2.35x while actually raising income ~1.9x, so buying upgrades made the
-     game *harder* — the maxed save failed districts the fresh save cleared.
-     Halved, the index tops out ~1.7x and the sub-linear promise holds. */
-  let tree = 0; const tr = Save.data.tree || {}; for (const k in tr) tree += tr[k] || 0;
-  return green * (1 + lv * 0.030 + gear * 0.08 + tree * 0.022 + lvl * 0.155);
-}
+/* powerIndex() is deliberately gone. Its entire job was to scale the quota
+   up in proportion to what the player had bought — an anti-progression
+   system, which is the tell that the progression axis was wrong. Measured,
+   it grew 2.35x against income growth of 1.9x, so a maxed save failed
+   districts a fresh save cleared. The wall's closing curve is authored
+   against the maxed loadout instead, so owning less makes the game easier
+   and there is nothing left to compensate for. */
 
 /* ---------------- the shape of a district ----------------
    A district used to be one road with one number at the end of it, and it
@@ -1940,8 +1969,12 @@ function powerIndex(){
    the fail state fires earlier and more often than the old single
    checkpoint did; clearing one pays and turns the pressure up. */
 const STAGE_AT   = [0.34, 0.68, 1.00];   // fraction of the road at each gate
-const STAGE_CUT  = [0.30, 0.64, 1.00];   // fraction of the quota owed at each
-const STAGE_PAY  = [1.00, 1.14, 1.32];   // what banking in each stretch is worth
+/* Kept only as the shape of a district — three stretches, three zones. The
+   cut and pay columns are vestigial: a stretch no longer owes a number and
+   banking no longer exists, so they are 0 and 1 everywhere. The gates are
+   scenery changes and escalation points now, not verdicts. */
+const STAGE_CUT  = [0, 0, 0];
+const STAGE_PAY  = [1, 1, 1];
 const STAGE_TAG  = ['Approach', 'Deep', 'Run-out'];
 
 function districtCfg(n, type, act){
@@ -1965,23 +1998,11 @@ function districtCfg(n, type, act){
        that used to be a two-chain fight now needs the headroom to last. */
     /* scales with the act, not with which unit the draw happened to send —
        a run must not get easier because it drew a different pursuit car */
-    bossHp: Math.round(12000 * Math.pow(1.55, Math.max(0, act - 1))),
+    /* sized in pushback rather than points: ~14 cars taken beside it at act
+       1, and it scales with the act rather than with the unit drawn */
+    bossHp: Math.round(2600 * Math.pow(1.5, Math.max(0, act - 1))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
-  cfg.stages = boss
-    ? [{ zone:zones[0], end:cfg.len, cut:0, pay:1, tag:'Pursuit' }]
-    : STAGE_AT.map((f, i) => ({
-        zone: zones[i % zones.length],
-        end: Math.round(cfg.len * f),
-        cut: STAGE_CUT[i],
-        pay: STAGE_PAY[i],
-        tag: STAGE_TAG[i]
-      }));
-  return cfg;
-  /* Three gates per district rather than one verdict at the end. Each stretch
-     has its own zone, its own cut of the quota and its own pay multiplier, so
-     the district asks its question three times and clearing one turns the
-     road up. A boss district is a single pursuit stretch. */
   cfg.stages = boss
     ? [{ zone:zones[0], end:cfg.len, cut:0, pay:1, tag:'Pursuit' }]
     : STAGE_AT.map((f, i) => ({
@@ -2187,7 +2208,7 @@ function newWorld(ai){
   G.car.x = st.x; G.car.y = st.y; G.car.a = st.a;
   G.car.vx = Math.cos(st.a) * 300; G.car.vy = Math.sin(st.a) * 300;
   G.car.idx = 6; G.car.boostT = 0;
-  G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0; G.shockAt = 5;
+  G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1; G.shockAt = 5;
   G.heat = 0; G.tier = 0; G.topMult = G.topMult || 1;
   G.slow = 1;  G.shake = 0; G.shakePrev = 0; G.dist = 0;
   G.ghost = 0; G.pulseWarn = 0;
@@ -2217,19 +2238,35 @@ function newWorld(ai){
                                       target:null, dwell:0, ang:0 }));
   }
   const wasMax = G.hpMax;
-  G.hpMax = Math.round(100 * (G.run ? G.run.M.hullMax : 1) + (G.spec.hull || 0)
-                       + (G.run ? G.run.hullBonus : 0));
-  /* Hull used to refill at every district line, which meant a run could only
-     ever end inside one district — no attrition, and the depot's repair and
-     the welder bought you nothing. It carries over now; clearing welds 70%
-     back on, and the depot is a full rebuild. */
+  G.hpMax = mistakeBudget();
+  /* Mistakes carry across the whole run and there is exactly one way to get
+     any back — the Repair pickup. That is what gives a run a slope: district
+     eight is genuinely more dangerous than district one because you arrive
+     at it holding what you have left, not topped up. */
   G.hp = (G.run && G.run.cleared > 0 && !ai)
     ? clamp(G.hp + (G.hpMax - wasMax), 1, G.hpMax)
     : G.hpMax;
   G.ai = !!ai;
+  /* the wall starts where it can be seen arriving, not on top of the car */
+  G.wallGap = WALL_GAP_START;
+  G.pass = 0; G.passT = 0; G.wallHit = 0;
+  G.packIdx = G.car.idx + 40;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   cam.sx = 0; cam.sy = 0;              // the shake damps out, so clear it by hand
-  for (let i = 0; i < 18; i++) addTraffic(14 + i * 11);
+  /* open with two formations already on the road so the first read happens
+     before the wall has moved at all */
+  spawnPack(G.car.idx + 40);
+  spawnPack(G.car.idx + 40 + PACK_SPACING);
+  G.packIdx = G.car.idx + 40 + PACK_SPACING * 2;
+}
+
+/* Five mistakes, plus whatever the garage's capped power tier has bought.
+   This is the only permanent number that touches survivability, and the
+   wall's closing curve is authored against it being maxed. */
+function mistakeBudget(){
+  const M = G.run && G.run.M;
+  return Math.max(1, Math.round(5 + Tree.rank('frame') + ((M && M.mistakes) || 0)
+                                + (G.run ? G.run.hullBonus : 0)));
 }
 /* Zoom is bounded by width as well as height, otherwise a portrait phone
    frames less than half the street and you cannot see what you are aiming at. */
@@ -2346,14 +2383,18 @@ function pickW(list){
   return list[0];
 }
 
-function addTraffic(ahead){
-  const idx = G.car.idx + ahead;
+function addTraffic(ahead, laneFrac){
+  const idx = Math.max(0, Math.round(G.car.idx + ahead));
   G.track.ensure(idx + 10);
   const p = G.track.pts[idx];
-  /* Three lanes rather than a uniform scatter. A scatter is a fog you steer
+  /* Lanes rather than a uniform scatter. A scatter is a fog you steer
      through; lanes give the player a readable target to aim at and a readable
-     gap to thread, which are the only two things you can do with a car. */
-  const lat = (LANES[rint(0, LANES.length)] + rnd(-0.07, 0.07)) * roadHalf(p);
+     gap to thread, which are the only two things you can do with a car.
+     The jitter is deliberately small — a formation has to hold its shape long
+     enough to be read from a car length back, or the pass multiplier is
+     rewarding luck instead of sight. */
+  const slot = laneFrac != null ? laneFrac : LANES[rint(0, LANES.length)];
+  const lat = (slot + rnd(-0.04, 0.04)) * roadHalf(p);
   const shape = pickW(CIV_SHAPES);
   const paint = shape.taxi ? TAXI_PAINT : CIV_PAINT[rint(0, CIV_PAINT.length)];
   const spec = Object.assign({}, shape, {
@@ -2427,7 +2468,17 @@ function addBoss(){
    banks, a monster build in five capped ones — so the encounter has a
    shape instead of a number that either clears it or does not. The
    overflow is not thrown away; it pays out as score. */
-const BOSS_BITE = 0.20;
+/* ---- the boss is a road-block, not a health bar ----
+   It used to be damaged only by banking, capped at a fifth of its integrity
+   per cash-in — which made the fight exactly five cash-ins deep whatever you
+   were driving, and threw away 97% of a good chain. Measured, one chain
+   swung 103,000 at a 12,000-point unit.
+
+   It takes damage from the same verb as everything else now: cars taken on
+   the line beside it. The unit sits across the road and the wall keeps
+   closing, so the fight is "wreck through this before they reach you"
+   rather than a second economy bolted onto the first. */
+const BOSS_BITE = 1;
 const BOSS_PHASES = 3;
 
 function bossDamage(amount){
@@ -2438,9 +2489,9 @@ function bossDamage(amount){
      alone it would be a dead node on exactly the builds it is sold to — any
      build big enough to reach the cap already does. It buys a fight four
      cash-ins deep instead of five. */
-  const exec = Tree.has('t_exec') ? 1.25 : 1;
+  const exec = 1;
   const swung = amount * exec;
-  const cap = Math.round(b.maxHp * BOSS_BITE * exec);
+  const cap = b.maxHp;                       // no cap: the verb is the verb
   /* Between phases it breaks off and runs. Banking still hurts it then,
      but far less — the window is for building the next chain, not for
      ending the fight while it is out of reach. */
@@ -2557,8 +2608,8 @@ function stepBoss(dt){
            what little means. */
         const ceiling = Math.max(2400, Math.round(b.maxHp * 0.2))
                       * (1 - b.phase * 0.28);
-        if (G.pending > ceiling) {
-          G.pending = 0; G.chain = 0; G.mult = 1;
+        if (G.pass >= 3) {
+          G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
           toast('Bank wiped', 'red');
           NHAudio.curse();
         } else {
@@ -2597,7 +2648,7 @@ function stepBoss(dt){
       b.vx += nx * 90; b.vy += ny * 90;
       G.shake = Math.max(G.shake, 22);
       car.hitFlash = 1; car.inv = 0.5;
-      burnChain(1.2);
+      G.passT = Math.max(0, G.passT - 1.2);
       /* the first boss is where casual runs were ending — soften the rams
          while the save is still learning the fight */
       damage(Math.round((b.charge > 0 ? 26 : 18)
@@ -2643,7 +2694,7 @@ function stepHazards(dt){
     if (G.state !== 'play' || G.ai || car.inv > 0) continue;
     if (hyp(h.x - car.x, h.y - car.y) < 46) {
       h.hit = 1;
-      G.chain = 0; G.pending = Math.floor(G.pending * 0.5);
+      G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
       car.vx *= 0.72; car.vy *= 0.72;
       G.shake = Math.max(G.shake, 16);
       car.hitFlash = 1;
@@ -2720,6 +2771,186 @@ function hitstop(secs, shake){
    all of which happen where the hit happened rather than over the entire
    screen. Nothing replaced it, and nothing should. */
 
+/* ============================================================
+   THE WALL
+   One force, one clock, one death. It closes at a fixed rate in world units
+   per second — independent of the player's speed, so this is a timer wearing
+   a costume rather than a race the player could win with the throttle they
+   do not have.
+
+   The old build's fail state was a quota, and measured it never fired once:
+   a bot that never targeted anything cleared district one's entire quota
+   with five wrecks, inside the first third of the road. A number you have
+   already beaten cannot apply pressure. A thing behind you that is visibly
+   closing does, continuously, and it does it without a HUD readout.
+   ============================================================ */
+const WALL_GAP_START = 700;    // just off the bottom edge at spawn
+const WALL_GAP_MAX   = 900;    // pushback above this banks as distance, not lost
+/* Tuned against measured pushback rates rather than by eye. A formation
+   arrives every ~6.1s; the reading bot converts a mean 2.18 cars from each,
+   which is ~42 u/s of pushback, and the nearest-car bot manages ~24. At 48
+   the reading bot was still losing ground and died inside one district — the
+   ladder existed but nobody could climb it. At 34 a competent read gains,
+   a lazy one bleeds out over about a minute, and doing nothing kills you in
+   twenty seconds. */
+const WALL_CLOSE     = 34;     // u/s at act 1 — ~20s to death with no wrecks
+/* The whole difficulty curve, and the one number no permanent upgrade may
+   touch. +2 a stretch overtakes a 42 u/s player around the fourth district,
+   which is where a good run should start feeling the squeeze. */
+const WALL_CLOSE_STEP = 2;
+const WALL_DANGER    = 350;    // below this the wall is on screen and audible
+
+/* ---- the pass, not the wreck, is the unit of reward ----
+   Pushback escalates within a single pass and resets when you stop hitting
+   things, so three cars taken on one line are worth 495u where three cars
+   taken on three lines are worth 330u. That gap is the entire skill of the
+   game: reading a formation and committing to the line through it. */
+/* Measured at base 110 / step 1.5, a four-car line was worth 1.75x four
+   separate cars — a real edge, but not enough of one: the reading bot and
+   the nearest-car bot survived within 20% of each other, so the skill the
+   game is built to train was barely worth training. At 95/1.7 a four-car
+   line pays 996 against 380, a 2.6x edge, and a single car on its own no
+   longer covers the wall's closing rate by itself. */
+const PUSH_BASE   = 95;
+const PUSH_STEP   = 1.7;
+const PASS_WINDOW = 1.2;       // seconds without contact before the pass closes
+
+/* The difficulty dial, and the one number no permanent upgrade may touch.
+   Everything the player can buy is authored against this curve rather than
+   the curve being retuned around what they bought — which is what the old
+   powerIndex() existed to do, and why a maxed save measured *harder* than a
+   fresh one. */
+function wallClose(){
+  const cleared = (G.run && G.run.cleared) || 0;
+  const M = G.run && G.run.M;
+  /* Last Stand: on the final mistake they ease off, which turns the worst
+     moment of a run into its most playable one rather than a formality. */
+  const last = (M && M.lastStand && G.hp <= 1) ? 0.7 : 1;
+  return (WALL_CLOSE + cleared * WALL_CLOSE_STEP) * ((M && M.wallSpeed) || 1) * last;
+}
+
+function stepWall(dt){
+  if (!G.run || G.ai || G.state !== 'play') return;
+
+  /* the pass closes on its own — this is what makes a line a decision
+     rather than a running total */
+  if (G.passT > 0) {
+    G.passT = Math.max(0, G.passT - dt);
+    if (G.passT === 0) { G.pass = 0; G.chain = 0; G.mult = 1; }
+  }
+
+  G.wallGap -= wallClose() * dt;
+  G.wallHit = Math.max(0, G.wallHit - dt * 2.2);
+
+  /* it rides the road the player is on, a fixed distance back */
+  G.wallIdx = Math.max(0, G.car.idx - G.wallGap / SEG);
+
+  if (G.wallGap <= 0) {
+    G.wallGap = 0;
+    crash('wall');
+    return;
+  }
+  /* the warning is the world, not a number: the closer it gets the more the
+     screen and the audio carry it, because the camera looks forward and the
+     threat is behind — see the rear treatment in drawWall() */
+  if (G.wallGap < WALL_DANGER && Math.random() < dt * 3) NHAudio.siren && NHAudio.siren();
+}
+
+/* Every kill path funnels here. One car taken is 110u; the third car of the
+   same pass is 220u, because the pass multiplier is the only thing in the
+   game that rewards looking further ahead than the next bumper. */
+function pushWall(){
+  const M = G.run && G.run.M;
+  G.pass++;
+  G.passT = PASS_WINDOW + ((M && M.passWindow) || 0);
+  const amt = (PUSH_BASE + ((M && M.pushBonus) || 0)) * Math.pow(PUSH_STEP, G.pass - 1);
+  const before = G.wallGap;
+  G.wallGap = Math.min(WALL_GAP_MAX, G.wallGap + amt);
+  /* pushback above the ceiling is not thrown away — a bank that vanishes
+     reads as a bug — it pays out as distance score instead */
+  const spare = (before + amt) - G.wallGap;
+  if (spare > 0) G.score += Math.round(spare);
+  G.wallHit = 1;
+
+  /* the pass counter reuses the old chain rail: same pixels, new meaning */
+  G.chain = G.pass;
+  G.mult = Math.pow(PUSH_STEP, G.pass - 1);
+  G.topMult = Math.max(G.topMult, G.mult);
+  /* A pursuit unit blocking the road takes the same hit the wall does, from
+     the same cars — one verb, one economy, and a long line hurts it more
+     than a short one for exactly the reason it hurts the wall more. */
+  if (G.boss) bossDamage(amt);
+  return amt;
+}
+
+/* ============================================================
+   FORMATIONS
+   Traffic used to top up to a density target from a uniform lane scatter,
+   which made every car on the road worth exactly what every other car was
+   worth — so "hit the nearest thing" was optimal and an eight-line bot
+   capped the multiplier. Packs are the fix: a readable shape, a finite
+   number of cars, and a gap. Nothing spawns behind you, and a pack you
+   misread is gone.
+   ============================================================ */
+/* Cadence is in segments, and the number that sets it is *relative* closing
+   speed, not the player's speedometer: the player does ~620 and traffic does
+   ~270, so packs arrive at about 350 u/s. Spacing 58 segments (3,250u) meant
+   a pack every 9.3 seconds — measured, every bot profile starved and died to
+   the wall inside half a district regardless of how well it drove, because
+   there was not enough ammunition on the road to hold station with.
+
+   Spacing is the lever that decides whether reading matters at all. At 26
+   segments the road was dense enough that driving straight down the middle
+   harvested 37 cars in a minute — measured, the do-nothing bot scored as
+   well as the reading bot, which means the skill the game exists to train
+   was worth nothing.
+
+   The fix is fewer packs, tighter, with real empty road between them: at 38
+   segments a formation arrives every ~6.1s, and holding station needs ~290u
+   from it. One car pays 95 and cannot hold. Two pay 256 and bleed slowly.
+   Three pay 530 and gain. So the road is only survivable if you are taking
+   most of each formation, which is exactly the demand the design is for. */
+const PACK_SPACING = 38;
+
+const PACK_SHAPES = [
+  /* lane index into LANES, and how many segments back from the pack head.
+     Weighted hard toward shapes with three and four cars in them — a lone
+     car is a formation with nothing to read, and a road made of those is
+     the old uniform scatter with extra steps. */
+  { id:'single',  w:5,  cars:[[1,0]] },
+  { id:'pair',    w:14, cars:[[0,0],[1,0]] },
+  { id:'abreast', w:22, cars:[[0,0],[1,0],[2,0]] },
+  { id:'echelon', w:22, cars:[[0,0],[1,3],[2,6]] },
+  { id:'column',  w:12, cars:[[2,0],[2,4],[2,8]] },
+  { id:'wedge',   w:18, cars:[[1,0],[0,4],[2,4],[1,8]] }
+];
+
+function spawnPack(headIdx){
+  const shape = pickW(PACK_SHAPES);
+  /* the shape is authored in lane slots; which slots it lands on is rolled,
+     so the same shape reads differently on the left and the right */
+  const roll = rint(0, Math.max(1, LANES.length - 2));
+  for (const [slot, back] of shape.cars) {
+    addTraffic((headIdx - back) - G.car.idx, LANES[Math.min(LANES.length - 1, roll + slot)]);
+  }
+}
+
+function stepPacks(){
+  if (!G.run || G.state !== 'play') return;
+  const M = G.run.M;
+  const spacing = Math.max(18, Math.round(PACK_SPACING / (M.trafficMul || 1)));
+  /* Stocked well inside the traffic cull window, and deep enough that a
+     formation is on the road before it is close enough to read — the player
+     needs to see the shape coming, not have it appear. */
+  const horizon = G.car.idx + 150;
+  if (G.packIdx < G.car.idx + 24) G.packIdx = G.car.idx + 40;
+  let guard = 0;
+  while (G.packIdx < horizon && guard++ < 6) {
+    spawnPack(G.packIdx);
+    G.packIdx += spacing;
+  }
+}
+
 /* ---------------- the early leash ----------------
    Simulated sessions: the average run lasted under ninety seconds, cleared
    1.8 districts of the fifteen that exist, and half of all deaths were
@@ -2736,16 +2967,20 @@ function hitstop(secs, shake){
    just starts somewhere a player can feel. */
 const rampCost = () => clamp(0.78 + (((G.run && G.run.district) || 1) - 1) * 0.06, 0.78, 1);
 
+/* ---- mistakes, not hull ----
+   Hull was a bar that the verb drained and seven different systems refilled,
+   which meant it never accumulated into anything and a run had no arc: every
+   district started as fresh as the first. It is a small countable budget
+   now, spent only on errors — a barrier, a pursuit unit, a target you should
+   have read as wrong. Wrecking traffic costs nothing at all.
+
+   It stays on G.hp so the renderer, the crash path and the HUD keep working;
+   what changed is that hpMax is 5 rather than 100, and every charge is 1. */
 function damage(amount, reason){
   if (G.car.inv > 0 && reason !== 'wall') return;
-  /* Overdraft: the stake is live — any hit that is not the cost of a wreck
-     halves what you are carrying */
-  if (G.power.draft > 0 && reason !== 'traffic' && G.pending > 0) {
-    G.pending = Math.floor(G.pending / 2);
-    toast('Overdraft called', 'red');
-  }
-  G.hp -= amount;
+  G.hp -= Math.max(1, Math.round(amount));
   G.hurt = 1;
+  G.car.inv = Math.max(G.car.inv, 0.6);   // one mistake, not four in a row
   if (G.hp <= 0) { G.hp = 0; crash(reason); }
 }
 
@@ -2756,25 +2991,15 @@ function smash(v, rel){
   const M = G.run.M;
 
   G.totalWreck++;
-  /* This car pays at the multiplier the chain has already earned, and only
-     then does the chain grow — so the first wreck is worth ×1 and every one
-     after it is worth more than the last. */
-  const gain = Math.round(260 * power * G.mult * M.bankMul * M.wreckMul
-             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1)
-             * (G.power.draft > 0 ? 3 : 1)
-             * (v.arch === 'bike' ? 2 : 1));
-  G.pending += gain;
-
-  G.chain += 1 + (car.boost ? M.boostChain : 0);
-  if (G.firstBlood) { G.firstBlood = 0; G.chain += 2; toast('First blood ×3', 'pink'); }
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
-
-  /* Ram Plate eats the hull cost outright — that is what the pickup is for.
-     A kamikaze bike costs a little extra to eat head-on: it wanted this. */
-  if (!G.power.shield)
-    damage(Math.round((9 * power + (v.arch === 'bike' ? 5 : 0)) * (M.hullCost || 1)), 'traffic');
+  /* Wrecking is the verb. It costs nothing and it is the only thing that
+     buys time — the old build charged hull for it, which is why it then
+     needed seven separate places that gave hull back. Stop charging for the
+     thing you are telling the player to do and the whole heal economy
+     disappears with it. */
+  const amt = pushWall();
+  const gain = Math.round(amt * (M.scoreMul || 1) * (v.arch === 'bike' ? 2 : 1));
+  G.score += gain;
+  G.run.banked += gain;
 
   /* kinetic transfer: you come out of a hit faster, not slower */
   const cs = Math.cos(car.a), sn = Math.sin(car.a);
@@ -2832,11 +3057,6 @@ function smash(v, rel){
   /* No XP here. See the note on addXP(): the ladder is paced by progress, and
      a wreck is the verb you perform continuously. */
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
-  /* Momentum: every fifth link is worth two */
-  if (M.chainStep && G.chain % 5 === 0) {
-    G.chain += M.chainStep;
-    G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  }
 }
 
 
@@ -2876,14 +3096,13 @@ function killCar(t, vx, vy, pay){
   t.spin = rnd(-11, 11);
   t.wrecked = 1; t.hitFlash = 1;
   G.totalWreck++;
-  G.pending += Math.round((pay || 200) * G.mult * M.wreckMul
-             * (G.run.L.wreckPay || 1) * (G.power.frenzy > 0 ? 2 : 1)
-             * (G.power.draft > 0 ? 3 : 1));
-  G.chain += 1;
-  if (G.firstBlood) { G.firstBlood = 0; G.chain += 2; toast('First blood ×3', 'pink'); }
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
+  /* A weapon kill is a car taken, so it lands in the same pass as a car you
+     hit with the bumper — a weapon that scored on its own ledger would
+     compete with the line the player is reading rather than reward it. */
+  const amt = pushWall();
+  const gain = Math.round(amt * (M.scoreMul || 1));
+  G.score += gain;
+  if (G.run) G.run.banked += gain;
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
   archWreck(t);
@@ -2899,14 +3118,10 @@ function killPolice(p, idx){
   if (i >= 0) G.police.splice(i, 1);
   G.totalWreck++;
   const M = G.run.M;
-  G.pending += Math.round(500 * G.mult * M.wreckMul * (G.run.L.wreckPay || 1)
+  G.score += Math.round(500 * G.mult * M.wreckMul * (G.run.L.wreckPay || 1)
              * (G.power.frenzy > 0 ? 2 : 1));
-  G.chain += 1;
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
+  pushWall();
   G.coinsRun += 120;
-  G.heat = Math.max(0, G.heat - 0.6);
   G.policeCool = 6;
   G.shake = Math.max(G.shake, 22);
   hitstop(0.07, 24);
@@ -3068,16 +3283,18 @@ function stepAutoload(dt){
    the multiplier by an amount the player never sees coming; taking time off
    the clock says exactly what it costs — you have less of it to reach the
    next car. */
+/* Kept as the seam a handful of hazards still call: they shorten the window
+   a pass has left rather than draining a clock that no longer exists. */
 function burnChain(secs){
-  if (G.chainT <= 0) return;
-  G.chainT = Math.max(0, G.chainT - secs);
-  if (G.chainT === 0 && G.pending > 0) bank();
+  if (G.passT <= 0) return;
+  G.passT = Math.max(0, G.passT - secs);
+  if (G.passT === 0) { G.pass = 0; G.chain = 0; G.mult = 1; }
 }
 
-/* seconds on the chain clock, floored so a stack of curses cannot make it
-   impossible to link two cars together */
+/* how long a pass stays open, floored so a stack of curses cannot make two
+   cars on the same line impossible to join */
 function chainTime(){
-  return Math.max(1.4, (G.run ? G.run.M.chainTime : 3.2) + (G.lastingClock || 0));
+  return Math.max(0.6, PASS_WINDOW + ((G.run && G.run.M.passWindow) || 0) + (G.lastingClock || 0));
 }
 
 /* Shock Plating: every fifth link in a chain detonates everything close by.
@@ -3161,22 +3378,23 @@ function takePickup(k){
     case 'boost':
       car.boostT = Math.max(car.boostT, 2.4 * M.boostTime * (G.spec.boostMul || 1));
       /* Turbine Intake turns the boost into chain fuel as well as speed */
-      if (Hangar.has('turbine') && G.chain >= 1) {
-        G.chain += 2;
-        G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-        G.chainT = G.chainMax = chainTime();
-      }
+      /* Turbine Intake keeps a live pass open through the gap a boost puts
+         between you and the next formation */
+      if (Hangar.has('turbine') && G.pass >= 1) G.passT = PASS_WINDOW * 2.2;
       break;
     case 'repair':
-      G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.25));
+      /* the only way a mistake comes back. Deliberately the one pickup worth
+         crossing three lanes for. */
+      G.hp = Math.min(G.hpMax, G.hp + 2);
+      toast('Panel beaten out  +2', 'gold');
       break;
     case 'shield':
       G.power.shield = Math.max(G.power.shield, 7 * M.powerTime);
       break;
     case 'surge':
-      /* the clock stops dead, so a Surge is a licence to be greedy */
+      /* the pass will not close while this is up, so a Surge is a licence to
+         string four formations together as one line */
       G.power.surge = Math.max(G.power.surge, 5 * M.powerTime);
-      if (G.chainT > 0) G.chainT = G.chainMax = chainTime();
       break;
     case 'magnet':
       /* drags traffic onto your line — the chain becomes trivial for a
@@ -3202,15 +3420,18 @@ function takePickup(k){
       G.power.draft = Math.max(G.power.draft, 6 * M.powerTime);
       break;
     case 'plating':
-      /* rest of the district: a bigger hull, filled */
-      G.hpMax += 30;
-      G.hp = G.hpMax;
+      /* rest of the district: one more mistake in the budget, and it is
+         filled — a rare find that changes what the rest of the run can
+         afford rather than a few seconds of speed */
+      G.run.hullBonus += 1;
+      G.hpMax = mistakeBudget();
+      G.hp = Math.min(G.hpMax, G.hp + 1);
       G.lastingPlate++;
       break;
     case 'clock':
-      /* rest of the district: more seconds on every chain */
-      G.lastingClock += 1.2;
-      if (G.chainT > 0) G.chainT = G.chainMax = chainTime();
+      /* rest of the district: the pass stays open longer, so formations
+         that were two lines apart can be read as one */
+      G.lastingClock += 0.45;
       break;
     case 'slowmo':
       /* the world slows; you do not. Slowing the player too would take the
@@ -3326,12 +3547,6 @@ function stepPowers(dt){
   stepMagnet(dt);
   stepRockets(dt);
   stepShots(dt);
-
-  /* Scrap Welder: the hull creeps back while you are between chains, so
-     hanging back to recover is a real alternative to pushing on */
-  if (Hangar.has('welder') && G.chainT <= 0 && G.hp < G.hpMax) {
-    G.hp = Math.min(G.hpMax, G.hp + dt * 4.5);
-  }
 
   if (G.missileT > 0) {
     G.missileT -= dt;
@@ -3803,7 +4018,11 @@ function fireMissile(){
    offers each, drawn from forty-five: no run sees the same board twice, and
    two runs diverge inside the first district.
    ============================================================ */
-const LEVEL_CAP = 15;
+/* Fifteen levels over a four-to-six minute run is a decision every twenty
+   seconds, which is a treadmill rather than a cadence — and measured, the
+   old curve delivered levels 2, 3 and 4 inside the same second, three perk
+   screens back to back. Eight is one good decision per stretch cleared. */
+const LEVEL_CAP = 8;
 /* ---- what pays XP ----
    Only progress does. Wrecking and banking used to, and both scale with how
    well the run is going rather than how far it has got — so the ladder ran on
@@ -3840,7 +4059,9 @@ const XP_MUL_CAP = 2.4;
    something a run has to actually get to rather than something it passes
    through. Level 15 is meant to be the ceiling of a deep successful run, not
    a checkpoint on the way. */
-const xpFor = l => l <= 1 ? 40 : Math.round(30 + l * l * 7);
+/* Paced so a level lands roughly per stretch cleared: gates pay 45, a clear
+   pays 70 + 20d, so ~160 a district against a curve that opens at 90. */
+const xpFor = l => l <= 1 ? 90 : Math.round(70 + l * 34);
 
 function addXP(n){
   const run = G.run;
@@ -3868,7 +4089,7 @@ function addXP(n){
      without bound. The ceiling is deliberately above the largest single
      modifier, so Double XP is still double when it is the only one running. */
   const boost = (run.L ? run.L.xpMul : 1)
-              * (run.overtime ? 1.5 : 1)
+              * 1
               * (Tree.has('t_know') ? 1.15 : 1);
   run.xp += n * Math.min(XP_MUL_CAP, boost);
   while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
@@ -4103,14 +4324,11 @@ function convoyHit(v, rel){
 
   /* Worth a bit over an ordinary wreck per hit — the prize is the formation,
      not the individual truck. */
-  const gain = Math.round(320 * G.mult * M.bankMul * M.wreckMul * (G.run.L.wreckPay || 1));
-  G.pending += gain;
+  const amt = pushWall() * 1.6;      // a hauler is worth more road than a car
+  G.wallGap = Math.min(WALL_GAP_MAX, G.wallGap + amt * 0.6);
+  const gain = Math.round(amt * (M.scoreMul || 1));
+  G.score += gain; G.run.banked += gain;
   addXP(15);
-  G.chain += 1;
-  G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
-  G.topMult = Math.max(G.topMult, G.mult);
-  G.chainT = G.chainMax = chainTime();
-  if (!G.power.shield) damage(Math.round(9 * (M.hullCost || 1) * rampCost()), 'traffic');
 
   hitstop(0.09, 30);
   NHAudio.smash(1.6);
@@ -4128,8 +4346,10 @@ function convoyHit(v, rel){
        formality; as a fraction of what you actually need it stays a strong
        prize at any depth — roughly a quarter of the way home — without ever
        replacing playing the district. */
-    const bonus = Math.round(G.run.quota * 0.25);
-    G.pending += bonus;
+    /* the prize is road, which is the only currency the run has */
+    const bonus = 900;
+    G.wallGap = Math.min(WALL_GAP_MAX, G.wallGap + bonus);
+    G.score += bonus;
     G.convoyState = 'done';
     toast('CONVOY TAKEN +' + fmt(bonus), 'pink');
     NHAudio.bank(G.mult);
@@ -4173,39 +4393,15 @@ function stepConvoy(dt){
   }
 }
 
-/* -------- scoring -------- */
+/* -------- scoring --------
+   There is no banking. Wrecks pay their pushback straight into the score as
+   they land, so there is no pending pile to lose, no cash-in decision, and
+   no second clock. What used to be bank() is kept only as the seam the boss
+   fight and the perks that fired "on a cash-in" still call — it now fires on
+   a *pass closing*, which is the moment that actually means something. */
 function bank(){
-  if (G.pending < 1) { G.chain = 0; G.mult = 1; G.chainT = 0; return; }
+  if (G.pass < 1) { G.chain = 0; G.mult = 1; return; }
   const M = G.run.M;
-  const heatMul = 1 + G.tier * (Tree.has('t_roller') ? 0.45 : 0.35)
-                + (G.tier >= 2 ? M.heatBonus : 0);
-  /* Two independent multipliers pulling opposite ways, on purpose. Deeper
-     into the district pays more, so the back two stretches are a reason to
-     be there rather than road to sit through. Overtime banking pays half,
-     because the district is already won and without the taper a casual
-     district-2 surplus banked 307k against an 8.8k quota — score stopped
-     meaning anything the leaderboard could compare. */
-  const stage = G.run.cfg && G.run.cfg.stages[G.stage];
-  const gained = Math.floor(G.pending * heatMul * M.bankMul * (M.scoreMul || 1)
-              * (stage ? stage.pay : 1)
-              * (G.run.overtime ? 0.5 : 1)
-              * (M.lastStand && G.hp / G.hpMax < 0.34 ? 2 : 1));
-
-  G.score += gained;
-  G.run.banked += gained;
-  /* Banking pays score, coins and the quota. It does not pay levels: it
-     scales with how well you are scoring, and a ladder paced by scoring rate
-     is one a strong player climbs in a single stretch. */
-  /* Scaled to the quota AND capped per bank: chain-multiplier inflation
-     means income can outrun any fixed divisor by 10-30x, which pegged heat
-     at 3.0 by district two and turned the pursuit ladder into a constant.
-     Capped, a monster bank is still only just over half a tier — heat
-     climbs across a district in steps the decay can actually fight. */
-  G.heat = Math.min(3.0, G.heat
-         + Math.min(0.55, gained / Math.max(14000, G.run.quota * 2)));
-  NHAudio.bank(G.mult);
-
-  /* perks that trigger on the cash-in, not on the wreck */
   if (M.ghostOnBank) G.ghost = Math.max(G.ghost, M.ghostOnBank);
   if (M.shockOnBank) {
     for (const p of G.police) {
@@ -4217,40 +4413,8 @@ function bank(){
         p.hitFlash = 1;
       }
     }
-    for (let i = 0; i < 26; i++) {
-      const a = rnd(0, TAU), s = rnd(250, 620);
-      spawn(G.car.x, G.car.y, Math.cos(a) * s, Math.sin(a) * s,
-            rnd(0.2, 0.45), rnd(4, 9), '120,220,255', true, -8);
-    }
   }
-
-  if (G.boss) { bossDamage(gained); toast('-' + fmt(gained) + ' integrity', 'red'); }
-  else { toast('Banked +' + fmt(gained), 'gold'); popBank(gained); }
-
-  /* Cashing in welds the hull back together, and a pile-up patches more than
-     a lone wreck — but never as much as it cost, so hull only ever trends
-     down and the run still has a clock on it. */
-  const heal = 3 + G.chain * 2.5 + (M.bankHeal || 0);
-  if (G.hp < G.hpMax) G.hp = Math.min(G.hpMax, G.hp + heal);
-
-  G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0; G.shockAt = 5;
-
-  /* Meeting the quota used to clear the district on the spot, which meant a
-     skilled district was one chain long — measured, cleared at 32-40% of the
-     road, with the back half never driven. The district is *won* at quota
-     but runs to the checkpoint in overtime: surplus banking keeps paying,
-     XP runs half again, and a wreck in overtime is a limp home, not a loss. */
-  if (!G.boss && G.run.cfg && !G.run.cfg.boss && !G.run.overtime
-      && G.run.banked >= G.run.quota) {
-    G.run.overtime = true;
-    toast('QUOTA MET — overtime, ×1.5 XP', 'gold');
-    NHAudio.bank(3);
-  }
-  /* The gates are the floor and overtime is the ceiling: a gate says what
-     you must have banked by a given point, overtime says the district is
-     already won and you are milking it. Meeting the quota early therefore
-     passes every remaining gate on the way to the line, which is correct —
-     you have already paid for them. */
+  G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1; G.shockAt = 5;
 }
 
 function toast(text, cls){
@@ -4298,30 +4462,15 @@ function popBank(gained){
 function crash(reason){
   if (G.state !== 'play') return;
 
-  /* Quota already met and the hull gives out in overtime: that is a limp to
-     the checkpoint, not a loss — the district was won when the number was. */
-  if (G.run && G.run.overtime && G.run.cfg && !G.run.cfg.boss) {
-    if (G.pending > 0) {
-      const salvage = Math.floor(G.pending * 0.4);
-      G.score += salvage; G.run.banked += salvage;
-    }
-    G.pending = 0; G.chain = 0; G.mult = 1; G.chainT = 0;
-    G.hp = Math.round(G.hpMax * 0.35);
-  G.shake = 24;
-    NHAudio.hit(1.4);
-    toast('Limped to the checkpoint', 'gold');
-    clearDistrict();
-    return;
-  }
-
   /* Crumple Zone (or the crew's Safety Cage) spends a charge instead of
-     ending the run */
-  if (G.run && (G.run.crumpleLeft > 0 || G.run.cageLeft > 0)) {
+     ending the run. It cannot save you from the wall — that is the one death
+     the game promises is final, and a get-out would make it a suggestion. */
+  if (reason !== 'wall' && G.run && (G.run.crumpleLeft > 0 || G.run.cageLeft > 0)) {
     if (G.run.crumpleLeft > 0) G.run.crumpleLeft--; else G.run.cageLeft--;
-    G.hp = Math.max(G.hp, Math.round(G.hpMax * 0.45));
+    G.hp = Math.max(G.hp, 2);
     G.car.inv = 2.2;
     G.car.hitFlash = 1;
-    G.pending = 0; G.chain = 0; G.mult = 1;
+    G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
     G.shake = 22;
     G.car.vx *= 0.45; G.car.vy *= 0.45;
     NHAudio.hit(1.4);
@@ -4330,20 +4479,12 @@ function crash(reason){
   }
 
   NHAudio.crash();
-  /* Chains run 20-30s, so at the moment of death the whole district's
-     earnings are usually still pending — measured, 9 of 20 deaths banked
-     exactly zero, which starves the garage of the coins that make the next
-     run feel worth starting. Salvage 40%: dying is still expensive, but a
-     run that ended badly always pays for *something* you keep. */
-  if (G.pending > 0 && G.run) {
-    const salvage = Math.floor(G.pending * 0.4);
-    G.score += salvage; G.run.banked += salvage;
-    toast('Salvaged +' + fmt(salvage), 'gold');
-  }
+  /* Nothing to salvage — pushback pays into the score as it lands, so a run
+     that ends has already been paid for everything it did. */
   G.state = 'crash';
   G.crashT = 0;
   G.shake = 26;
-  G.pending = 0; G.chain = 0; G.mult = 1;
+  G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
   G.car.hitFlash = 1;
   UI.hud.classList.add('off');
   for (let i = 0; i < 46; i++) {
@@ -4420,23 +4561,21 @@ function step(dt){
         G.shake = Math.max(G.shake, Math.min(16, into / 22));
         if (Math.random() < 0.25) NHAudio.spark();
         if (into > G.spec.crashV) {
-          /* A hard wall is the mistake that pays nothing, but it must not be
-             the main hull sink — hull is meant to read as fuel you spend on
-             traffic, not as a tax on clipping a barrier while learning. */
-          damage(Math.round((6 + into * 0.015) * (G.run.M.wallMul || 1)), 'wall');
+          /* One mistake. Discrete and countable, because the whole point of
+             the budget is that the player can say afterwards which four
+             errors ended the run — a bleeding bar cannot be recited. */
+          if ((G.run.M.wallMul == null ? 1 : G.run.M.wallMul) > 0) damage(1, 'wall');
           hitstop(0.07, 26);
           NHAudio.hit(1.4);
           car.hitFlash = 1;
-          G.chain = 0;
-          if (G.pending > 0) bank();
+          /* and the pass dies with it: a wall is the opposite of a line */
+          G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
           car.vx *= 0.55; car.vy *= 0.55;
-          car.inv = 0.35;
           if (G.state !== 'play') return;
         } else {
-          G.hp -= dt * 1.0 * (G.run.M.wallMul || 1);   // scraping bleeds you slowly
-          if (G.hp <= 0) { crash('wall'); return; }
-          if (G.run.M.brittle) { G.chainT = 0; if (G.pending > 0) bank(); }
-          else burnChain(dt * 1.6);
+          /* scraping costs nothing but the pass — it is a bad line, not an
+             error, and charging for it made learners feel taxed for driving */
+          if (G.passT > 0) G.passT = Math.max(0, G.passT - dt * 1.6);
         }
       }
     }
@@ -4468,23 +4607,25 @@ function step(dt){
       if (G.trail.length > (car.boost ? 84 : 42)) G.trail.shift();
     }
 
-    /* ---- the chain clock ----
-       With no drift button there is nothing to release, so the wager moved
-       onto a timer. Every wreck resets it; let it run out and the whole
-       pending bank pays automatically. The decision is no longer "when do I
-       let go" but "can I reach one more car before this hits zero" — which
-       is the same bet asked several times a minute instead of once. */
+    /* ---- the run's only clock ----
+       There were two before — a chain timer and a quota — and neither
+       actually ended a run. One force now: the wall closes, wrecking pushes
+       it back, and the pass window decides whether three cars count as one
+       line or three. Surge holds the pass open; nothing holds the wall. */
     const M = G.run.M;
     stepPowers(dt);
-    if (G.chainT > 0 && !G.power.surge) {
-      G.chainT = Math.max(0, G.chainT - dt);
-      if (G.chainT === 0 && G.pending > 0) bank();
-    }
+    if (G.power.surge > 0) G.passT = Math.max(G.passT, PASS_WINDOW);
+    stepWall(dt);
+    if (G.state !== 'play') return;
+    stepPacks();
 
     G.ghost = Math.max(0, G.ghost - dt);
     stepFlare(dt);
-    G.heat = Math.max(0, G.heat - dt * 0.038
-           * (Tree.has('t_cool') && G.hp < G.hpMax * 0.3 ? 1.4 : 1));
+    /* Heat used to be a payout multiplier fed by banking, which made the
+       correct play always slightly more dangerous — a good idea attached to
+       a scoring system that no longer exists. It is only a pursuit dial now,
+       set by how deep the run is. */
+    G.heat = Math.min(3, (G.run.cleared || 0) * 0.5);
     G.tier = Math.max(G.run.cfg ? G.run.cfg.heatFloor + M.policeStart : 0, Math.floor(G.heat));
     G.tier = Math.min(3, G.tier);
     if (G.run.grace) G.tier = 0;
@@ -4505,12 +4646,6 @@ function step(dt){
       const travelled = car.idx - G.run.startIdx;
       const st = G.run.cfg.stages[G.stage];
       if (st && travelled >= st.end) {
-        /* Cash the chain before judging. Arriving at a gate holding 8,000
-           pending and being failed at 2,000/10,000 reads as the quota not
-           counting your wrecks — you earned it, the clock just had not run
-           out yet. */
-        if (G.pending > 0) bank();
-        if (G.state !== 'play') return;          // banking may have cleared it
         passGate();
         return;
       }
@@ -4545,7 +4680,11 @@ function step(dt){
       t.idx = bl.i;
       t.offroad = Math.abs(bl.lat) > roadHalf(bl.p) ? 1 : 0;
     } else autoDrive(t, dt * G.worldSlow, false);
-    if (t.idx < car.idx - 24 || t.idx > car.idx + 120) { G.traffic.splice(i, 1); continue; }
+    /* The far cull has to sit outside the pack horizon or formations are
+       deleted on the frame they are laid down — measured, the road held a
+       flat ten cars no matter what the spawner did, because everything
+       beyond +120 was being culled while packs were being written at +130. */
+    if (t.idx < car.idx - 24 || t.idx > car.idx + 165) { G.traffic.splice(i, 1); continue; }
 
     const dx = t.x - car.x, dy = t.y - car.y, d = hyp(dx, dy);
     /* Half the sum of the lengths — the distance at which two bodies actually
@@ -4561,8 +4700,8 @@ function step(dt){
           t.phased = 1;
           const M2 = G.run.M;
           const bonus = Math.round(150 * G.mult * M2.nearMul);
-          G.pending += bonus;
-          if (G.chainT > 0) G.chainT = Math.min(chainTime(), G.chainT + 0.5);
+          G.score += bonus;
+          if (G.passT > 0) G.passT = Math.min(PASS_WINDOW * 2, G.passT + 0.5);
           toast('Phased +' + fmt(bonus), 'pink');
           NHAudio.nearMiss();
           for (let s = 0; s < 6; s++)
@@ -4575,15 +4714,21 @@ function step(dt){
            crack it with speed, Boost or a Ram Plate */
         if (t.arch === 'armored' && t.armour > 0
             && !(car.boost || G.power.shield > 0 || rel > 430)) {
+          /* The one target in a formation you are meant to read and refuse.
+             It bounces, it costs a mistake, and it kills the pass — which is
+             what makes a four-car wedge with a van in it a real decision
+             rather than four identical bumpers. */
           t.armour--;
           t.hitFlash = 1;
           car.vx *= 0.74; car.vy *= 0.74;
           G.hitCool = 0.12;
           G.shake = Math.max(G.shake, 18);
           hitstop(0.05, 16);
-          if (!G.power.shield) damage(Math.round(4 * (G.run.M.hullCost || 1)), 'traffic');
+          if (!G.power.shield) damage(1, 'traffic');
+          G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
           NHAudio.hit(1.2);
-          toast('Armoured — hit it harder', 'red');
+          toast('Armoured — go round it', 'red');
+          if (G.state !== 'play') return;
         } else {
           /* Traffic is the ammunition. Hitting it pays, feeds the chain and
              costs hull — the run ends when the hull does, not on contact. */
@@ -4596,9 +4741,13 @@ function step(dt){
           /* Threading buys time, not links. It pays thin and puts a slice of
              the clock back, which is how you carry a chain across a gap in
              the traffic when your hull cannot afford another wreck. */
-          const bonus = 130 * G.mult * M.nearMul;
-          G.pending += bonus;
-          G.chainT = Math.min(chainTime(), G.chainT + 0.45 + M.nearChain);
+          /* Threading holds a pass open across a gap in the traffic. It is
+             how you carry a four-car line through a stretch that only had
+             three cars in it — the thin-margin skill, and the only thing in
+             the game that pays for NOT hitting something. */
+          const bonus = Math.round(130 * G.mult * M.nearMul);
+          G.score += bonus;
+          if (G.pass > 0) G.passT = Math.min(PASS_WINDOW * 2, G.passT + 0.45 + M.nearChain);
           toast('Threaded +' + fmt(bonus), 'pink');
           NHAudio.nearMiss();
         }
@@ -4611,14 +4760,10 @@ function step(dt){
      debris until you have driven past them, and counting those against the
      budget thinned the road exactly when a chain was going well — the
      opposite of what a pile-up should do to the supply. */
-  let liveCount = 0;
-  for (const t of G.traffic) if (!t.wrecked) liveCount++;
-  /* Each stretch cleared puts more cars on the road. The escalation has to
-     land on the supply rather than only on the pursuit, because traffic is
-     what you score with — a later stretch that is merely more dangerous is
-     a punishment, and one that is denser is an opportunity that bites. */
-  const want = Math.max(4, Math.round((26 + G.stage * 5) * (G.run ? G.run.M.trafficMul : 1)));
-  while (liveCount < want) { addTraffic(rint(20, 96)); liveCount++; }
+  /* No density top-up. The road is stocked by stepPacks() in formations, and
+     the whole design turns on a pack you misread being *gone* — a spawner
+     that quietly refills the road to a target would hand the player back
+     every car they failed to take, which is the same as not asking. */
 
   /* ---- police ---- */
   if (playing && !G.ai && !G.boss) {
@@ -4666,7 +4811,9 @@ function step(dt){
           p.vx += nx * 120; p.vy += ny * 120;
           G.shake = Math.max(G.shake, 18);
           car.hitFlash = 1;
-          burnChain(1.0);
+          damage(1, 'police');
+          G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
+          if (G.state !== 'play') return;
           G.heat = Math.max(0, G.heat - 0.25);
           damage(10 + 3 * G.tier, 'police');
           hitstop(0.05, 20);
@@ -6484,6 +6631,7 @@ function render(){
   drawLamps();
   drawSlicks();
   drawHazards();
+  drawWall();
   drawToys();
   drawPickups();
   drawShots();
@@ -6505,9 +6653,90 @@ function render(){
   if (QF.city) drawCity();
   bloom();
   drawSpeed();
+  drawRear();
   drawThreats();
   drawStick();
   post();
+}
+
+/* ============================================================
+   DRAWING THE WALL
+   The highest-risk piece of this design: the camera looks *forward* and the
+   thing that kills you is behind. A threat the player cannot see is a threat
+   they cannot play against, so it is drawn twice — once in the world, as a
+   wall of light and dust spanning the full road, and once as a rear-edge
+   treatment on the screen itself for when it is off-camera.
+   ============================================================ */
+function drawWall(){
+  if (!G.run || G.state === 'menu' || !G.track) return;
+  const T = G.track, i0 = Math.floor(G.wallIdx);
+  if (i0 < 0) return;
+  T.ensure(i0 + 6);
+  const p = T.pts[Math.max(0, i0)];
+  if (!p) return;
+  const half = roadHalf(p) * 1.35;
+  const nx = -Math.sin(p.a), ny = Math.cos(p.a);
+  const cx = p.x, cy = p.y;
+  const close = clamp(1 - G.wallGap / WALL_GAP_MAX, 0, 1);
+
+  /* the face: a hard leading edge with a body of light falling away behind
+     it, so the direction it is travelling is legible at a glance */
+  const ax = cx + nx * half, ay = cy + ny * half;
+  const bx = cx - nx * half, by = cy - ny * half;
+  const depth = 210 + close * 120;
+  const tx = -Math.cos(p.a) * depth, ty = -Math.sin(p.a) * depth;
+
+  const g = ctx.createLinearGradient(cx, cy, cx + tx, cy + ty);
+  g.addColorStop(0, 'rgba(255,60,90,' + (0.55 + close * 0.35) + ')');
+  g.addColorStop(0.45, 'rgba(150,20,60,' + (0.34 + close * 0.3) + ')');
+  g.addColorStop(1, 'rgba(20,4,12,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+  ctx.lineTo(bx + tx, by + ty); ctx.lineTo(ax + tx, ay + ty);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,120,140,' + (0.7 + close * 0.3) + ')';
+  ctx.lineWidth = 5 + close * 5 + G.wallHit * 6;
+  ctx.beginPath();
+  ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+  ctx.stroke();
+
+  /* teeth along the face — motion at the leading edge is what stops it
+     reading as a static red bar painted on the road */
+  ctx.strokeStyle = 'rgba(255,210,220,' + (0.35 + close * 0.4) + ')';
+  ctx.lineWidth = 2;
+  const step = half / 5;
+  for (let k = -5; k <= 5; k++) {
+    const jx = cx + nx * k * step, jy = cy + ny * k * step;
+    const jag = 26 + Math.sin(G.dist * 0.02 + k * 1.7) * 16;
+    ctx.beginPath();
+    ctx.moveTo(jx, jy);
+    ctx.lineTo(jx - Math.cos(p.a) * jag, jy - Math.sin(p.a) * jag);
+    ctx.stroke();
+  }
+  blitGlow('#FF3355', cx, cy, half * 1.1, 150, 0.28 + close * 0.32);
+}
+
+/* The screen-space half of the same problem. When the wall is off the bottom
+   of the camera the player still has to feel it closing, so the lower edge
+   of the frame carries it: a band that grows and beats faster as the gap
+   shrinks. On a phone in portrait this is most of what they actually read. */
+function drawRear(){
+  if (!G.run || G.state !== 'play') return;
+  const close = clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1);
+  if (close <= 0.01) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'lighter';
+  const h = cv.height * (0.10 + close * 0.16);
+  const beat = 0.72 + 0.28 * Math.sin(G.dist * (0.03 + close * 0.06));
+  const g = ctx.createLinearGradient(0, cv.height, 0, cv.height - h);
+  g.addColorStop(0, 'rgba(255,50,85,' + (0.45 * close * beat).toFixed(3) + ')');
+  g.addColorStop(1, 'rgba(255,50,85,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, cv.height - h, cv.width, h);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /* Radial falloffs are the single most common shape in the scene and the
@@ -6618,38 +6847,48 @@ function syncPowers(){
 
 let shownScore = 0;
 function syncHUD(){
+  /* ---- depth is the score ----
+     "187,204" means nothing to the player who earned it and nothing to
+     anyone they tell. "Reached the Foundry" is small, comparable and
+     brag-able, so the stretch count is the headline and the points sit
+     underneath it as texture. */
   shownScore = lerp(shownScore, G.score, 0.2);
-  UI.score.textContent = fmt(shownScore);
+  const depth = G.run ? (G.run.act - 1) * ROWS + Math.max(0, G.run.row) + 1 : 1;
+  UI.score.textContent = depth + ' / ' + RUN_ROWS;
+  UI.score.title = fmt(Math.round(shownScore)) + ' pts';
   UI.coins.textContent = fmt(Save.data.coins + G.coinsRun);
   UI.spd.textContent = Math.round(G.car.speed * 0.52);
   syncPowers();
 
-  const active = G.pending > 0 || G.chain > 0;
+  /* ---- the pass ----
+     Cars taken on the current line, and how long is left to add to it. This
+     is the only number in the game the player is optimising second to
+     second, so it is the only one that gets the middle of the screen. */
+  const active = G.pass > 0;
   UI.combo.classList.toggle('on', active);
-  UI.combo.classList.toggle('hot', G.mult > 5);
-  UI.cmult.innerHTML = '&times;' + G.mult.toFixed(1);
-  UI.cpts.textContent = fmt(G.pending);
-  /* the bar is the clock now, not the multiplier: it is the thing you are
-     racing, and it has to be readable at a glance while cornering */
-  const frac = G.chainMax > 0 ? clamp(G.chainT / G.chainMax, 0, 1) : 0;
+  UI.combo.classList.toggle('hot', G.pass >= 3);
+  UI.cmult.innerHTML = G.pass + (G.pass === 1 ? ' car' : ' cars');
+  UI.cpts.textContent = G.pass > 0
+    ? '+' + fmt(Math.round(PUSH_BASE * Math.pow(PUSH_STEP, G.pass))) + ' next'
+    : '';
+  const frac = clamp(G.passT / chainTime(), 0, 1);
   UI.cfill.style.width = (G.power.surge > 0 ? 100 : frac * 100) + '%';
-  UI.combo.classList.toggle('urgent', G.chainT > 0 && frac < 0.34 && !G.power.surge);
-  /* the meter escalates in dress as it climbs, and screams when a SIREN
-     pulse is about to eat what you are holding */
-  UI.combo.classList.toggle('t2', G.mult >= 4);
-  UI.combo.classList.toggle('t3', G.mult >= 8);
-  UI.combo.classList.toggle('threat', G.pulseWarn > 0 && !!G.boss
-    && G.pending > Math.max(2400, G.boss.maxHp * 0.2));
+  UI.combo.classList.toggle('urgent', G.passT > 0 && frac < 0.34 && !G.power.surge);
+  UI.combo.classList.toggle('t2', G.pass >= 3);
+  UI.combo.classList.toggle('t3', G.pass >= 4);
+  UI.combo.classList.toggle('threat', false);
 
-  /* hull */
+  /* ---- mistakes ----
+     An integer, not a bar. The player has to be able to say afterwards which
+     four errors ended the run, and you cannot recite a percentage. */
   const hf = clamp(G.hp / G.hpMax, 0, 1);
   UI.hull.classList.toggle('on', G.state === 'play' || G.state === 'crash');
-  UI.hull.classList.toggle('warn', hf < 0.6 && hf >= 0.3);
-  UI.hull.classList.toggle('crit', hf < 0.3);
+  UI.hull.classList.toggle('warn', G.hp <= 2 && G.hp > 1);
+  UI.hull.classList.toggle('crit', G.hp <= 1);
   UI.hullVal.textContent = Math.max(0, Math.ceil(G.hp));
   UI.hullFill.style.width = hf * 100 + '%';
-  UI.wreck.classList.toggle('on', G.chain > 1);
-  if (G.chain > 1) UI.wreck.textContent = G.chain + ' car pile-up';
+  UI.wreck.classList.toggle('on', G.pass > 1);
+  if (G.pass > 1) UI.wreck.textContent = G.pass + ' on one line';
 
   const run0 = G.run;
   if (run0) {
@@ -6672,7 +6911,7 @@ function syncHUD(){
   UI.convoy.classList.toggle('on', chasing);
   if (chasing) UI.convoyLeft.textContent = G.convoyLeft;
 
-  UI.heat.classList.toggle('on', G.heat > 0.05 || G.tier > 0);
+  UI.heat.classList.toggle('on', G.tier > 0);
   UI.heat.classList.toggle('max', G.tier >= 3);
   heatPips.forEach((el, i) => el.classList.toggle('lit', i < G.tier));
 
@@ -6694,31 +6933,44 @@ function syncHUD(){
       UI.objFill.style.width = clamp(G.boss.hp / G.boss.maxHp, 0, 1) * 100 + '%';
       /* the ghost shows how far the bank in hand would actually take it —
          capped, so the bar stops promising a kill it cannot deliver */
-      const bite = Math.min(G.pending, Math.round(G.boss.maxHp * BOSS_BITE)) * (bk ? 0.35 : 1);
-      UI.objPend.style.width = clamp((G.boss.hp - bite) / G.boss.maxHp, 0, 1) * 100 + '%';
-      UI.obj.classList.toggle('pending', G.pending > 0);
+      UI.objPend.style.width = '0%';
+      UI.obj.classList.toggle('pending', G.pass > 0);
     } else {
-      /* Until the quota is met the number that matters is the one owed at
-         the *next* gate. Once it is met the gates are all paid for, so the
-         rail switches to what overtime is actually paying. */
-      UI.obj.classList.toggle('overtime', !!run.overtime);
-      const owed = Math.max(1, Math.round(run.quota * stage.cut));
-      UI.objLbl.textContent = run.overtime ? 'Overtime \u00d71.5 XP'
-        : G.stage >= cfg.stages.length - 1 ? 'Quota' : 'Checkpoint ' + (G.stage + 1);
-      UI.objVal.textContent = run.overtime
-        ? fmt(run.banked) + ' banked'
-        : fmt(Math.min(run.banked, owed)) + ' / ' + fmt(owed);
-      UI.objFill.style.width =
-        clamp(run.banked / (run.overtime ? run.quota : owed), 0, 1) * 100 + '%';
-      /* A ghost segment for the pending bank. Without it the bar sits dead
-         still through a ten-second chain and the quota looks broken. */
-      const ghost = clamp((run.banked + G.pending) / owed, 0, 1) * 100;
-      UI.objPend.style.width = ghost + '%';
-      UI.obj.classList.toggle('pending', G.pending > 0);
+      /* The rail is the wall's gap: the one thing that can end the run, and
+         the only pressure gauge in the game that ever reads danger. It is a
+         backstop for the world-space rendering, not the primary tell —
+         the wall itself is on screen. */
+      const gf = clamp(G.wallGap / WALL_GAP_MAX, 0, 1);
+      UI.obj.classList.toggle('overtime', false);
+      UI.obj.classList.toggle('danger', G.wallGap < WALL_DANGER);
+      UI.objLbl.textContent = G.wallGap < WALL_DANGER ? 'THEY HAVE YOU' : 'Gap';
+      UI.objVal.textContent = Math.round(G.wallGap) + 'm';
+      UI.objFill.style.width = gf * 100 + '%';
+      UI.objPend.style.width = '0%';
+      UI.obj.classList.toggle('pending', false);
     }
-    const travelled = clamp((G.car.idx - run.startIdx) / cfg.len, 0, 1);
-    UI.objDist.style.width = travelled * 100 + '%';
+    /* ---- the run-wide route ----
+       One bar for the whole run, never reset per stretch, so the player can
+       always answer "where am I going and how far is left". The old build
+       reset this every district and only showed the act's board between
+       them, which is why a run had no shape you could feel. */
+    UI.objDist.style.width = runProgress() * 100 + '%';
   }
+}
+
+/* ---- how far through the whole run you are ----
+   Three acts of five rows each. A run needs one distance the player can read
+   from the first second, or "what am I working toward" has no answer — the
+   old build reset its bar every district and showed the board only between
+   them, so the run had no felt shape at all. */
+const RUN_ROWS = ROWS * 3;
+function runProgress(){
+  const run = G.run;
+  if (!run) return 0;
+  const done = (run.act - 1) * ROWS + Math.max(0, run.row);
+  const within = run.cfg && run.cfg.len
+    ? clamp((G.car.idx - run.startIdx) / run.cfg.len, 0, 1) : 0;
+  return clamp((done + within) / RUN_ROWS, 0, 1);
 }
 
 /* the build rail — a roguelite is unreadable if you cannot see your own deck */
@@ -7187,7 +7439,7 @@ function beginNode(skipBrief){
   rebuildMods();
   run.quota = Math.round(run.cfg.quota * run.L.quotaMul);
   run.banked = 0;
-  run.overtime = false;
+
   run.crumpleLeft = run.M.crumple;
 
   newWorld(false);
@@ -7261,8 +7513,7 @@ function showBrief(){
       const z = zoneById(s.zone);
       return '<div class="leg"><b>' + (i + 1) + '</b>' +
              '<span class="lname">' + z.name + '</span>' +
-             '<span class="lgate">bank ' + fmt(Math.round(G.run.quota * s.cut)) + '</span>' +
-             (s.pay > 1 ? '<span class="lpay">&times;' + s.pay.toFixed(2) + '</span>' : '') +
+             '<span class="lgate">stretch ' + (i + 1) + '</span>' +
              '</div>';
     }).join('') + '</div>';
   const rules = zoneRules(cfg);
@@ -7270,21 +7521,28 @@ function showBrief(){
     ? '<div class="brules">' + rules.map(r =>
         '<span><b>' + r.name + '</b> ' + r.desc + '</span>').join('') + '</div>'
     : '';
+  /* The brief states the one thing that can kill you, and states it the
+     same way every time. The old copy named a quota that never once ended a
+     run, which taught the player to watch the wrong number. */
   $('bobj').innerHTML = cfg.boss
-    ? cfg.bossDef.blurb + '<br><b>Bank into it until its integrity breaks — ' +
-      'no single cash-in takes more than a fifth of it.</b>' + ruleLine
-    : 'Three stretches. Miss a checkpoint and the district ends there.' +
+    ? cfg.bossDef.blurb + '<br><b>It blocks the road. Wreck through it before ' +
+      'they catch you.</b>' + ruleLine
+    : '<b>They are ' + Math.round(G.wallGap || WALL_GAP_START) + 'm back and closing at ' +
+      Math.round(wallClose()) + 'm/s.</b> Every car you wreck pushes them off you; ' +
+      'a whole formation on one line pushes them a long way off.' +
       legs + ruleLine;
   const k = NHChips.contractById(G.run.contract);
   $('bsub').textContent = (cfg.boss ? cfg.bossDef.sub : cfg.elite ? 'Elite run' : 'Standard run') +
     (k && k.id !== 'clear' ? '  ·  ' + k.name : '');
   /* gate ticks on the travel bar, placed where the gates actually are */
-  UI.objDist.parentNode.style.backgroundImage = cfg.boss ? 'none' :
-    cfg.stages.slice(0, -1).map(s =>
-      'linear-gradient(90deg,transparent ' + (s.end / cfg.len * 100).toFixed(1) +
-      '%,rgba(255,214,110,.75) ' + (s.end / cfg.len * 100).toFixed(1) +
-      '%,rgba(255,214,110,.75) ' + (s.end / cfg.len * 100 + 0.7).toFixed(1) +
-      '%,transparent ' + (s.end / cfg.len * 100 + 0.7).toFixed(1) + '%)').join(',');
+  /* Act boundaries on the run-wide bar, so the player can see the whole
+     journey and where the two cities after this one begin. */
+  UI.objDist.parentNode.style.backgroundImage = [1, 2].map(a => {
+    const f = (a * ROWS / RUN_ROWS * 100).toFixed(1);
+    return 'linear-gradient(90deg,transparent ' + f + '%,rgba(255,214,110,.75) ' + f +
+           '%,rgba(255,214,110,.75) ' + (+f + 0.7).toFixed(1) +
+           '%,transparent ' + (+f + 0.7).toFixed(1) + '%)';
+  }).join(',');
   UI.brief.classList.toggle('bossBrief', !!cfg.boss);
   renderBuild();
   show(UI.brief);
@@ -7320,26 +7578,30 @@ function passGate(){
   const run = G.run, cfg = run.cfg;
   if (cfg.boss) { failDistrict('The unit got away'); return; }
 
-  const st = cfg.stages[G.stage];
   const last = G.stage >= cfg.stages.length - 1;
-  const owed = Math.round(run.quota * st.cut);
+  /* A gate is escalation, never a verdict. The old build failed you here on
+     a quota you had already tripled twenty seconds earlier, which is a fail
+     state the player cannot see coming or feel arrive. The wall is the only
+     thing that ends a run.
 
-  if (run.banked < owed) {
-    failDistrict(last ? 'Quota missed' : 'Checkpoint missed — ' +
-                 fmt(run.banked) + ' of ' + fmt(owed));
-    return;
-  }
+     The stage index is advanced *past* the last gate before handing off,
+     because clearDistrict() can defer behind the level-up banner while the
+     simulation keeps running — and a stage that is still the current one
+     re-fires this gate on every frame of that hold. Measured before the
+     guard: one district paid its clear XP forty-five times and ran the whole
+     three-act ladder out in under a second. */
+  G.stage++;
   if (last) { clearDistrict(); return; }
 
-  G.stage++;
   const next = cfg.stages[G.stage];
   const zone = zoneById(next.zone);
   /* the new stretch's rule takes over from the old one's */
   rebuildMods();
   /* clearing a gate welds a little hull back on — the reward for depth is
      the ability to survive more of it */
-  G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.08));
-  G.heat = Math.min(3.0, G.heat + 0.9);
+  /* No heal. The run's slope is the whole point — arriving at the eighth
+     stretch holding what you have left is what makes it different from the
+     first. */
   addXP(GATE_XP);
   NHAudio.bank(2);
   toast('Checkpoint ' + G.stage + ' cleared — ' + zone.name, 'gold');
@@ -7364,9 +7626,11 @@ function clearDistrict(){
   /* Beating a pursuit unit is the milestone of an act, so it is also the
      one guaranteed full rebuild — otherwise a run that limps through a boss
      fight arrives in the next act already dead. */
-  G.hp = (G.run && G.run.M && G.run.M.clearHeal) || (G.run && G.run.cfg && G.run.cfg.boss)
-    ? G.hpMax
-    : Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.38));
+  /* Clearing pays road, not panel: the wall is shoved back to its opening
+     gap so the next stretch starts with the same breathing room the first
+     one did, and the mistake budget carries over untouched. */
+  G.wallGap = Math.max(G.wallGap, WALL_GAP_START);
+  if (G.run && G.run.cfg && G.run.cfg.boss) G.hp = Math.min(G.hpMax, G.hp + 2);
   /* Clearing used to open a second card screen. Chips and perks were the
      same object — run-long modifiers picked from three cards — delivered by
      two systems writing into one table, so seventeen of the twenty-two chips
@@ -7470,7 +7734,7 @@ function failDistrict(why){
   G.crashT = 0;
   G.crashReason = why;
   G.shake = 18;
-  G.pending = 0; G.chain = 0; G.mult = 1;
+  G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
   UI.hud.classList.add('off');
   NHAudio.curse();
 }
@@ -7479,31 +7743,42 @@ function endRun(won){
   G.state = 'over';
   hide(UI.map); hide(UI.contract); hide(UI.depot); hide(UI.cleared); hide(UI.brief);
   hide(UI.levelup); hide(UI.cleared);
-  const isBest = G.score > Save.data.best;
-  if (isBest) { Save.data.best = G.score; Ads.celebrate(); }
-  const reached = G.run ? G.run.district : 1;
-  if (reached > (Save.data.deepest || 0)) Save.data.deepest = reached;
-  /* Clearing districts is the achievement, so it pays on top of raw score —
-     and the score term is capped. Uncapped, coins tracked the superlinear
-     score curve: a god run paid 156k while a casual one paid 1.3k, so prices
-     tuned for one starved the other. Wrecks and clears carry the floor. */
+  /* ---- depth is the record, not points ----
+     Score is superlinear in skill and always was: measured, a god run paid
+     156,000 against a casual 1,300, a 120x spread no price ladder can serve
+     at both ends. Depth is bounded and roughly linear, so a great run pays
+     about 2.5x a bad one and "three more runs to the next unlock" becomes a
+     number the garage can actually promise. */
   const cleared = G.run ? G.run.cleared : 0;
-  G.coinsRun = Math.floor((G.coinsRun + cleared * 350 + G.totalWreck * 2
-             + Math.min(G.score / 80, 2500 + cleared * 900)) * G.spec.payout);
+  const reached = G.run ? (G.run.act - 1) * ROWS + Math.max(0, G.run.row) + 1 : 1;
+  const isBest = reached > (Save.data.deepest || 0)
+              || (reached === (Save.data.deepest || 0) && G.score > Save.data.best);
+  if (G.score > Save.data.best) Save.data.best = G.score;
+  if (reached > (Save.data.deepest || 0)) { Save.data.deepest = reached; Ads.celebrate(); }
+  /* first time this deep is worth a real lump — the unlock ladder is the
+     reason to come back, and it has to move on a run that went further even
+     if that run scored badly */
+  const firstTime = reached > (Save.data.paidDepth || 0) ? (reached - (Save.data.paidDepth || 0)) * 260 : 0;
+  if (firstTime) Save.data.paidDepth = reached;
+  G.coinsRun = Math.floor((G.coinsRun + cleared * 120 + firstTime
+             + Math.min(G.score / 400, 900)) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
   const rank = recordRun();
 
   /* the run ends when the hull does, so the kicker names the last straw */
-  const kick = G.crashReason === 'traffic' ? 'Hull gone'
-             : G.crashReason === 'wall' ? 'Into the wall'
+  /* Every ending has to finish the sentence "I lost because ___", so the
+     reason is the headline rather than a generic bust. */
+  const kick = G.crashReason === 'wall' ? 'Run down'
+             : G.crashReason === 'traffic' ? 'Out of panel'
+             : G.crashReason === 'police' ? 'Out of panel'
              : G.crashReason || 'Busted';
   $('ovKicker').textContent = kick;
   $('ovKicker').textContent = won ? 'City cleared' : kick;
   $('ovRank').textContent = G.run
-    ? 'Act ' + G.run.act + '  ·  ' + G.run.cleared + ' districts cleared'
+    ? (G.run.cfg ? G.run.cfg.name : 'The Grid') + '  ·  stretch ' + reached + ' of ' + RUN_ROWS
     : '';
-  $('ovScore').textContent = fmt(G.score);
+  $('ovScore').textContent = reached + ' / ' + RUN_ROWS;
   $('ovBest').textContent = fmt(Save.data.best);
   $('ovCombo').innerHTML = '&times;' + G.topMult.toFixed(1);
   $('ovWrecks').textContent = fmt(G.totalWreck);
@@ -7694,22 +7969,19 @@ function doRevive(){
     G.run.crumpleLeft = Math.max(G.run.crumpleLeft, G.run.M.crumple);
     UI.hud.classList.remove('off');
 
-    /* A revive has to undo the thing that actually killed you. It used to do
-       neither: the hull was left on zero, so the next scrape ended the run
-       again, and a quota miss put you back down *past* the checkpoint, which
-       re-fired the same failure on the following frame. Two kinds of death,
-       two different repairs. */
-    G.hp = Math.max(G.hp, Math.round(G.hpMax * 0.6));
+    /* A revive has to undo the thing that actually killed you, and there are
+       two things that can. Out of mistakes: hand back three. Run down by the
+       wall: shove it back to a full opening gap, because road is what you
+       were short of — reviving into a wall that is still on your bumper is
+       an ad watched for nothing, which is the worst thing the format can
+       sell. */
+    G.hp = Math.max(G.hp, Math.min(G.hpMax, 3));
     G.hurt = 0;
-    const ranOutOfRoad = G.crashReason === 'Quota missed' || G.crashReason === 'The unit got away';
-    if (ranOutOfRoad && G.run.cfg) {
-      /* buy road, because road is what you were short of. max() so this can
-         only ever extend the district, never shorten it. */
-      const travelled = G.car.idx - G.run.startIdx;
-      G.run.cfg.len = Math.max(G.run.cfg.len,
-                               Math.round(travelled + G.run.cfg.len * 0.5));
-      toast('Checkpoint pushed back', 'gold');
+    if (G.crashReason === 'wall') {
+      G.wallGap = WALL_GAP_MAX;
+      toast('You bought some road', 'gold');
     }
+    G.pass = 0; G.passT = 0;
     G.crashReason = '';
     /* drop back on the centreline a little ahead, briefly untouchable */
     const pos = G.track.at(G.car.idx + 4, 0);
