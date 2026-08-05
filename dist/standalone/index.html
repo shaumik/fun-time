@@ -3725,7 +3725,7 @@ const Tree = {
    Palette pairs, zero new rendering: the body, the glow and the light
    ribbon all read their colour from the fitted livery. */
 const LIVERIES = [
-  { id:'stock', name:'Factory Cyan', price:0,     col:'#3DE8FF', col2:'#0A5A72', trail:'#FFB13D' },
+  { id:'stock', name:'Factory Cyan', price:0,     col:'#3DE8FF', col2:'#0A5A72', trail:'#3DE8FF' },
   { id:'ember', name:'Ember',        price:2000,  col:'#FF6B4A', col2:'#5A1508', trail:'#FF8A3D' },
   { id:'venom', name:'Venom',        price:3500,  col:'#2FE08A', col2:'#0B4A2C', trail:'#5BFFC9' },
   { id:'royal', name:'Royalty',      price:5000,  col:'#B07CFF', col2:'#3A1B6E', trail:'#C6A8FF' },
@@ -8657,15 +8657,7 @@ function drawTrail(){
   if (!tr || tr.length < 3) return;
   const base = (G.spec && G.spec.trail) || CL.cyan;
   const boost = G.car && G.car.boost;
-  /* ---- boost reads as hotter, not as a different colour ----
-     The ribbon used to shift toward amber under boost, which is where the
-     yellow trail came from — and the amber is the better look, so it is the
-     stock livery's trail colour now rather than a state you have to be in to
-     see. That leaves boost needing its own tell, and shifting an amber trail
-     toward amber is no tell at all. A light that is working harder goes
-     white, not orange: boost drives it toward a hot near-white instead, which
-     reads on every livery rather than only on the cool ones. */
-  const col = boost ? mix(base, '#FFF4DA', 0.5) : base;
+  const col = boost ? mix(base, '#FFB13D', 0.55) : base;
   ctx.save();
   ctx.lineCap = ctx.lineJoin = 'round';
   ctx.globalCompositeOperation = 'lighter';
