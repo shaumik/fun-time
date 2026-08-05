@@ -4869,6 +4869,9 @@ class Track {
     this.curv = 0; this.tCurv = 0;
     this.hw = 280; this.tHw = 280;
     this.x = 0; this.y = 0; this.n = 0;
+    /* where each side+row last put a building, so the next one can stand
+       beside it rather than inside it — see extend() */
+    this.lastB = {};
     for (let i = 0; i < 260; i++) this.extend();
   }
   envAt(n){
@@ -4913,12 +4916,38 @@ class Track {
         for (let r = 0; r < rows; r++) {
           const t = rows === 1 ? 0 : r / (rows - 1);
           const off = this.hw + lerp(TH.back[0], TH.back[1], t) + rnd(-34, 34);
-          /* slide along the road too, or every row lines up on one normal */
-          const al = rnd(-1, 1) * SEG * 1.4;
+          /* ---- slide, but not into the neighbour ----
+             This was a flat rnd(-1,1) * SEG * 1.4 with no regard for what was
+             already standing there. The nodes that carry buildings are two
+             segments apart, so a ±1.4-segment slide lets a mass travel most of
+             the way into its neighbour's slot — and with widths running to
+             more than a segment they did not merely touch, they interpenetrated.
+             A skyline reads as a skyline because the masses stand beside each
+             other; when they pass through one another it reads as a pile of
+             quads.
+
+             Each row on each side remembers where it last put something and
+             keeps half of each mass plus a margin clear of it. The slide is
+             still random, it just gets clamped forward when it would land on
+             the last one, and gives up its turn if even the far end of its
+             window is too close. That leaves the odd gap, which is what a real
+             skyline has and what the old version never did. */
+          const w = rnd(TH.size[0], TH.size[1]);
+          const key = side + ':' + r;
+          const span = SEG * 1.4;
+          let al = rnd(-span, span);
+          const here = this.n * SEG;
+          const prev = this.lastB[key];
+          if (prev) {
+            const need = (prev.w + w) * 0.5 + 14;
+            if (here + al - prev.at < need) al = prev.at + need - here;
+            if (al > span) continue;              // no room this time round
+          }
+          this.lastB[key] = { at: here + al, w };
           p.b.push({
             x: this.x + nx * off * side + Math.cos(this.ang) * al,
             y: this.y + ny * off * side + Math.sin(this.ang) * al,
-            w: rnd(TH.size[0], TH.size[1]), d: rnd(TH.size[0], TH.size[1]),
+            w, d: rnd(TH.size[0], TH.size[1]),
             /* back rows run taller: the front row should not hide the city */
             h: rnd(TH.h[0], TH.h[1]) * (1 + t * 0.35),
             a: this.ang + rnd(-0.25, 0.25),
