@@ -6392,8 +6392,8 @@ function smash(v, rel){
   if (M.cook) { v.cook = M.cook; v.cookGen = 0; }
   archWreck(v);
   arcFrom(v);
-  /* a wreck is the verb; banking is the achievement. See addXP callers. */
-  addXP(0.35);
+  /* No XP here. See the note on addXP(): the ladder is paced by progress, and
+     a wreck is the verb you perform continuously. */
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
   /* Momentum: every fifth link is worth two */
   if (M.chainStep && G.chain % 5 === 0) {
@@ -6447,7 +6447,6 @@ function killCar(t, vx, vy, pay){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  addXP(0.35);
   if (M.coinPerWreck) G.coinsRun += M.coinPerWreck;
   if (G.lastingPayday > 0) G.coinsRun += 12 * G.lastingPayday;
   archWreck(t);
@@ -6469,7 +6468,6 @@ function killPolice(p, idx){
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
   G.chainT = G.chainMax = chainTime();
-  addXP(1);
   G.coinsRun += 120;
   G.heat = Math.max(0, G.heat - 0.6);
   G.policeCool = 6;
@@ -7369,6 +7367,20 @@ function fireMissile(){
    two runs diverge inside the first district.
    ============================================================ */
 const LEVEL_CAP = 15;
+/* ---- what pays XP ----
+   Only progress does. Wrecking and banking used to, and both scale with how
+   well the run is going rather than how far it has got — so the ladder ran on
+   scoring rate, and a player working long chains crossed most of it inside one
+   stretch while a weaker player on the same road crossed almost none of it.
+   Score, coins and the quota are what scoring is for; the ladder measures
+   depth.
+
+   Sized against the curve: the whole ladder is about 7,500 XP, and these pay
+   roughly 1,100 over a five-district run and 3,500 over a deep one, which
+   lands around level 8 and level 13 respectively once the modifiers are in. */
+const GATE_XP = 45;
+const clearXP = d => 70 + d * 20;
+
 /* the most the XP modifiers may compound to, together — see addXP() */
 const XP_MUL_CAP = 2.4;
 /* Clearing a district pays a large XP lump on top of the wrecks, so there
@@ -7656,7 +7668,7 @@ function convoyHit(v, rel){
      not the individual truck. */
   const gain = Math.round(320 * G.mult * M.bankMul * M.wreckMul * (G.run.L.wreckPay || 1));
   G.pending += gain;
-  addXP(3);
+  addXP(15);
   G.chain += 1;
   G.mult = Math.min(M.multCap, 1 + G.chain * M.multRate);
   G.topMult = Math.max(G.topMult, G.mult);
@@ -7744,7 +7756,9 @@ function bank(){
 
   G.score += gained;
   G.run.banked += gained;
-  addXP(Math.min(6, Math.round(gained / 2600)));
+  /* Banking pays score, coins and the quota. It does not pay levels: it
+     scales with how well you are scoring, and a ladder paced by scoring rate
+     is one a strong player climbs in a single stretch. */
   /* Scaled to the quota AND capped per bank: chain-multiplier inflation
      means income can outrun any fixed divisor by 10-30x, which pegged heat
      at 3.0 by district two and turned the pursuit ladder into a constant.
@@ -10881,7 +10895,7 @@ function passGate(){
      the ability to survive more of it */
   G.hp = Math.min(G.hpMax, G.hp + Math.round(G.hpMax * 0.08));
   G.heat = Math.min(3.0, G.heat + 0.9);
-  addXP(8);
+  addXP(GATE_XP);
   NHAudio.bank(2);
   toast('Checkpoint ' + G.stage + ' cleared — ' + zone.name, 'gold');
   /* the next stretch is already generated ahead of the car; what changes is
@@ -10923,8 +10937,8 @@ function clearDistrict(){
      screen would be the same reward counted again. */
   G.coinsRun += 140 + run.district * 30;
   const wasLvl = run.level;
-  const xpPaid = Math.round((20 + run.district * 4) * (run.L ? run.L.xpMul : 1));
-  addXP(20 + run.district * 4);
+  const xpPaid = Math.round(clearXP(run.district) * (run.L ? run.L.xpMul : 1));
+  addXP(clearXP(run.district));
   G.clearInfo = { xpPaid, wasLvl };
   /* ---- the pick comes before the screen ----
      Two ways a level lands on a finished district: earned on the road with
