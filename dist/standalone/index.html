@@ -7369,6 +7369,8 @@ function fireMissile(){
    two runs diverge inside the first district.
    ============================================================ */
 const LEVEL_CAP = 15;
+/* the most the XP modifiers may compound to, together — see addXP() */
+const XP_MUL_CAP = 2.4;
 /* Clearing a district pays a large XP lump on top of the wrecks, so there
    is exactly one level track rather than two counters that drift apart —
    the old clear-grants-a-free-perk path handed out 21 perks by level 12. */
@@ -7405,8 +7407,21 @@ function addXP(n){
     }
     return;
   }
-  run.xp += n * (run.L ? run.L.xpMul : 1) * (run.overtime ? 1.5 : 1)
+  /* ---- the multipliers are bounded together ----
+     Three of these stack multiplicatively — an elite contract at risk in
+     overtime with the Knowledge node measured 3 x 1.5 x 1.15 = 5.2x — and
+     they are applied to per-event values that were each chosen as "what this
+     event is worth". That makes the caps at the call sites decorative: the
+     bank payout is written Math.min(6, ...) and actually pays 31, so a player
+     working the chain crossed seven levels inside one stretch.
+
+     Each reward still does what it advertises; they just cannot compound
+     without bound. The ceiling is deliberately above the largest single
+     modifier, so Double XP is still double when it is the only one running. */
+  const boost = (run.L ? run.L.xpMul : 1)
+              * (run.overtime ? 1.5 : 1)
               * (Tree.has('t_know') ? 1.15 : 1);
+  run.xp += n * Math.min(XP_MUL_CAP, boost);
   while (run.level < LEVEL_CAP && run.xp >= xpFor(run.level)) {
     run.xp -= xpFor(run.level);
     run.level++;
