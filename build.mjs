@@ -11,30 +11,38 @@
    on any change to the ad code. Git has them if a channel is ever wanted
    back — the seam they plugged into is still in src/game.js, documented. */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
-
-/* ---- a build stamp ----
-   Two rounds were spent on a bug that did not exist in the build being
-   discussed, because neither of us could tell which build was on the screen:
-   the artifact URL never changes and a phone webview caches aggressively. The
-   game now says. It is in the menu options row and on window.__NH.build. */
-const BUILD = (() => {
-  try {
-    const rev = execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim();
-    const dirty = execSync('git status --porcelain', { cwd: ROOT }).toString().trim() ? '+' : '';
-    return rev + dirty;
-  } catch (e) { return 'local'; }
-})();
 
 const html = read('index.html');
 const css  = read('src/style.css');
 /* load order matters: game.js reads NHAudio and NHChips at definition time */
 const SCRIPTS = ['src/audio.js', 'src/chips.js', 'src/game.js'];
 const js = SCRIPTS.map(read).join('\n');
+
+/* ---- a build stamp ----
+   Two rounds were spent on a bug that did not exist in the build being
+   discussed, because neither of us could tell which build was on the screen:
+   the artifact URL never changes and a phone webview caches aggressively. The
+   game now says which build it is, in the menu options row and on
+   window.__NH.build.
+
+   It is a hash of the sources, not the commit. The commit hash was the obvious
+   choice and it cannot work here, because dist/ is committed: stamping HEAD
+   into dist/ changes dist/, committing that changes HEAD, and the next build
+   stamps something new again. There is no fixed point. A hash over the inputs
+   has one by construction — same sources, same stamp, no matter when or from
+   what commit it is built — so a rebuilt tree is clean whenever the game in it
+   is unchanged, and any drift between src/ and dist/ shows up as a real diff.
+   To map a stamp back to a commit: `git log -S'__NH_BUILD="<stamp>"' -- dist`. */
+const BUILD = crypto.createHash('sha256')
+  .update(html).update(css).update(js).update(read('build.mjs'))
+  .digest('hex').slice(0, 7);
 
 fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });
 
@@ -77,21 +85,34 @@ fs.writeFileSync(path.join(ROOT, 'dist/standalone/index.html'), standalone);
 /* The submission artefact: a zip with index.html at its root and nothing else
    in it, plus the same for the standalone build.
 
-   Stamp every file to a fixed mtime before zipping. `zip -X` drops the extra
-   fields but still records each entry's modification time, so an unchanged
-   build produced a byte-different archive on every run and left dirty zips in
-   the working tree after any rebuild. Deterministic archives mean the diff
-   shows a zip only when the game inside it actually changed. */
+   The entry inside the archive is stamped to a fixed mtime. `zip -X` drops the
+   extra fields but still records each entry's modification time, so without
+   this an unchanged build produced a byte-different archive on every run and
+   left dirty zips in the working tree after any rebuild. Deterministic
+   archives mean the diff shows a zip only when the game inside it changed.
+
+   The stamping happens on a copy in a temp directory, and that matters. It
+   used to run `touch -t` over dist/ itself, which pinned every tracked file in
+   there to the same fixed mtime on every build. git decides a file is
+   unmodified from cached stat data — same size, same mtime, skip the hash —
+   so a dist/index.html whose contents had changed but whose length happened to
+   match went on reporting as clean, was never staged, and the repo kept
+   shipping an older build than the source it was built from. Two rounds of
+   "which build is this?" came out of exactly that. Real mtimes on dist/, fixed
+   mtimes only inside the archive. */
 const dist = path.join(ROOT, 'dist');
 const STAMP = '202601010000.00';
-const stamp = dir => execSync('find . -type f -exec touch -t ' + STAMP + ' {} +', { cwd: dir });
 
 const zipUp = (dir, name) => {
-  const z = path.join(dir, name);
-  fs.rmSync(z, { force: true });
-  stamp(dir);
-  execSync('zip -q -X ' + name + ' index.html', { cwd: dir });
-  return z;
+  const out = path.join(dir, name);
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nh-zip-'));
+  fs.copyFileSync(path.join(dir, 'index.html'), path.join(tmp, 'index.html'));
+  execSync('touch -t ' + STAMP + ' index.html', { cwd: tmp });
+  execSync('zip -q -X ' + name + ' index.html', { cwd: tmp });
+  fs.rmSync(out, { force: true });
+  fs.copyFileSync(path.join(tmp, name), out);
+  fs.rmSync(tmp, { recursive: true, force: true });
+  return out;
 };
 
 const zip    = zipUp(dist, 'neon-heat.zip');
