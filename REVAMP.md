@@ -220,29 +220,61 @@ mobile input layer · adaptive quality.
 
 ---
 
-## 8. Verification
+## 8. Verification — what shipped, and what did not
 
-Harness drives the real input path via `MS.steer`. Three profiles:
+All of sections 1–7 are built and on the branch. The suite passes: `flow`, `hud`, `ads`,
+`sdk`, `sizes`. (`physics` flags integrator drift at high refresh rates; that is
+pre-existing and unchanged — 9.9% before this work, 8.0% after, same code path.)
 
-| Profile | Behaviour | Assertion |
-|---|---|---|
-| `cruise` | follows road centre, never targets | dies to the Wall in **< 25s** |
-| `hunt` | always the nearest car | survives but plateaus; median run **90–150s** |
-| `reader` | picks the line maximising cars-per-pass | reaches **2–3× the depth of `hunt`** |
+Harness drives the real input path via `MS.steer`. Three profiles, 6 runs each, fresh save:
 
-**The `reader` / `hunt` gap is the single most important number in the build.** It *is* the
-skill ceiling. If it isn't there, formations aren't readable and Phase 0 failed.
+| Profile | Behaviour | Target | **Measured (median)** | |
+|---|---|---|---|---|
+| `cruise` | follows road centre, never targets | dies < 25s | **20.6s** (14.6–120.9) | ✅ |
+| `hunt` | always the nearest car | plateaus, 90–150s | **116.9s** (64.7–160.3) | ✅ |
+| `reader` | solves for most cars per pass | 2–3× `hunt` | **80.6s** (19.1–166.1) — *below* `hunt` | ❌ |
 
-Also assert: no run ends for a reason the log cannot attribute to a specific event.
+Every death is attributable to a named event (`wall`, `traffic`, `police`). ✅
 
----
+### The Phase 0 gate has NOT passed
+
+The `reader` / `hunt` gap is the single assertion that decides whether this design works,
+and it is currently **inverted**: solving for the best line performs *worse* than driving at
+the nearest car. Two candidate explanations, and the harness cannot separate them:
+
+1. **The bot is a bad proxy.** `reader` picks an entry car by a greedy heuristic and commits
+   to it. The "best line" entry car is frequently *less reachable* than the nearest one, so
+   the bot spends its time crossing the road instead of wrecking. A human reads the shape and
+   steers through it; the bot solves a scoring function and drives at a point.
+2. **Formations still are not asking a real question.** An earlier round showed that in a
+   tight cluster the nearest car usually *is* on the best line — the clustering was doing the
+   player's thinking. Baited shapes (a lead car in its own lane, cluster behind it elsewhere)
+   were added to force the wrong choice to be attractive. They did not move the gap.
+
+**Do not tune further against this bot.** The next step is a human playtest of the Phase 0
+loop: does taking a four-car wedge on one line *feel* different from picking off three cars
+separately, and can you see the bait coming in time to refuse it? That is a question about
+readability at speed, and a scoring function cannot answer it.
+
+If a human also cannot beat `hunt` by reading, the problem is (2) and the fix is in the
+formation vocabulary — longer approach, more lateral separation between bait and cluster, or
+slower relative closing speed to buy reading time.
+
+### What is solid regardless
+
+- The Wall works as the run's only clock. Doing nothing kills you in ~20s, every time.
+- Death is always attributable — the sentence "I lost because ___" now completes.
+- The run has a slope: mistakes carry across stretches with one repair source.
+- Variance is very high — `cruise` ranged 14.6s to 120.9s, `reader` 19.1s to 166.1s. Six
+  samples per profile is thin, and anything tuned on fewer is noise. Any future tuning pass
+  needs 20+ runs per profile before a 20% difference means anything.
 
 ## 9. Open risks
 
-1. **The camera is biased forward.** A threat behind the player may be off-screen exactly when
-   it matters. Needs a rear-edge treatment (vignette + audio + a mirror strip), or a camera
-   rebias — and it has to survive portrait mobile, where there is far less road visible.
-   *This is the highest-risk item in the design and should be prototyped in Phase 0.*
+1. **The camera is biased forward.** Addressed with `drawWall()` (a wall of light and dust
+   spanning the road in world space) plus `drawRear()` (a screen-space band at the bottom edge
+   that grows and beats faster as the gap closes). **Unverified by a human, and unverified in
+   portrait**, where there is far less road visible — still the highest-risk item.
 2. **Pack readability at speed.** 5.5s cadence at 620 u/s means a pack is visible for roughly
    one second before commitment. If the camera can't show enough road ahead, the read is a
    guess and the skill gradient collapses.
