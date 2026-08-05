@@ -2510,7 +2510,7 @@ const PURSUIT = [
     standoff:520, marks:true, role:'Paints you. The rest close faster.' },
 
   { id:'tank', name:'Tank', w:8, minAct:2,
-    hp:7, len:78, wid:38, nose:.98, tail:.98, top:520, power:760, grip:5.0, turn:0.5,
+    hp:7, len:80, wid:44, nose:.98, tail:.98, top:520, power:760, grip:5.0, turn:0.5,
     boxy:true,
     /* Slow, enormous, ram-proof and it holds the road. It cannot catch you on
        the straight — it wins by being where you have to go. Wreckage hurts it
@@ -5937,9 +5937,10 @@ function drawVehicle(v, opt){
     ctx.roundRect(s.len * 0.46, -s.wid * 0.5 * barSpan, s.len * barW, s.wid * barSpan, 2);
     ctx.fill(); ctx.stroke();
 
-    /* BULL and TANK: a full plow blade, angled, that reads as "not with your
-       bumper" from a hundred metres back */
-    if (arch === 'bull' || arch === 'tank') {
+    /* BULL: a full plow blade, angled, that reads as "not with your bumper"
+       from a hundred metres back. The tank gets a glacis and a gun instead —
+       a blade on a tracked vehicle just made it a car with a wedge on it. */
+    if (arch === 'bull') {
       ctx.fillStyle = '#1A1016';
       ctx.strokeStyle = hexA(fac.light2, 0.95);
       ctx.lineWidth = 1.8;
@@ -5951,31 +5952,66 @@ function drawVehicle(v, opt){
       ctx.closePath();
       ctx.fill(); ctx.stroke();
     }
-    /* TANK: tracks down both flanks and a squat turret */
+    /* ---- TANK ----
+       Three things make a top-down tank read as one, and the first pass had
+       none of them at the right size: tracks that run the FULL length and
+       overhang the hull on both sides, a hull that is a slab rather than a
+       car, and a gun long enough to break the silhouette out past the nose.
+       A circle on a car roof is a car with a circle on it. */
     if (arch === 'tank') {
-      ctx.fillStyle = '#0C1008';
-      ctx.strokeStyle = hexA(fac.light2, 0.6);
-      ctx.lineWidth = 1.2;
+      const L = s.len, Wd = s.wid;
+      /* hull: a plain slab, drawn over the car body so no curves survive */
+      ctx.fillStyle = fac.trim;
+      ctx.strokeStyle = hexA(fac.light2, 0.55);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(-L * 0.42, -Wd * 0.30, L * 0.84, Wd * 0.60, 2);
+      ctx.fill(); ctx.stroke();
+      /* glacis: a sloped front plate instead of a plow */
+      ctx.beginPath();
+      ctx.moveTo(L * 0.42, -Wd * 0.30);
+      ctx.lineTo(L * 0.54, -Wd * 0.20);
+      ctx.lineTo(L * 0.54, Wd * 0.20);
+      ctx.lineTo(L * 0.42, Wd * 0.30);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+
+      /* tracks: full length, overhanging both flanks, symmetric */
+      ctx.fillStyle = '#0A0C06';
+      ctx.strokeStyle = hexA(fac.light2, 0.75);
+      ctx.lineWidth = 1.3;
       for (const sd of [-1, 1]) {
         ctx.beginPath();
-        ctx.roundRect(-s.len * 0.42, sd * s.wid * 0.36 - s.wid * 0.11,
-                      s.len * 0.84, s.wid * 0.22, 2);
+        ctx.roundRect(-L * 0.50, sd * Wd * 0.50 - Wd * 0.11, L * 1.00, Wd * 0.22, 3);
         ctx.fill(); ctx.stroke();
       }
-      for (let k = 0; k < 7; k++) {
-        const x = -s.len * 0.38 + k * s.len * 0.12;
-        ctx.beginPath();
-        ctx.moveTo(x, -s.wid * 0.47); ctx.lineTo(x, -s.wid * 0.25);
-        ctx.moveTo(x, s.wid * 0.25);  ctx.lineTo(x, s.wid * 0.47);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#161C0E';
-      ctx.strokeStyle = hexA(fac.light, 0.85);
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(0, 0, s.wid * 0.30, 0, TAU); ctx.fill(); ctx.stroke();
+      /* cleats — one path, one stroke, and both sides get the same run */
+      ctx.strokeStyle = hexA(fac.light2, 0.45);
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      ctx.roundRect(0, -s.wid * 0.055, s.len * 0.46, s.wid * 0.11, 1.5);
+      for (let k = 0; k <= 9; k++) {
+        const x = -L * 0.47 + k * L * 0.104;
+        ctx.moveTo(x, -Wd * 0.60); ctx.lineTo(x, -Wd * 0.40);
+        ctx.moveTo(x,  Wd * 0.40); ctx.lineTo(x,  Wd * 0.60);
+      }
+      ctx.stroke();
+
+      /* turret, set back, with a gun that clears the nose */
+      ctx.fillStyle = mix(fac.body, '#000000', 0.35);
+      ctx.strokeStyle = hexA(fac.light, 0.9);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(-L * 0.20, -Wd * 0.055, L * 0.86, Wd * 0.11, 2);
       ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(L * 0.60, -Wd * 0.085, L * 0.08, Wd * 0.17, 1.5);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(-L * 0.06, 0, Wd * 0.27, 0, TAU);
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = hexA(fac.light, 0.45);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(-L * 0.06, 0, Wd * 0.16, 0, TAU); ctx.stroke();
     }
     /* BLOCKER: a barricade rack on the roof — it is carrying the roadblock */
     if (arch === 'blocker') {
@@ -6042,13 +6078,19 @@ function drawVehicle(v, opt){
       }
     }
 
-    /* armour pips — as many as the unit actually has */
+    /* ---- armour pips, centred on the roof ----
+       These used to sit at -0.74 of the width, which is *beside* the body on
+       one flank. At three pips that was a faint stripe; at seven it reads as
+       a row of wheels down the left-hand side and nothing down the right,
+       which is the first thing anyone notices about the sheet. On the roof
+       and centred, they belong to the car instead of hanging off it. */
     const maxHp = v.maxHp || v.hp || 3;
     if (v.hp != null && v.hp < maxHp) {
-      const wpip = s.len * 0.72 / maxHp;
+      const wpip = s.len * 0.62 / maxHp;
+      const py = -s.wid * 0.07;
       for (let k = 0; k < maxHp; k++) {
-        ctx.fillStyle = k < v.hp ? hexA(fac.light, 0.95) : hexA(fac.light, 0.20);
-        ctx.fillRect(-s.len * 0.36 + k * wpip, -s.wid * 0.74, wpip * 0.7, s.wid * 0.12);
+        ctx.fillStyle = k < v.hp ? hexA(fac.light, 0.95) : hexA(fac.light, 0.18);
+        ctx.fillRect(-s.len * 0.31 + k * wpip, py, wpip * 0.66, s.wid * 0.14);
       }
     }
   }
@@ -9381,7 +9423,7 @@ window.__NH = {
   PURSUIT, FACTIONS, pursuitById, factionForAct,
   /* Contact sheet for design review: every archetype in every faction livery,
      drawn by the shipping renderer so what you approve is what ships. */
-  previewPursuit(){
+  previewPursuit(only, scale){
     G.state = 'menu';
     const W2 = cv.width, H2 = cv.height;
     /* drawVehicle culls against the camera, so park it over the sheet and
@@ -9392,12 +9434,14 @@ window.__NH = {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#05060E';
     ctx.fillRect(0, 0, W2, H2);
-    const cols = PURSUIT.length, rows = FACTIONS.length;
+    const list = only ? PURSUIT.filter(a => only.indexOf(a.id) >= 0) : PURSUIT;
+    const SC = scale || 1.55;
+    const cols = list.length, rows = FACTIONS.length;
     const cw = W2 / (cols + 0.6), ch = (H2 - 90) / rows;
     ctx.textAlign = 'center';
     ctx.font = '600 13px system-ui,sans-serif';
     ctx.fillStyle = '#7C8BA8';
-    PURSUIT.forEach((a, ci) => {
+    list.forEach((a, ci) => {
       const x = cw * 0.8 + ci * cw;
       ctx.fillStyle = '#C6D2E8';
       ctx.font = '700 15px system-ui,sans-serif';
@@ -9423,7 +9467,7 @@ window.__NH = {
       ctx.font = '400 11px system-ui,sans-serif';
       ctx.fillText(f.sub + '  ·  act ' + (ri + 1), 14, y + 8);
       ctx.textAlign = 'center';
-      PURSUIT.forEach((a, ci) => {
+      list.forEach((a, ci) => {
         const spec = Object.assign({}, CARS[2], {
           col:f.body, col2:f.trim, len:a.len, wid:a.wid,
           nose:a.nose, tail:a.tail, boxy:!!a.boxy
@@ -9436,7 +9480,7 @@ window.__NH = {
         v.a = -Math.PI / 2;
         ctx.save();
         ctx.translate(v.x, v.y);
-        ctx.scale(1.55, 1.55);
+        ctx.scale(SC, SC);
         ctx.translate(-v.x, -v.y);
         drawVehicle(v);
         ctx.restore();
