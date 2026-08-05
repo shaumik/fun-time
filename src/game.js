@@ -4423,9 +4423,22 @@ function step(dt){
       G.trail.push({
         x: car.x - tcs * car.spec.len * 0.5,
         y: car.y - tsn * car.spec.len * 0.5,
-        k: Math.min(1.6, 0.35 + car.drift * 0.7 + (car.boost ? 0.65 : 0))
+        /* ---- brightness and width are two things ----
+           One value used to drive both, at 0.35 cruising and 1.00 under
+           boost, so the ribbon was dim AND thin most of the time and only
+           became a light when you boosted. The good version was the one you
+           could not have. Brightness starts near the top now — the trail is
+           a light at cruise, in the livery's own colour — and boost adds a
+           little on top rather than being the whole difference. */
+        k: Math.min(1.6, 0.95 + car.drift * 0.5 + (car.boost ? 0.3 : 0)),
+        /* Width follows the slide and nothing else. Boost widening it was
+           backwards: something moving faster leaves a longer streak, not a
+           thicker one. */
+        w: Math.min(1.4, 0.35 + car.drift * 0.7)
       });
-      if (G.trail.length > 42) G.trail.shift();
+      /* and the length is where boost shows: the ribbon runs about twice as
+         far behind the car, then retracts over ~0.7s when it lapses */
+      if (G.trail.length > (car.boost ? 84 : 42)) G.trail.shift();
     }
 
     /* ---- the chain clock ----
@@ -5096,7 +5109,8 @@ function drawTrail(){
   if (!tr || tr.length < 3) return;
   const base = (G.spec && G.spec.trail) || CL.cyan;
   const boost = G.car && G.car.boost;
-  const col = boost ? mix(base, '#FFB13D', 0.55) : base;
+  /* boost is a colour change and a length change, not a size change */
+  const col = boost ? mix(base, '#FFB13D', 0.72) : base;
   ctx.save();
   ctx.lineCap = ctx.lineJoin = 'round';
   ctx.globalCompositeOperation = 'lighter';
@@ -5105,20 +5119,25 @@ function drawTrail(){
     const from = b * third, to = Math.min(tr.length, from + third + 1);
     if (to - from < 2) continue;
     /* oldest bucket first and dimmest; each bucket carries its mean heat */
-    let k = 0;
-    for (let i = from; i < to; i++) k += tr[i].k;
-    k /= (to - from);
+    let k = 0, wq = 0;
+    for (let i = from; i < to; i++) { k += tr[i].k; wq += (tr[i].w !== undefined ? tr[i].w : 0.35); }
+    k /= (to - from); wq /= (to - from);
     const age = (b + 1) / 3;
     ctx.beginPath();
     ctx.moveTo(tr[from].x, tr[from].y);
     for (let i = from + 1; i < to; i++) ctx.lineTo(tr[i].x, tr[i].y);
     ctx.strokeStyle = hexA(col, 0.10 * age * k);
-    ctx.lineWidth = 12 + k * 8;
+    ctx.lineWidth = 12 + wq * 8;
     ctx.stroke();
     ctx.strokeStyle = hexA(col, 0.42 * age * k);
-    ctx.lineWidth = 3.5 + k * 2.5;
+    ctx.lineWidth = 3.5 + wq * 2.5;
     ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * age * k).toFixed(3) + ')';
+    /* The hot core was pure white at every heat, and at boost brightness it
+       is opaque enough to wash the colour out of the two bands under it — so
+       a trail that was mixed 72% toward amber still read as a white streak.
+       The core carries the same shift, which is what lets boost read as
+       yellow rather than as "brighter". */
+    ctx.strokeStyle = hexA(boost ? '#FFE7B4' : '#FFFFFF', 0.5 * age * k);
     ctx.lineWidth = 1.4;
     ctx.stroke();
   }
