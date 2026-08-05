@@ -1762,7 +1762,7 @@ const G = {
   score:0, pending:0, chain:0, mult:1, chainT:0, chainMax:1,
   heat:0, tier:0, best:Save.data.best,
   coinsRun:0, topMult:1, totalWreck:0,
-  crashT:0, slow:1, revived:false, pendingLevels:0, awaitingAdvance:false,
+  crashT:0, slow:1, revived:false, pendingLevels:0, awaitingAdvance:false, awaitingClear:false,
   shake:0, shakeT:0, shakePrev:0, dist:0,
   run:null, ghost:0, pulseWarn:0, offers:[], paused:false,
   env:null, envPrev:null, envT:1, stage:0,
@@ -3805,7 +3805,7 @@ function addXP(n){
    ============================================================ */
 /* matches the banner's own animation length — the cards are not allowed to
    interrupt the strike partway through */
-const FLARE_HOLD = 1.5;
+const FLARE_HOLD = 1.25;   // and the comment above meant it
 
 function armLevelFlare(){
   /* The clear screen already says "Level 4 — take a perk" on its own face,
@@ -3905,6 +3905,8 @@ function takePerk(i){
   G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0) + G.run.hullBonus);
   if (G.hpMax > was) G.hp += G.hpMax - was;
   if (G.pendingLevels > 0) { maybeLevelUp(); return; }   // two at once is possible
+  /* a district that was waiting on this pick finishes clearing now */
+  if (G.awaitingClear) { G.awaitingClear = false; clearDistrict(); return; }
   if (G.awaitingAdvance) { G.awaitingAdvance = false; advance(); }
 }
 
@@ -6684,7 +6686,7 @@ function bootIntoPlay(){
   Hangar.grantStarter();
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = 0; G.awaitingAdvance = false;
+  G.pendingLevels = 0; G.awaitingAdvance = false; G.awaitingClear = false;
   shownScore = 0;
 
   const run = G.run;
@@ -6700,7 +6702,7 @@ function startRun(){
   hide(UI.menu); hide(UI.over); hide(UI.garage); hide(UI.cleared);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = Tree.has('t_head') ? 1 : 0; G.awaitingAdvance = false;
+  G.pendingLevels = Tree.has('t_head') ? 1 : 0; G.awaitingAdvance = false; G.awaitingClear = false;
   shownScore = 0;
   showMap();
 }
@@ -6727,7 +6729,7 @@ function startRunDirect(){
   hide(UI.menu); hide(UI.over); hide(UI.garage);
   G.run = newRun();
   G.score = 0; G.topMult = 1; G.coinsRun = 0; G.revived = false; G.totalWreck = 0;
-  G.pendingLevels = 0; G.awaitingAdvance = false;
+  G.pendingLevels = 0; G.awaitingAdvance = false; G.awaitingClear = false;
   shownScore = 0;
   /* the middle of the opening row: the plain Run, not an Elite */
   const open = openNodes();
@@ -7190,6 +7192,24 @@ function passGate(){
 }
 
 function clearDistrict(){
+  /* ---- a level earned on the road is owed on the road ----
+     The banner holds the cards back for FLARE_HOLD, and a checkpoint landing
+     inside that window used to carry the pending pick straight past here into
+     the clear screen, where leaveCleared() hands it over afterwards. From the
+     driver's seat that is: level up while driving, watch the banner, finish
+     the district — and only then get asked to pick the perk you earned two
+     screens ago. It reads as the game forgetting and then remembering.
+
+     So the pick goes first and the clear screen waits for it. Nothing below
+     this line has run yet — no healing, no coins, no XP, no state change — so
+     coming back in through takePerk() re-enters cleanly. */
+  if (G.pendingLevels > 0 && G.state === 'play') {
+    G.levelFlare = 0;                       // the banner has had its moment
+    G.awaitingClear = true;
+    maybeLevelUp();
+    if (G.state === 'levelup') return;      // resumed by takePerk()
+    G.awaitingClear = false;                // at the cap, nothing to offer
+  }
   /* Beating a pursuit unit is the milestone of an act, so it is also the
      one guaranteed full rebuild — otherwise a run that limps through a boss
      fight arrives in the next act already dead. */
