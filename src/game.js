@@ -1829,7 +1829,7 @@ const G = {
      and you cannot hide from it by driving well. The only thing that pushes
      it back is wrecking traffic, which is what forces the verb the old quota
      was supposed to force and never did. */
-  wallGap: 700, wallHit: 0, wallIdx: 0,
+  wallGap: 700, wallHit: 0, wallIdx: 0, wallT: 0, chase: [],
   /* cars taken in the current pass, and the window that keeps it open */
   pass: 0, passT: 0,
   /* where the next formation goes down */
@@ -2249,7 +2249,8 @@ function newWorld(ai){
   G.ai = !!ai;
   /* the wall starts where it can be seen arriving, not on top of the car */
   G.wallGap = WALL_GAP_START;
-  G.pass = 0; G.passT = 0; G.wallHit = 0;
+  G.pass = 0; G.passT = 0; G.wallHit = 0; G.wallT = 0;
+  buildChase();
   G.packIdx = G.car.idx + 40;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   cam.sx = 0; cam.sy = 0;              // the shake damps out, so clear it by hand
@@ -2829,6 +2830,66 @@ function wallClose(){
   return (WALL_CLOSE + cleared * WALL_CLOSE_STEP) * ((M && M.wallSpeed) || 1) * last;
 }
 
+/* ---- THE LINE ----
+   The gap used to be drawn as a red slab across the road, and it read as a
+   rendering fault rather than as a threat: an abstract bar has no fiction, so
+   there was nothing to be afraid of and nothing to explain why wrecking a car
+   pushed it back.
+
+   It is a squad of pursuit cars now. Their *position* is still authoritative
+   from wallGap — they are pinned to it rather than simulated as racers — so
+   the clock stays exact and speed-independent and every tuned number holds.
+   What changed is that the threat is a thing on the road with headlights and
+   strobes, closing on you, and the reason it falls back is legible: you left
+   four cars across the road and they have to get through them. */
+const CHASE_N = 6;
+
+function buildChase(){
+  G.chase = [];
+  for (let i = 0; i < CHASE_N; i++) {
+    const spec = Object.assign({}, CARS[2], {
+      col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0, top:640
+    });
+    const v = new Vehicle(spec, 'police');
+    /* spread across the road, staggered back so the squad has depth and you
+       can tell which one is closest */
+    v.chaseLane = (i / (CHASE_N - 1)) * 1.5 - 0.75;
+    v.chaseBack = (i % 2) * 0.55 + (i % 3) * 0.22;
+    v.chaseWeave = Math.random() * TAU;
+    v.lamp = Math.random() * TAU;
+    v.checkT = 0;
+    G.chase.push(v);
+  }
+}
+
+/* Pinned to the gap, but alive: each unit weaves in its lane, the strobes run
+   free, and a unit that just hit your wreckage slews and drops back. */
+function stepChase(dt){
+  if (!G.track || !G.chase.length) return;
+  const T = G.track;
+  for (const v of G.chase) {
+    v.lamp += dt * 9;
+    v.checkT = Math.max(0, v.checkT - dt);
+    v.chaseWeave += dt * (0.7 + v.chaseBack);
+    /* how far back this one sits: the squad's gap, plus its own stagger, plus
+       whatever the last pile-up cost it */
+    const back = G.wallGap + v.chaseBack * 130 + v.checkT * 190;
+    const idx = Math.max(0, G.car.idx - back / SEG);
+    T.ensure(Math.ceil(idx) + 4);
+    const p = T.pts[Math.max(0, Math.round(idx))];
+    if (!p) continue;
+    const weave = Math.sin(v.chaseWeave) * 0.16;
+    const pos = T.at(Math.round(idx), (v.chaseLane + weave) * roadHalf(p));
+    v.x = pos.x; v.y = pos.y; v.a = pos.a;
+    v.idx = Math.round(idx);
+    v.speed_ = G.car.speed;
+    if (v.checkT > 0 && Math.random() < dt * 24) {
+      spawn(v.x, v.y, rnd(-180, 180), rnd(-180, 180),
+            rnd(0.3, 0.7), rnd(4, 9), '255,150,90', true, -4);
+    }
+  }
+}
+
 function stepWall(dt){
   if (!G.run || G.ai || G.state !== 'play') return;
 
@@ -2839,8 +2900,10 @@ function stepWall(dt){
     if (G.passT === 0) { G.pass = 0; G.chain = 0; G.mult = 1; }
   }
 
+  G.wallT = (G.wallT || 0) + dt;
   G.wallGap -= wallClose() * dt;
   G.wallHit = Math.max(0, G.wallHit - dt * 2.2);
+  stepChase(dt);
 
   /* it rides the road the player is on, a fixed distance back */
   G.wallIdx = Math.max(0, G.car.idx - G.wallGap / SEG);
@@ -2849,6 +2912,11 @@ function stepWall(dt){
     G.wallGap = 0;
     crash('wall');
     return;
+  }
+  /* the lead unit is close enough to touch you: it rams, and that is the run */
+  if (G.wallGap < 90 && Math.random() < dt * 2.2) {
+    G.shake = Math.max(G.shake, 14);
+    NHAudio.hit(0.8);
   }
   /* the warning is the world, not a number: the closer it gets the more the
      screen and the audio carry it, because the camera looks forward and the
@@ -2872,6 +2940,14 @@ function pushWall(){
   if (spare > 0) G.score += Math.round(spare);
   G.wallHit = 1;
 
+  /* Whoever is nearest the wreckage you just left slews and drops back. This
+     is the whole feedback loop made visible: you put cars across the road,
+     they plough into them, you watch the gap open. */
+  const hit = 1 + Math.min(3, G.pass);
+  for (let i = 0; i < hit; i++) {
+    const v = G.chase[rint(0, G.chase.length)];
+    if (v) v.checkT = Math.max(v.checkT, 0.5 + G.pass * 0.2);
+  }
   /* the pass counter reuses the old chain rail: same pixels, new meaning */
   G.chain = G.pass;
   G.mult = Math.pow(PUSH_STEP, G.pass - 1);
@@ -4246,7 +4322,10 @@ function takePerk(i){
   }
   /* a hull bump applies immediately rather than at the next district */
   const was = G.hpMax;
-  G.hpMax = Math.round(100 * G.run.M.hullMax + (G.spec.hull || 0) + G.run.hullBonus);
+  /* This still built the old hundred-point hull, so every rebuild — a perk
+     taken, a stretch cleared, a lasting pickup — snapped the budget from 5
+     to ~100 and handed the difference straight to the player. */
+  G.hpMax = mistakeBudget();
   if (G.hpMax > was) G.hp += G.hpMax - was;
   if (G.pendingLevels > 0) { maybeLevelUp(); return; }   // two at once is possible
   /* a district that was waiting on this pick finishes clearing now */
@@ -6689,55 +6768,41 @@ function render(){
    treatment on the screen itself for when it is off-camera.
    ============================================================ */
 function drawWall(){
-  if (!G.run || G.state === 'menu' || !G.track) return;
-  const T = G.track, i0 = Math.floor(G.wallIdx);
-  if (i0 < 0) return;
-  T.ensure(i0 + 6);
-  const p = T.pts[Math.max(0, i0)];
-  if (!p) return;
-  const half = roadHalf(p) * 1.35;
-  const nx = -Math.sin(p.a), ny = Math.cos(p.a);
-  const cx = p.x, cy = p.y;
+  if (!G.run || G.state === 'menu' || !G.track || !G.chase.length) return;
   const close = clamp(1 - G.wallGap / WALL_GAP_MAX, 0, 1);
 
-  /* the face: a hard leading edge with a body of light falling away behind
-     it, so the direction it is travelling is legible at a glance */
-  const ax = cx + nx * half, ay = cy + ny * half;
-  const bx = cx - nx * half, by = cy - ny * half;
-  const depth = 210 + close * 120;
-  const tx = -Math.cos(p.a) * depth, ty = -Math.sin(p.a) * depth;
-
-  const g = ctx.createLinearGradient(cx, cy, cx + tx, cy + ty);
-  g.addColorStop(0, 'rgba(255,60,90,' + (0.55 + close * 0.35) + ')');
-  g.addColorStop(0.45, 'rgba(150,20,60,' + (0.34 + close * 0.3) + ')');
-  g.addColorStop(1, 'rgba(20,4,12,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-  ctx.lineTo(bx + tx, by + ty); ctx.lineTo(ax + tx, ay + ty);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgba(255,120,140,' + (0.7 + close * 0.3) + ')';
-  ctx.lineWidth = 5 + close * 5 + G.wallHit * 6;
-  ctx.beginPath();
-  ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-  ctx.stroke();
-
-  /* teeth along the face — motion at the leading edge is what stops it
-     reading as a static red bar painted on the road */
-  ctx.strokeStyle = 'rgba(255,210,220,' + (0.35 + close * 0.4) + ')';
-  ctx.lineWidth = 2;
-  const step = half / 5;
-  for (let k = -5; k <= 5; k++) {
-    const jx = cx + nx * k * step, jy = cy + ny * k * step;
-    const jag = 26 + Math.sin(G.dist * 0.02 + k * 1.7) * 16;
-    ctx.beginPath();
-    ctx.moveTo(jx, jy);
-    ctx.lineTo(jx - Math.cos(p.a) * jag, jy - Math.sin(p.a) * jag);
-    ctx.stroke();
+  /* haze and dust boiling off the squad, so the mass reads as a wall of them
+     rather than as six separate cars, and so you can see it coming before any
+     individual car is on screen */
+  const T = G.track, i0 = Math.max(0, Math.round(G.wallIdx));
+  T.ensure(i0 + 4);
+  const p = T.pts[i0];
+  if (p) {
+    const half = roadHalf(p) * 1.5;
+    blitGlow('#FF3355', p.x, p.y, half, 260, 0.16 + close * 0.30);
+    blitGlow('#508CFF', p.x, p.y, half * 0.8, 190, 0.10 + close * 0.16);
   }
-  blitGlow('#FF3355', cx, cy, half * 1.1, 150, 0.28 + close * 0.32);
+
+  /* headlight cones first, under the cars: at distance this is all you see of
+     them, which is the correct read — lights in the mirror before shapes */
+  for (const v of G.chase) {
+    if (!onScreen(v)) continue;
+    const cs = Math.cos(v.a), sn = Math.sin(v.a);
+    const g = ctx.createLinearGradient(v.x, v.y, v.x + cs * 520, v.y + sn * 520);
+    g.addColorStop(0, 'rgba(210,225,255,' + (0.30 + close * 0.22).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(210,225,255,0)');
+    ctx.fillStyle = g;
+    const nx = -sn, ny = cs;
+    ctx.beginPath();
+    ctx.moveTo(v.x + nx * 14, v.y + ny * 14);
+    ctx.lineTo(v.x + cs * 520 + nx * 120, v.y + sn * 520 + ny * 120);
+    ctx.lineTo(v.x + cs * 520 - nx * 120, v.y + sn * 520 - ny * 120);
+    ctx.lineTo(v.x - nx * 14, v.y - ny * 14);
+    ctx.closePath();
+    ctx.fill();
+  }
+  for (const v of G.chase) drawTrail(v, 0.9, true);
+  for (const v of G.chase) drawVehicle(v);
 }
 
 /* The screen-space half of the same problem. When the wall is off the bottom
@@ -6758,13 +6823,27 @@ function drawRear(){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
   const h = cv.height * (0.07 + close * 0.19);
-  /* the beat only kicks in when they are actually close — a constant pulse
-     would make the ambient state read as an emergency */
+  /* ---- the pulse runs on its own clock ----
+     This was driven by G.dist, which advances by speed x dt — about ten
+     units a frame at pace. sin() of that stepped ~0.3 radians per frame and
+     changed rate with the throttle, so the band strobed at four or five
+     hertz and jittered whenever the speed did. It read as a rendering fault
+     rather than as something breathing behind you.
+
+     G.wallT is seconds, so the pulse is a fixed 0.85Hz regardless of speed,
+     and it only opens up as they close — a constant beat would make the
+     ambient state read as an emergency. */
   const urgent = clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1);
-  const beat = 1 - urgent * 0.28 + urgent * 0.28 * Math.sin(G.dist * (0.03 + urgent * 0.06));
+  const beat = 1 - urgent * 0.22 + urgent * 0.22 * Math.sin(G.wallT * 5.3);
+  /* Headlights and strobes washing up from behind, not a red bar. The colour
+     alternates with the squad's own light bar so the edge of the frame is
+     telling you the same thing the cars are. */
+  const blue = Math.sin(G.wallT * 6.2) > 0;
+  const rgb = blue ? '90,150,255' : '255,60,90';
   const g = ctx.createLinearGradient(0, cv.height, 0, cv.height - h);
-  g.addColorStop(0, 'rgba(255,50,85,' + (0.45 * close * beat).toFixed(3) + ')');
-  g.addColorStop(1, 'rgba(255,50,85,0)');
+  g.addColorStop(0, 'rgba(' + rgb + ',' + (0.34 * close * beat).toFixed(3) + ')');
+  g.addColorStop(0.45, 'rgba(235,240,255,' + (0.10 * close * beat).toFixed(3) + ')');
+  g.addColorStop(1, 'rgba(' + rgb + ',0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, cv.height - h, cv.width, h);
   ctx.globalCompositeOperation = 'source-over';
@@ -6828,7 +6907,7 @@ const UI = {
   map:$('map'), contract:$('contract'), depot:$('depot'), mapBuild:$('mapBuild'),
   daily:$('daily'), board:$('board'), levelup:$('levelup'),
   xp:$('xp'), xpLvl:$('xpLvl'), xpNext:$('xpNext'), xpFill:$('xpFill'),
-  hull:$('hull'), hullVal:$('hullVal'), hullFill:$('hullFill'), wreck:$('wreckChain'),
+  hull:$('hull'), hullVal:$('hullVal'), hullPips:$('hullPips'), wreck:$('wreckChain'),
   obj:$('obj'), objLbl:$('objLbl'), objVal:$('objVal'), objFill:$('objFill'),
   objDist:$('objDist'), objPend:$('objPend'), dchip:$('dchip'), build:$('build'),
   convoy:$('convoy'), convoyLeft:$('convoyLeft'), lvlUp:$('lvlUp')
@@ -6909,15 +6988,22 @@ function syncHUD(){
   UI.combo.classList.toggle('t3', G.pass >= 4);
   UI.combo.classList.toggle('threat', false);
 
-  /* ---- mistakes ----
-     An integer, not a bar. The player has to be able to say afterwards which
-     four errors ended the run, and you cannot recite a percentage. */
-  const hf = clamp(G.hp / G.hpMax, 0, 1);
+  /* ---- hull ----
+     Countable, not continuous. A bar says "roughly this much left" when the
+     truth the player needs is "four more hits", so it is drawn as one pip
+     per hit and they go out from the right. The pip row is rebuilt only when
+     the capacity changes; only the lit class moves per frame. */
+  const cap = Math.max(1, Math.round(G.hpMax));
+  const left = Math.max(0, Math.ceil(G.hp));
+  if (UI.hullPips.childElementCount !== cap) {
+    UI.hullPips.innerHTML = '<i></i>'.repeat(cap);
+  }
+  for (let i = 0; i < cap; i++)
+    UI.hullPips.children[i].classList.toggle('lit', i < left);
   UI.hull.classList.toggle('on', G.state === 'play' || G.state === 'crash');
-  UI.hull.classList.toggle('warn', G.hp <= 2 && G.hp > 1);
-  UI.hull.classList.toggle('crit', G.hp <= 1);
-  UI.hullVal.textContent = Math.max(0, Math.ceil(G.hp));
-  UI.hullFill.style.width = hf * 100 + '%';
+  UI.hull.classList.toggle('warn', left === 2);
+  UI.hull.classList.toggle('crit', left <= 1);
+  UI.hullVal.textContent = left;
   UI.wreck.classList.toggle('on', G.pass > 1);
   if (G.pass > 1) UI.wreck.textContent = G.pass + ' on one line';
 
@@ -7401,11 +7487,11 @@ function showDepot(){
   opts.push({
     name: 'Panel beating', risk: 0,
     bane: 'You bank nothing here.',
-    boon: 'Hull fully repaired and the frame reinforced.',
-    pay: '+12 max hull',
+    boon: 'Hull beaten straight and the frame reinforced.',
+    pay: '+2 hull',
     go(){
-      run.hullBonus += 12;
-      G.hpMax += 12; G.hp = G.hpMax;
+      run.hullBonus += 2;
+      G.hpMax = mistakeBudget(); G.hp = G.hpMax;
       toast('Hull rebuilt', 'gold');
       NHAudio.clear();
       hide(UI.depot); run.node.done = true; advance();

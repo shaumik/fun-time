@@ -1707,20 +1707,32 @@ body{
   font-size:max(10px,calc(var(--u)*1.5));font-weight:800;color:#fff;
   font-variant-numeric:tabular-nums;
 }
-.hullBar{
-  height:calc(var(--u)*.7);background:rgba(255,255,255,.10);
-  border:1px solid var(--edge);border-radius:99px;overflow:hidden;
+/* ---- hull reads as pips, not a bar ----
+   Five discrete hits is a number you should be able to take in without
+   reading it, and a continuous bar is the wrong shape for a countable
+   resource — it says "roughly this much left" when the truth is "four more
+   mistakes". One pip per hit, and they go out from the right. */
+.hullPips{display:flex;gap:calc(var(--u)*.34);align-items:stretch}
+.hullPips i{
+  flex:1 1 0;min-width:calc(var(--u)*.5);height:calc(var(--u)*.9);
+  border-radius:calc(var(--u)*.16);
+  background:rgba(255,255,255,.09);
+  border:1px solid var(--edge);
+  transition:background .18s,box-shadow .18s,opacity .18s;
 }
-.hullBar i{
-  display:block;height:100%;width:100%;border-radius:99px;
-  background:linear-gradient(90deg,#2FE08A,#7BF5B0);
-  box-shadow:0 0 calc(var(--u)*1.4) rgba(47,224,138,.65);
-  transition:width .16s linear,background .3s;
+.hullPips i.lit{
+  background:linear-gradient(180deg,#7BF5B0,#2FE08A);
+  border-color:transparent;
+  box-shadow:0 0 calc(var(--u)*1.1) rgba(47,224,138,.6);
 }
-.hull.warn .hullBar i{background:linear-gradient(90deg,#E0A32F,var(--amber));
-  box-shadow:0 0 calc(var(--u)*1.4) rgba(255,177,61,.7)}
-.hull.crit .hullBar i{background:linear-gradient(90deg,#B01226,var(--red));
-  box-shadow:0 0 calc(var(--u)*1.8) rgba(255,51,85,.85)}
+.hull.warn .hullPips i.lit{
+  background:linear-gradient(180deg,var(--amber),#E0A32F);
+  box-shadow:0 0 calc(var(--u)*1.1) rgba(255,177,61,.65);
+}
+.hull.crit .hullPips i.lit{
+  background:linear-gradient(180deg,var(--red),#B01226);
+  box-shadow:0 0 calc(var(--u)*1.5) rgba(255,51,85,.85);
+}
 .hull.crit .hullHead b{color:var(--red)}
 .hull.crit{animation:hullPulse .8s ease-in-out infinite}
 @keyframes hullPulse{50%{opacity:.62}}
