@@ -2414,7 +2414,17 @@ function addTraffic(ahead, laneFrac){
   G.traffic.push(v);
 }
 
-function addPolice(escort){
+/* Which archetypes this act may send, weighted. Depth unlocks the heavy end
+   rather than simply adding more of the light end. */
+function rollArch(act){
+  const pool = PURSUIT.filter(a => (a.minAct || 1) <= act);
+  let total = 0; for (const a of pool) total += a.w;
+  let r = Math.random() * total;
+  for (const a of pool) { r -= a.w; if (r <= 0) return a; }
+  return pool[0];
+}
+
+function addPolice(escort, forceArch){
   /* Far enough back that you see the lights arrive before the car does. At
      five segments they materialised inside your own trail, which reads as
      the game cheating rather than as a unit joining the chase. */
@@ -2428,18 +2438,104 @@ function addPolice(escort){
 
      Pace scales with the tier rather than always outrunning a stock player
      (base top 620): tier 1 can be shaken off, tier 3 cannot. */
+  const A = forceArch ? pursuitById(forceArch) : rollArch((G.run && G.run.act) || 1);
+  const fac = factionForAct((G.run && G.run.act) || 1);
   const spec = Object.assign({}, CARS[2], {
-    col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0,
-    top: 600 + 15 * Math.max(1, G.tier)
+    col: fac.body, col2: fac.trim,
+    len: A.len, wid: A.wid, nose: A.nose, tail: A.tail, boxy: !!A.boxy,
+    power: A.power, grip: A.grip,
+    top: A.top + 10 * Math.max(1, G.tier)
   });
   const v = new Vehicle(spec, 'police');
-  v.hp = 3;
+  v.hp = A.hp; v.maxHp = A.hp;
+  v.arch = A.id; v.A = A; v.fac = fac;
+  v.weavePh = Math.random() * TAU;
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
   v.vx = Math.cos(pos.a) * 420; v.vy = Math.sin(pos.a) * 420;
   G.police.push(v);
-  toast(G.police.length === 1 ? 'Unit on you' : 'Another unit — ' + G.police.length + ' on you', 'red');
+  toast(A.name + ' — ' + A.role, 'red');
   NHAudio.siren && NHAudio.siren();
 }
+
+/* ============================================================
+   PURSUIT — archetypes and factions
+
+   The pursuit used to be one silhouette repeated: a single spec, three
+   armour pips, one behaviour, and the only thing depth changed was how many
+   of them there were. That is the same failure the civilian traffic already
+   had a fix for — more of the same car is volume, not escalation — and it
+   matters more here, because since the wall came out the pursuit IS the
+   threat model.
+
+   Two tables, multiplied. Six archetypes decide what a unit *does* and what
+   answer it demands from the player; four factions decide who is chasing you
+   and what they look like. Six shapes and four palettes buy twenty-four
+   distinct units, and each act's hunters look like they belong to the city
+   they are hunting you through.
+
+   Every archetype has to demand a DIFFERENT answer. A unit that is merely
+   tougher is a stat, not an enemy.
+   ============================================================ */
+const PURSUIT = [
+  { id:'interceptor', name:'Interceptor', w:30, minAct:1,
+    hp:3, len:52, wid:24, nose:.60, tail:.72, top:640, power:600, grip:7.0, turn:1,
+    /* the baseline: closes and rams. Dodge it, or ram it back with a boost. */
+    role:'Closes and rams.' },
+
+  { id:'bull', name:'Bull', w:16, minAct:1,
+    hp:4, len:62, wid:30, nose:.95, tail:.80, top:600, power:660, grip:6.2, turn:0.72,
+    /* Cannot be cracked by ramming at ALL — not boosted, not plated. The only
+       answer is wreckage. It is the unit that teaches the mechanic the whole
+       design rests on, by refusing every other answer. */
+    ramproof:true, role:'Ram-proof. Only wreckage stops it.' },
+
+  { id:'blocker', name:'Blocker', w:16, minAct:1,
+    hp:3, len:66, wid:30, nose:.92, tail:.94, top:670, power:640, grip:7.4, turn:0.9,
+    boxy:true,
+    /* Overtakes and gets IN FRONT, then sits across a lane and salts the road.
+       The only pursuit that puts a threat where the camera actually looks,
+       and the one that makes "which line" a question about the hunters. */
+    ahead:true, role:'Gets in front and blocks the lane.' },
+
+  { id:'outrider', name:'Outrider', w:18, minAct:1,
+    hp:1, len:34, wid:14, nose:.42, tail:.52, top:720, power:520, grip:8.6, turn:1.5,
+    /* Fast, fragile, weaves hard. One hit and it is gone — a target of
+       opportunity rather than a problem, if you can actually land it. */
+    weave:1.9, role:'Fast and fragile. One hit.' },
+
+  { id:'spotter', name:'Spotter', w:12, minAct:2,
+    hp:2, len:54, wid:25, nose:.55, tail:.85, top:610, power:560, grip:7.2, turn:1,
+    /* Hangs back and paints you. While it is alive every other unit closes
+       faster, so it turns a brawl into a priority-target puzzle. */
+    standoff:520, marks:true, role:'Paints you. The rest close faster.' },
+
+  { id:'tank', name:'Tank', w:8, minAct:2,
+    hp:7, len:78, wid:38, nose:.98, tail:.98, top:520, power:760, grip:5.0, turn:0.5,
+    boxy:true,
+    /* Slow, enormous, ram-proof and it holds the road. It cannot catch you on
+       the straight — it wins by being where you have to go. Wreckage hurts it
+       but it takes a lot; weapons are the clean answer. */
+    ramproof:true, heavy:true, role:'Ram-proof and immovable. Go around.' }
+];
+const pursuitById = id => PURSUIT.find(p => p.id === id) || PURSUIT[0];
+
+/* Who is chasing you, and what they are chasing you with. Act 3 is not the
+   police at all — down there nobody is trying to arrest you. */
+const FACTIONS = [
+  { id:'patrol', name:'City Patrol', sub:'Metro Division',
+    body:'#3A5FA8', trim:'#0A1226', light:'#FF3355', light2:'#508CFF',
+    dress:'chevron' },
+  { id:'dock', name:'Dock Enforcers', sub:'Port Authority',
+    body:'#6B5A2A', trim:'#1A1408', light:'#FFB13D', light2:'#7BF5B0',
+    dress:'hazard' },
+  { id:'scav', name:'Scavengers', sub:'They want the car',
+    body:'#4A3560', trim:'#140A1E', light:'#C06BFF', light2:'#FF3355',
+    dress:'spikes' },
+  { id:'army', name:'Armoured Column', sub:'Martial response',
+    body:'#3E4A2E', trim:'#0E1208', light:'#FF3355', light2:'#FFB13D',
+    dress:'plate' }
+];
+const factionForAct = act => FACTIONS[Math.min(FACTIONS.length - 1, Math.max(0, act - 1))];
 
 /* ---------------- bosses ----------------
    A boss is a pursuit unit with a health bar that only your *banks* can
@@ -5819,20 +5915,140 @@ function drawVehicle(v, opt){
     }
   }
 
-  /* pursuit dress: red rim, push-bar, and armour pips over the roof */
+  /* ---- pursuit dress ----
+     The silhouette has to say what the unit demands of you before you are
+     close enough to read anything else: a plow blade means do not ram this,
+     a barricade rack means it is going to get in front of you, a dish means
+     kill it first. Faction sets the palette and one motif on top. */
   if (v.kind === 'police') {
-    ctx.strokeStyle = hexA('#FF3355', 0.9);
+    const fac = v.fac || FACTIONS[0];
+    const arch = v.arch || 'interceptor';
+    ctx.strokeStyle = hexA(fac.light, 0.9);
     ctx.lineWidth = 1.4;
     carPath(ctx, s); ctx.stroke();
+
+    /* every unit carries something across the nose; how much says how hard */
+    const barW = arch === 'bull' || arch === 'tank' ? 0.14
+               : arch === 'blocker' ? 0.10 : 0.06;
+    const barSpan = arch === 'bull' || arch === 'tank' ? 1.16 : 0.9;
     ctx.fillStyle = '#0A0E18';
-    ctx.strokeStyle = hexA('#FF3355', 0.7);
+    ctx.strokeStyle = hexA(fac.light, 0.7);
     ctx.beginPath();
-    ctx.roundRect(s.len * 0.48, -s.wid * 0.45, s.len * 0.06, s.wid * 0.9, 2);
+    ctx.roundRect(s.len * 0.46, -s.wid * 0.5 * barSpan, s.len * barW, s.wid * barSpan, 2);
     ctx.fill(); ctx.stroke();
-    if (v.hp != null && v.hp < 3) {
+
+    /* BULL and TANK: a full plow blade, angled, that reads as "not with your
+       bumper" from a hundred metres back */
+    if (arch === 'bull' || arch === 'tank') {
+      ctx.fillStyle = '#1A1016';
+      ctx.strokeStyle = hexA(fac.light2, 0.95);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(s.len * 0.44, -s.wid * 0.74);
+      ctx.lineTo(s.len * 0.72, -s.wid * 0.30);
+      ctx.lineTo(s.len * 0.72, s.wid * 0.30);
+      ctx.lineTo(s.len * 0.44, s.wid * 0.74);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    /* TANK: tracks down both flanks and a squat turret */
+    if (arch === 'tank') {
+      ctx.fillStyle = '#0C1008';
+      ctx.strokeStyle = hexA(fac.light2, 0.6);
+      ctx.lineWidth = 1.2;
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.roundRect(-s.len * 0.42, sd * s.wid * 0.36 - s.wid * 0.11,
+                      s.len * 0.84, s.wid * 0.22, 2);
+        ctx.fill(); ctx.stroke();
+      }
+      for (let k = 0; k < 7; k++) {
+        const x = -s.len * 0.38 + k * s.len * 0.12;
+        ctx.beginPath();
+        ctx.moveTo(x, -s.wid * 0.47); ctx.lineTo(x, -s.wid * 0.25);
+        ctx.moveTo(x, s.wid * 0.25);  ctx.lineTo(x, s.wid * 0.47);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#161C0E';
+      ctx.strokeStyle = hexA(fac.light, 0.85);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, s.wid * 0.30, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(0, -s.wid * 0.055, s.len * 0.46, s.wid * 0.11, 1.5);
+      ctx.fill(); ctx.stroke();
+    }
+    /* BLOCKER: a barricade rack on the roof — it is carrying the roadblock */
+    if (arch === 'blocker') {
+      ctx.strokeStyle = hexA(fac.light2, 0.9);
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(-s.len * 0.26, -s.wid * 0.42, s.len * 0.5, s.wid * 0.84);
+      ctx.lineWidth = 1.1;
+      for (let k = 0; k < 4; k++) {
+        const x = -s.len * 0.24 + k * s.len * 0.16;
+        ctx.beginPath(); ctx.moveTo(x, -s.wid * 0.42); ctx.lineTo(x, s.wid * 0.42); ctx.stroke();
+      }
+    }
+    /* SPOTTER: a dish that sweeps, so "kill this one first" is visible */
+    if (arch === 'spotter') {
+      const sw = (v.lamp || 0) * 0.8;
+      ctx.strokeStyle = hexA(fac.light2, 0.95);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(-s.len * 0.05, 0, s.wid * 0.30, 0, TAU); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-s.len * 0.05, 0);
+      ctx.lineTo(-s.len * 0.05 + Math.cos(sw) * s.wid * 0.46,
+                 Math.sin(sw) * s.wid * 0.46);
+      ctx.stroke();
+      blitGlow(fac.light2, -s.len * 0.05, 0, s.wid * 0.9, s.wid * 0.9, 0.35);
+    }
+    /* OUTRIDER: no cabin — a rider astride a frame */
+    if (arch === 'outrider') {
+      ctx.fillStyle = hexA(fac.light2, 0.85);
+      ctx.beginPath(); ctx.ellipse(0, 0, s.len * 0.14, s.wid * 0.34, 0, 0, TAU); ctx.fill();
+    }
+
+    /* faction motif */
+    if (fac.dress === 'chevron') {
+      ctx.strokeStyle = hexA('#DCE6FF', 0.55); ctx.lineWidth = 1.3;
+      for (let k = 0; k < 2; k++) {
+        const x = -s.len * 0.30 - k * s.len * 0.10;
+        ctx.beginPath();
+        ctx.moveTo(x, -s.wid * 0.40); ctx.lineTo(x + s.len * 0.09, 0);
+        ctx.lineTo(x, s.wid * 0.40); ctx.stroke();
+      }
+    } else if (fac.dress === 'hazard') {
+      for (let k = 0; k < 5; k++) {
+        ctx.fillStyle = k % 2 ? hexA('#FFD98A', 0.75) : hexA('#241A06', 0.85);
+        ctx.save();
+        ctx.translate(-s.len * 0.30 + k * s.len * 0.10, 0);
+        ctx.rotate(0.5);
+        ctx.fillRect(-s.len * 0.03, -s.wid * 0.44, s.len * 0.06, s.wid * 0.88);
+        ctx.restore();
+      }
+    } else if (fac.dress === 'spikes') {
+      ctx.strokeStyle = hexA(fac.light, 0.9); ctx.lineWidth = 1.4;
+      for (let k = -2; k <= 2; k++) {
+        const y = k * s.wid * 0.20;
+        ctx.beginPath();
+        ctx.moveTo(s.len * 0.20, y);
+        ctx.lineTo(s.len * 0.20 + s.len * 0.13, y * 1.5);
+        ctx.stroke();
+      }
+    } else if (fac.dress === 'plate') {
+      ctx.strokeStyle = hexA('#B8C79A', 0.45); ctx.lineWidth = 1.1;
       for (let k = 0; k < 3; k++) {
-        ctx.fillStyle = k < v.hp ? 'rgba(255,90,110,0.95)' : 'rgba(255,90,110,0.22)';
-        ctx.fillRect(-s.len * 0.12 + k * s.len * 0.11, -s.wid * 0.72, s.len * 0.08, s.wid * 0.12);
+        ctx.strokeRect(-s.len * 0.34 + k * s.len * 0.23, -s.wid * 0.30,
+                       s.len * 0.19, s.wid * 0.60);
+      }
+    }
+
+    /* armour pips — as many as the unit actually has */
+    const maxHp = v.maxHp || v.hp || 3;
+    if (v.hp != null && v.hp < maxHp) {
+      const wpip = s.len * 0.72 / maxHp;
+      for (let k = 0; k < maxHp; k++) {
+        ctx.fillStyle = k < v.hp ? hexA(fac.light, 0.95) : hexA(fac.light, 0.20);
+        ctx.fillRect(-s.len * 0.36 + k * wpip, -s.wid * 0.74, wpip * 0.7, s.wid * 0.12);
       }
     }
   }
@@ -5841,10 +6057,12 @@ function drawVehicle(v, opt){
 
   /* police bar */
   if (v.kind === 'police' || v.kind === 'boss') {
+    const fc = v.fac || FACTIONS[0];
     const f = Math.sin(v.lamp) > 0;
-    ctx.fillStyle = f ? 'rgba(80,140,255,0.95)' : 'rgba(255,50,70,0.95)';
+    const c = f ? fc.light2 : fc.light;
+    ctx.fillStyle = hexA(c, 0.95);
     ctx.fillRect(-s.len * 0.08, -s.wid * 0.5, s.len * 0.1, s.wid);
-    blitGlow(f ? '#508CFF' : '#FF3246', 0, 0, s.len * 1.5, s.len * 1.5, 0.40);
+    blitGlow(c, 0, 0, s.len * 1.5, s.len * 1.5, 0.40);
   }
 
   /* each pursuit unit wears its division: the WARDEN a plow blade, the
@@ -9160,6 +9378,72 @@ window.__NH = {
   env: () => ({ id:envNow().id, floor:envNow().floor, rail:envNow().rail }),
   get stage(){ return G.stage; },
   bossDamage, BOSS_BITE,
+  PURSUIT, FACTIONS, pursuitById, factionForAct,
+  /* Contact sheet for design review: every archetype in every faction livery,
+     drawn by the shipping renderer so what you approve is what ships. */
+  previewPursuit(){
+    G.state = 'menu';
+    const W2 = cv.width, H2 = cv.height;
+    /* drawVehicle culls against the camera, so park it over the sheet and
+       open the zoom right up — otherwise everything past the second column
+       is quietly skipped */
+    cam.x = W2 / 2; cam.y = H2 / 2; cam.rot = 0; cam.zoom = 0.35;
+    cam.sx = 0; cam.sy = 0;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#05060E';
+    ctx.fillRect(0, 0, W2, H2);
+    const cols = PURSUIT.length, rows = FACTIONS.length;
+    const cw = W2 / (cols + 0.6), ch = (H2 - 90) / rows;
+    ctx.textAlign = 'center';
+    ctx.font = '600 13px system-ui,sans-serif';
+    ctx.fillStyle = '#7C8BA8';
+    PURSUIT.forEach((a, ci) => {
+      const x = cw * 0.8 + ci * cw;
+      ctx.fillStyle = '#C6D2E8';
+      ctx.font = '700 15px system-ui,sans-serif';
+      ctx.fillText(a.name.toUpperCase(), x, 34);
+      ctx.fillStyle = '#7C8BA8';
+      ctx.font = '400 11px system-ui,sans-serif';
+      ctx.fillText(a.hp + (a.hp === 1 ? ' pip' : ' pips'), x, 52);
+      const words = a.role.split(' ');
+      let line = '', ly = 68;
+      for (const w of words) {
+        if ((line + ' ' + w).length > 22) { ctx.fillText(line, x, ly); ly += 13; line = w; }
+        else line = line ? line + ' ' + w : w;
+      }
+      ctx.fillText(line, x, ly);
+    });
+    FACTIONS.forEach((f, ri) => {
+      const y = 96 + ch * 0.5 + ri * ch;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = f.light;
+      ctx.font = '700 14px system-ui,sans-serif';
+      ctx.fillText(f.name.toUpperCase(), 14, y - 10);
+      ctx.fillStyle = '#5C6880';
+      ctx.font = '400 11px system-ui,sans-serif';
+      ctx.fillText(f.sub + '  ·  act ' + (ri + 1), 14, y + 8);
+      ctx.textAlign = 'center';
+      PURSUIT.forEach((a, ci) => {
+        const spec = Object.assign({}, CARS[2], {
+          col:f.body, col2:f.trim, len:a.len, wid:a.wid,
+          nose:a.nose, tail:a.tail, boxy:!!a.boxy
+        });
+        const v = new Vehicle(spec, 'police');
+        v.arch = a.id; v.A = a; v.fac = f;
+        v.hp = Math.max(1, a.hp - 1); v.maxHp = a.hp;   // show the pip row
+        v.lamp = ri * 1.3 + ci * 0.7;
+        v.x = cw * 0.8 + ci * cw; v.y = y;
+        v.a = -Math.PI / 2;
+        ctx.save();
+        ctx.translate(v.x, v.y);
+        ctx.scale(1.55, 1.55);
+        ctx.translate(-v.x, -v.y);
+        drawVehicle(v);
+        ctx.restore();
+      });
+    });
+    return true;
+  },
   /* screen shake, for tuning by feel: 0 is off, 1 is the original amplitude.
      Whatever value ends up feeling right is SHAKE_MUL in src/game.js. */
   setShake: v => { SHAKE_MUL = Math.max(0, Math.min(1, +v || 0)); return SHAKE_MUL; },
