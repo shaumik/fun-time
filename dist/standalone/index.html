@@ -2204,7 +2204,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="3fac277"</script>
+<script>window.__NH_BUILD="d05d004"</script>
 <script>window.__NH_NO_ADS = true;</script>
 </head>
 <body>
@@ -5850,7 +5850,9 @@ function newWorld(ai){
   /* the wall starts where it can be seen arriving, not on top of the car */
   G.wallGap = WALL_GAP_START;
   G.pass = 0; G.passT = 0; G.wallHit = 0; G.wallT = 0;
-  buildChase();
+  /* a beat of quiet before the first unit, so the opening seconds are about
+     learning to read the road rather than about being jumped */
+  G.spawnT = 7.5;
   G.packIdx = G.car.idx + 40;
   cam.x = G.car.x; cam.y = G.car.y; cam.rot = G.car.a; cam.zoom = baseZoom();
   cam.sx = 0; cam.sy = 0;              // the shake damps out, so clear it by hand
@@ -6013,7 +6015,10 @@ function addTraffic(ahead, laneFrac){
 }
 
 function addPolice(escort){
-  const idx = Math.max(0, G.car.idx - 5);
+  /* Far enough back that you see the lights arrive before the car does. At
+     five segments they materialised inside your own trail, which reads as
+     the game cheating rather than as a unit joining the chase. */
+  const idx = Math.max(0, G.car.idx - 15);
   const pos = G.track.at(idx, rnd(-80, 80));
   /* Was '#14203C' on '#080D1A' — near-black on near-black asphalt, so the
      only thing announcing a pursuit unit was the strobe on its roof and the
@@ -6032,7 +6037,8 @@ function addPolice(escort){
   v.x = pos.x; v.y = pos.y; v.a = pos.a; v.idx = idx;
   v.vx = Math.cos(pos.a) * 420; v.vy = Math.sin(pos.a) * 420;
   G.police.push(v);
-  if (!escort) toast('Heat rising — units inbound', 'red');
+  toast(G.police.length === 1 ? 'Unit on you' : 'Another unit — ' + G.police.length + ' on you', 'red');
+  NHAudio.siren && NHAudio.siren();
 }
 
 /* ---------------- bosses ----------------
@@ -6399,7 +6405,8 @@ const WALL_CLOSE     = 34;     // u/s at act 1 — ~20s to death with no wrecks
    touch. +2 a stretch overtakes a 42 u/s player around the fourth district,
    which is where a good run should start feeling the squeeze. */
 const WALL_CLOSE_STEP = 2;
-const WALL_DANGER    = 350;    // below this the wall is on screen and audible
+const WALL_DANGER    = 350;    // legacy: still scales the screen-edge wash
+const PURSUIT_MAX    = 6;      // more than this and there is no road left to read
 
 /* ---- the pass, not the wreck, is the unit of reward ----
    Pushback escalates within a single pass and resets when you stop hitting
@@ -6430,66 +6437,20 @@ function wallClose(){
   return (WALL_CLOSE + cleared * WALL_CLOSE_STEP) * ((M && M.wallSpeed) || 1) * last;
 }
 
-/* ---- THE LINE ----
-   The gap used to be drawn as a red slab across the road, and it read as a
-   rendering fault rather than as a threat: an abstract bar has no fiction, so
-   there was nothing to be afraid of and nothing to explain why wrecking a car
-   pushed it back.
+/* ---- THE PURSUIT ----
+   This was a squad pinned to a distance, which was wrong twice over. It
+   stuttered — the units were teleported to `track.at(round(idx))` every
+   frame, and segments are 56 units apart, so at pace they jumped about nine
+   times a second instead of driving. And a formation you cannot fight is not
+   an enemy, it is a wall with a car texture on it.
 
-   It is a squad of pursuit cars now. Their *position* is still authoritative
-   from wallGap — they are pinned to it rather than simulated as racers — so
-   the clock stays exact and speed-independent and every tuned number holds.
-   What changed is that the threat is a thing on the road with headlights and
-   strobes, closing on you, and the reason it falls back is legible: you left
-   four cars across the road and they have to get through them. */
-const CHASE_N = 6;
-
-function buildChase(){
-  G.chase = [];
-  for (let i = 0; i < CHASE_N; i++) {
-    const spec = Object.assign({}, CARS[2], {
-      col:'#3A5FA8', col2:'#0A1226', power:600, grip:7.0, top:640
-    });
-    const v = new Vehicle(spec, 'police');
-    /* spread across the road, staggered back so the squad has depth and you
-       can tell which one is closest */
-    v.chaseLane = (i / (CHASE_N - 1)) * 1.5 - 0.75;
-    v.chaseBack = (i % 2) * 0.55 + (i % 3) * 0.22;
-    v.chaseWeave = Math.random() * TAU;
-    v.lamp = Math.random() * TAU;
-    v.checkT = 0;
-    G.chase.push(v);
-  }
-}
-
-/* Pinned to the gap, but alive: each unit weaves in its lane, the strobes run
-   free, and a unit that just hit your wreckage slews and drops back. */
-function stepChase(dt){
-  if (!G.track || !G.chase.length) return;
-  const T = G.track;
-  for (const v of G.chase) {
-    v.lamp += dt * 9;
-    v.checkT = Math.max(0, v.checkT - dt);
-    v.chaseWeave += dt * (0.7 + v.chaseBack);
-    /* how far back this one sits: the squad's gap, plus its own stagger, plus
-       whatever the last pile-up cost it */
-    const back = G.wallGap + v.chaseBack * 130 + v.checkT * 190;
-    const idx = Math.max(0, G.car.idx - back / SEG);
-    T.ensure(Math.ceil(idx) + 4);
-    const p = T.pts[Math.max(0, Math.round(idx))];
-    if (!p) continue;
-    const weave = Math.sin(v.chaseWeave) * 0.16;
-    const pos = T.at(Math.round(idx), (v.chaseLane + weave) * roadHalf(p));
-    v.x = pos.x; v.y = pos.y; v.a = pos.a;
-    v.idx = Math.round(idx);
-    v.speed_ = G.car.speed;
-    if (v.checkT > 0 && Math.random() < dt * 24) {
-      spawn(v.x, v.y, rnd(-180, 180), rnd(-180, 180),
-            rnd(0.3, 0.7), rnd(4, 9), '255,150,90', true, -4);
-    }
-  }
-}
-
+   They are individual units now, running the same physics and the same
+   steering as everything else on the road. They hunt you, they ram you, and
+   you can kill them. The pressure is the spawn rate: units keep arriving and
+   arrive faster the deeper you are, so letting them stack up is what ends a
+   run, and thinning them out is a thing you do rather than a number you
+   watch. Traffic stays the ammunition — wreckage in the road is what they
+   pile into. */
 function stepWall(dt){
   if (!G.run || G.ai || G.state !== 'play') return;
 
@@ -6501,27 +6462,30 @@ function stepWall(dt){
   }
 
   G.wallT = (G.wallT || 0) + dt;
-  G.wallGap -= wallClose() * dt;
-  G.wallHit = Math.max(0, G.wallHit - dt * 2.2);
-  stepChase(dt);
 
-  /* it rides the road the player is on, a fixed distance back */
-  G.wallIdx = Math.max(0, G.car.idx - G.wallGap / SEG);
+  /* ---- the pressure ----
+     A unit every so often, and the interval shrinks with depth. This is the
+     whole difficulty curve and the one number no permanent upgrade touches.
+     Killing one buys real time before the next, so hunting the hunters is a
+     decision rather than a chore. */
+  const M = G.run.M;
+  G.spawnT = Math.max(0, (G.spawnT || 0) - dt);
+  if (G.spawnT === 0 && G.police.length < PURSUIT_MAX) {
+    addPolice(G.police.length > 0);
+    G.spawnT = pursuitEvery();
+  }
+  /* pushback is banked as spawn delay: wreckage in the road is what keeps
+     them off you, so a good line literally buys quiet */
+  G.wallGap = clamp(G.wallGap, 0, WALL_GAP_MAX);
+}
 
-  if (G.wallGap <= 0) {
-    G.wallGap = 0;
-    crash('wall');
-    return;
-  }
-  /* the lead unit is close enough to touch you: it rams, and that is the run */
-  if (G.wallGap < 90 && Math.random() < dt * 2.2) {
-    G.shake = Math.max(G.shake, 14);
-    NHAudio.hit(0.8);
-  }
-  /* the warning is the world, not a number: the closer it gets the more the
-     screen and the audio carry it, because the camera looks forward and the
-     threat is behind — see the rear treatment in drawWall() */
-  if (G.wallGap < WALL_DANGER && Math.random() < dt * 3) NHAudio.siren && NHAudio.siren();
+/* seconds between units. Deliberately generous at the top of a run — the
+   first thirty seconds should be about learning to read a formation, not
+   about being mugged. */
+function pursuitEvery(){
+  const cleared = (G.run && G.run.cleared) || 0;
+  const M = G.run && G.run.M;
+  return Math.max(3.4, (10.5 - cleared * 0.9) * ((M && M.wallSpeed) || 1));
 }
 
 /* Every kill path funnels here. One car taken is 110u; the third car of the
@@ -6532,22 +6496,19 @@ function pushWall(){
   G.pass++;
   G.passT = PASS_WINDOW + ((M && M.passWindow) || 0);
   const amt = (PUSH_BASE + ((M && M.pushBonus) || 0)) * Math.pow(PUSH_STEP, G.pass - 1);
-  const before = G.wallGap;
-  G.wallGap = Math.min(WALL_GAP_MAX, G.wallGap + amt);
-  /* pushback above the ceiling is not thrown away — a bank that vanishes
-     reads as a bug — it pays out as distance score instead */
-  const spare = (before + amt) - G.wallGap;
-  if (spare > 0) G.score += Math.round(spare);
+  G.score += Math.round(amt);
+  /* ---- what a line actually buys ----
+     Wreckage in the road is the reason the pursuit cannot simply sit on your
+     bumper: every car you leave behind is one they have to get through. A
+     four-car line buys real quiet; one car buys a beat.
+
+     Capped at one and a half intervals, because uncapped it accumulated:
+     measured, twenty wrecks banked two hundred seconds of silence and the
+     pursuit simply never came back, which removes the only pressure in the
+     game. A great line buys a breather, never immunity. */
+  G.spawnT = Math.min(pursuitEvery() * 1.5, (G.spawnT || 0) + amt / 260);
   G.wallHit = 1;
 
-  /* Whoever is nearest the wreckage you just left slews and drops back. This
-     is the whole feedback loop made visible: you put cars across the road,
-     they plough into them, you watch the gap open. */
-  const hit = 1 + Math.min(3, G.pass);
-  for (let i = 0; i < hit; i++) {
-    const v = G.chase[rint(0, G.chase.length)];
-    if (v) v.checkT = Math.max(v.checkT, 0.5 + G.pass * 0.2);
-  }
   /* the pass counter reuses the old chain rail: same pixels, new meaning */
   G.chain = G.pass;
   G.mult = Math.pow(PUSH_STEP, G.pass - 1);
@@ -6820,6 +6781,8 @@ function killPolice(p, idx){
   pushWall();
   G.coinsRun += 120;
   G.policeCool = 6;
+  /* hunting the hunters has to pay in the currency that matters: quiet */
+  G.spawnT = Math.max(G.spawnT || 0, pursuitEvery() * 0.8);
   G.shake = Math.max(G.shake, 22);
   hitstop(0.07, 24);
   NHAudio.smash(1.5);
@@ -8465,12 +8428,14 @@ function step(dt){
      that quietly refills the road to a target would hand the player back
      every car they failed to take, which is the same as not asking. */
 
-  /* ---- police ---- */
+  /* ---- police ----
+     Spawning is owned by stepWall()'s pressure clock now. The old tier-driven
+     top-up ran here as well and would both conjure units out of nowhere and
+     silently pop() them off the end — a unit you had just spent a boost
+     killing could reappear on the next frame, or one you were fighting could
+     vanish. One source of truth. */
   if (playing && !G.ai && !G.boss) {
     G.policeCool = Math.max(0, (G.policeCool || 0) - dt);
-    /* a takedown buys real breathing room before the tier refills */
-    while (G.police.length < G.tier && G.policeCool <= 0) addPolice();
-    while (G.police.length > G.tier) G.police.pop();
   }
   for (let i = G.police.length - 1; i >= 0; i--) {
     const p = G.police[i];
@@ -8487,6 +8452,35 @@ function step(dt){
     p.boostT = Math.max(p.boostT, 0.2);
     p.drive(dt * G.worldSlow, st, 1);
     barrier(p, loc);
+
+    /* ---- wreckage is the weapon ----
+       The line you take is not just points: every car you leave in the road
+       is something the pursuit has to get through at over 600. Two hits and
+       the unit is scrap. This is what makes "traffic is ammunition" literally
+       true against the thing that is trying to kill you, and it is why a
+       four-car line across the street is worth more than four cars picked
+       off one at a time. */
+    if (playing) {
+      for (const t of G.traffic) {
+        if (!t.wrecked || t.eaten) continue;
+        const wd = hyp(t.x - p.x, t.y - p.y);
+        if (wd > (t.spec.len + p.spec.len) * 0.5) continue;
+        t.eaten = 1;
+        p.hp = (p.hp || 3) - 2;
+        p.hitFlash = 1;
+        p.vx *= 0.42; p.vy *= 0.42;
+        p.a += rnd(-0.9, 0.9);
+        NHAudio.hit(1.3);
+        for (let k = 0; k < 20; k++) {
+          const a = rnd(0, TAU), sp = rnd(140, 520);
+          spawn(p.x, p.y, Math.cos(a) * sp, Math.sin(a) * sp,
+                rnd(0.25, 0.7), rnd(3, 8), '255,170,110', true, -5);
+        }
+        if (p.hp <= 0) { killPolice(p, i); toast('Unit wiped out', 'pink'); }
+        break;
+      }
+      if (!G.police[i]) continue;
+    }
 
     if (playing && !G.ai) {
       const dx = p.x - car.x, dy = p.y - car.y, d = hyp(dx, dy);
@@ -10367,42 +10361,29 @@ function render(){
    wall of light and dust spanning the full road, and once as a rear-edge
    treatment on the screen itself for when it is off-camera.
    ============================================================ */
+/* Ambient dress for the pursuit: haze off the pack and headlight cones, drawn
+   under the cars. The units themselves go through the normal police render
+   path in render(), so they are lit, trailed and drawn exactly like every
+   other vehicle — which is the point, because they are. */
 function drawWall(){
-  if (!G.run || G.state === 'menu' || !G.track || !G.chase.length) return;
-  const close = clamp(1 - G.wallGap / WALL_GAP_MAX, 0, 1);
-
-  /* haze and dust boiling off the squad, so the mass reads as a wall of them
-     rather than as six separate cars, and so you can see it coming before any
-     individual car is on screen */
-  const T = G.track, i0 = Math.max(0, Math.round(G.wallIdx));
-  T.ensure(i0 + 4);
-  const p = T.pts[i0];
-  if (p) {
-    const half = roadHalf(p) * 1.5;
-    blitGlow('#FF3355', p.x, p.y, half, 260, 0.16 + close * 0.30);
-    blitGlow('#508CFF', p.x, p.y, half * 0.8, 190, 0.10 + close * 0.16);
-  }
-
-  /* headlight cones first, under the cars: at distance this is all you see of
-     them, which is the correct read — lights in the mirror before shapes */
-  for (const v of G.chase) {
+  if (!G.run || G.state === 'menu' || !G.police.length) return;
+  const heat = clamp(G.police.length / PURSUIT_MAX, 0, 1);
+  for (const v of G.police) {
     if (!onScreen(v)) continue;
     const cs = Math.cos(v.a), sn = Math.sin(v.a);
-    const g = ctx.createLinearGradient(v.x, v.y, v.x + cs * 520, v.y + sn * 520);
-    g.addColorStop(0, 'rgba(210,225,255,' + (0.30 + close * 0.22).toFixed(3) + ')');
+    const g = ctx.createLinearGradient(v.x, v.y, v.x + cs * 430, v.y + sn * 430);
+    g.addColorStop(0, 'rgba(210,225,255,' + (0.20 + heat * 0.14).toFixed(3) + ')');
     g.addColorStop(1, 'rgba(210,225,255,0)');
     ctx.fillStyle = g;
     const nx = -sn, ny = cs;
     ctx.beginPath();
-    ctx.moveTo(v.x + nx * 14, v.y + ny * 14);
-    ctx.lineTo(v.x + cs * 520 + nx * 120, v.y + sn * 520 + ny * 120);
-    ctx.lineTo(v.x + cs * 520 - nx * 120, v.y + sn * 520 - ny * 120);
-    ctx.lineTo(v.x - nx * 14, v.y - ny * 14);
+    ctx.moveTo(v.x + nx * 12, v.y + ny * 12);
+    ctx.lineTo(v.x + cs * 430 + nx * 95, v.y + sn * 430 + ny * 95);
+    ctx.lineTo(v.x + cs * 430 - nx * 95, v.y + sn * 430 - ny * 95);
+    ctx.lineTo(v.x - nx * 12, v.y - ny * 12);
     ctx.closePath();
     ctx.fill();
   }
-  for (const v of G.chase) drawTrail(v, 0.9, true);
-  for (const v of G.chase) drawVehicle(v);
 }
 
 /* The screen-space half of the same problem. When the wall is off the bottom
@@ -10417,9 +10398,18 @@ function drawRear(){
      on screen nor hinted at, and the player was driving against a threat
      they had to take on faith. It is always faintly present now and grows
      from there; the danger threshold still drives the beat and the audio. */
-  const close = clamp(1 - G.wallGap / WALL_GAP_MAX, 0, 1) * 0.55
-              + clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1) * 0.45;
-  if (close <= 0.01) return;
+  /* Driven by how many units are behind you and how close the nearest is —
+     the camera looks forward, so this is what tells you they are there
+     before one appears in frame. */
+  let near = 1e9;
+  for (const p of G.police) {
+    const f = Math.cos(G.car.a) * (p.x - G.car.x) + Math.sin(G.car.a) * (p.y - G.car.y);
+    if (f < 0) near = Math.min(near, -f);
+  }
+  const count = clamp(G.police.length / PURSUIT_MAX, 0, 1);
+  const prox = near < 1e9 ? clamp(1 - near / 900, 0, 1) : 0;
+  const close = clamp(count * 0.45 + prox * 0.55, 0, 1);
+  if (close <= 0.02) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'lighter';
   const h = cv.height * (0.07 + close * 0.19);
@@ -10433,7 +10423,7 @@ function drawRear(){
      G.wallT is seconds, so the pulse is a fixed 0.85Hz regardless of speed,
      and it only opens up as they close — a constant beat would make the
      ambient state read as an emergency. */
-  const urgent = clamp(1 - G.wallGap / (WALL_DANGER * 1.6), 0, 1);
+  const urgent = prox;
   const beat = 1 - urgent * 0.22 + urgent * 0.22 * Math.sin(G.wallT * 5.3);
   /* Headlights and strobes washing up from behind, not a red bar. The colour
      alternates with the squad's own light bar so the edge of the frame is
@@ -10657,12 +10647,17 @@ function syncHUD(){
          the only pressure gauge in the game that ever reads danger. It is a
          backstop for the world-space rendering, not the primary tell —
          the wall itself is on screen. */
-      const gf = clamp(G.wallGap / WALL_GAP_MAX, 0, 1);
+      /* how many are on you, and how close the next one is. Both are things
+         the player acts on: thin them out, or buy time with a longer line. */
+      const on = G.police.length;
+      const heat3 = on >= 4;
       UI.obj.classList.toggle('overtime', false);
-      UI.obj.classList.toggle('danger', G.wallGap < WALL_DANGER);
-      UI.objLbl.textContent = G.wallGap < WALL_DANGER ? 'THEY HAVE YOU' : 'Gap';
-      UI.objVal.textContent = Math.round(G.wallGap) + 'm';
-      UI.objFill.style.width = gf * 100 + '%';
+      UI.obj.classList.toggle('danger', heat3);
+      UI.objLbl.textContent = on === 0 ? 'Road clear'
+        : heat3 ? 'THEY HAVE YOU'
+        : on + (on === 1 ? ' unit on you' : ' units on you');
+      UI.objVal.textContent = 'next ' + Math.max(0, G.spawnT || 0).toFixed(1) + 's';
+      UI.objFill.style.width = clamp(on / PURSUIT_MAX, 0, 1) * 100 + '%';
       UI.objPend.style.width = '0%';
       UI.obj.classList.toggle('pending', false);
     }
@@ -11244,9 +11239,9 @@ function showBrief(){
   $('bobj').innerHTML = cfg.boss
     ? cfg.bossDef.blurb + '<br><b>It blocks the road. Wreck through it before ' +
       'they catch you.</b>' + ruleLine
-    : '<b>They are ' + Math.round(G.wallGap || WALL_GAP_START) + 'm back and closing at ' +
-      Math.round(wallClose()) + 'm/s.</b> Every car you wreck pushes them off you; ' +
-      'a whole formation on one line pushes them a long way off.' +
+    : '<b>Pursuit units hunt you and ram you. Take them out, or make them ' +
+      'crash.</b> Every car you wreck is wreckage in the road behind you — a ' +
+      'whole formation on one line buys real quiet before the next unit.' +
       legs + ruleLine;
   const k = NHChips.contractById(G.run.contract);
   $('bsub').textContent = (cfg.boss ? cfg.bossDef.sub : cfg.elite ? 'Elite run' : 'Standard run') +
@@ -11486,9 +11481,9 @@ function endRun(won){
   /* the run ends when the hull does, so the kicker names the last straw */
   /* Every ending has to finish the sentence "I lost because ___", so the
      reason is the headline rather than a generic bust. */
-  const kick = G.crashReason === 'wall' ? 'Run down'
-             : G.crashReason === 'traffic' ? 'Out of panel'
-             : G.crashReason === 'police' ? 'Out of panel'
+  const kick = G.crashReason === 'police' ? 'Run down'
+             : G.crashReason === 'wall' ? 'Into the barrier'
+             : G.crashReason === 'traffic' ? 'Hull gone'
              : G.crashReason || 'Busted';
   $('ovKicker').textContent = kick;
   $('ovKicker').textContent = won ? 'City cleared' : kick;
