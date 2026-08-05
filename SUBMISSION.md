@@ -305,7 +305,26 @@ On a rewarded ad: `gameplayStop → requestAd:rewarded → adStarted → adFinis
 
 ## 10. Outstanding — do not submit before reading
 
-### 10a. Game covers are missing. This is a hard requirement.
+### 10a. Game covers — present and checked against the spec.
+
+This section used to say the covers were missing. They are not; they are in
+`covers/`, and every hard rule on the form has been verified rather than
+assumed:
+
+| Asset | Spec | On disk | |
+|---|---|---|---|
+| Landscape cover | 1920x1080 | `landscape-1920x1080.png` 1920x1080 | ok |
+| Portrait cover | 800x1200 | `portrait-800x1200.png` 800x1200 | ok |
+| Square cover | 800x800 | `square-800x800.png` 800x800 | ok |
+| Landscape video | 15-20s, <=50 MB, no sound | 18.0s, 17.2 MB, no audio track | ok |
+| Portrait video | 15-20s, <=50 MB, no sound | 18.0s, 8.0 MB, no audio track | ok |
+
+`covers/itch-630x500.png` is for itch.io and is not part of a CrazyGames
+submission. What no automated check can tell you is whether the three images
+read as one identity at every crop, which is the judgement call the original
+note was really about — look at them together before you upload.
+
+The original requirements, kept for reference:
 
 The form requires **three cover images and two preview videos**. `press/` holds
 gameplay screenshots — useful source material, but *not* covers. Their guidance
