@@ -2208,7 +2208,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="7e307cb"</script>
+<script>window.__NH_BUILD="0549820"</script>
 </head>
 <body>
 <div id="stage">
@@ -5605,9 +5605,12 @@ function districtCfg(n, type, act){
        that used to be a two-chain fight now needs the headroom to last. */
     /* scales with the act, not with which unit the draw happened to send —
        a run must not get easier because it drew a different pursuit car */
-    /* sized in pushback rather than points: ~14 cars taken beside it at act
-       1, and it scales with the act rather than with the unit drawn */
-    bossHp: Math.round(2600 * Math.pow(1.5, Math.max(0, act - 1))),
+    /* ---- sized against what a pass actually pays ----
+       A pass of three pays 532 and a pass of four pays 999, so 2,600 was
+       three good lines — the fight was over before the unit finished
+       announcing itself, which is exactly the "I won and I don't know how"
+       report. At 5,200 it is ten to twelve passes, or most of a boss road. */
+    bossHp: Math.round(5200 * Math.pow(1.5, Math.max(0, act - 1))),
     heatFloor: Math.min(2, (act - 1) + (elite ? 1 : 0))
   };
   cfg.stages = boss
@@ -5944,7 +5947,17 @@ const roadHalf = p => p.w * (G.run ? G.run.M.roadMul : 1);
 /* level conditions set by the chosen contract, reset when the district ends */
 const LVL = () => (G.run && G.state === 'play' ? G.run.L : NHChips.levelDefaults());
 
-const LANES = [-0.62, -0.21, 0.21, 0.62];
+/* ---- the centre line must not be a free harvest ----
+   The inner lanes sat at +/-0.21, which on a 290-unit half-road is 61px from
+   the middle — against a 48px contact radius and 12px of jitter, a car
+   driving dead straight down the centre clips both inner lanes continuously.
+   Measured, the do-nothing bot wrecked 20-69 cars a run and survived as long
+   as the bot solving for the best line: reading the road was worth nothing
+   because not reading it harvested anyway.
+
+   Pulled apart so the middle of the road is a genuine gap. Now every car you
+   take is a lane you chose to be in, which is the entire premise. */
+const LANES = [-0.70, -0.34, 0.34, 0.70];
 
 /* ---------------- civilian traffic ----------------
    Every car on this road used to be the same object: a chassis borrowed from
@@ -6099,20 +6112,25 @@ function addPolice(escort, forceArch){
    tougher is a stat, not an enemy.
    ============================================================ */
 const PURSUIT = [
-  /* ---- speeds are set against the player's 620 ----
-     Every unit used to top out at or above it, so there was no such thing as
-     escaping: the only way a chase ever ended was killing the unit, and the
-     player had no verb for "get away". Chasers sit UNDER 620 now, so a clean
-     fast line pulls away and they close when you slow down — which is
-     exactly when you are ramming traffic. That is the trade the game wants:
-     the thing that keeps you alive is the thing that lets them catch you. */
+  /* ---- speeds are set against the player's 620, and sit ABOVE it ----
+     These were dropped under 620 to make the chase escapable. That was the
+     wrong lever and it broke the game: THE PLAYER HAS NO THROTTLE. The car
+     runs at full power always, so it is at 620 on every straight, and a
+     pursuit that tops out at 592 can never close — measured, you never even
+     saw them. "Outrun them" was never a verb the player had.
+
+     They are faster than you again, so they always close in the end. The
+     escape is the thing the whole game is built on: leave wreckage and let
+     them drive into it. Two hits and a chaser is scrap, and a kill buys real
+     quiet on the spawn clock. That is an answer the player performs, not one
+     the speedometer hands them. */
   { id:'interceptor', name:'Interceptor', w:30, minAct:1,
-    hp:3, len:52, wid:24, nose:.60, tail:.72, top:592, power:600, grip:7.0, turn:1,
+    hp:3, len:52, wid:24, nose:.60, tail:.72, top:656, power:600, grip:7.0, turn:1,
     /* the baseline: closes and rams. Dodge it, or ram it back with a boost. */
     role:'Closes and rams.' },
 
   { id:'bull', name:'Bull', w:16, minAct:1,
-    hp:4, len:62, wid:30, nose:.95, tail:.80, top:556, power:660, grip:6.2, turn:0.72,
+    hp:4, len:62, wid:30, nose:.95, tail:.80, top:624, power:660, grip:6.2, turn:0.72,
     /* Cannot be cracked by ramming at ALL — not boosted, not plated. The only
        answer is wreckage. It is the unit that teaches the mechanic the whole
        design rests on, by refusing every other answer. */
@@ -6121,7 +6139,7 @@ const PURSUIT = [
   { id:'blocker', name:'Blocker', w:16, minAct:1,
     /* the one unit that is genuinely faster, because overtaking you IS its
        identity — but it is only faster while it is still behind */
-    hp:3, len:66, wid:30, nose:.92, tail:.94, top:648, power:640, grip:7.4, turn:0.9,
+    hp:3, len:66, wid:30, nose:.92, tail:.94, top:700, power:640, grip:7.4, turn:0.9,
     boxy:true,
     /* Overtakes and gets IN FRONT, then sits across a lane and salts the road.
        The only pursuit that puts a threat where the camera actually looks,
@@ -6129,13 +6147,13 @@ const PURSUIT = [
     ahead:true, role:'Gets in front and blocks the lane.' },
 
   { id:'outrider', name:'Outrider', w:18, minAct:1,
-    hp:1, len:34, wid:14, nose:.42, tail:.52, top:664, power:520, grip:8.6, turn:1.5,
+    hp:1, len:34, wid:14, nose:.42, tail:.52, top:724, power:520, grip:8.6, turn:1.5,
     /* Fast, fragile, weaves hard. One hit and it is gone — a target of
        opportunity rather than a problem, if you can actually land it. */
     weave:1.9, role:'Fast and fragile. One hit.' },
 
   { id:'spotter', name:'Spotter', w:12, minAct:2,
-    hp:2, len:54, wid:25, nose:.55, tail:.85, top:572, power:560, grip:7.2, turn:1,
+    hp:2, len:54, wid:25, nose:.55, tail:.85, top:640, power:560, grip:7.2, turn:1,
     /* Hangs back and paints you. While it is alive every other unit closes
        faster, so it turns a brawl into a priority-target puzzle. */
     standoff:520, marks:true, role:'Paints you. The rest close faster.' },
@@ -6336,22 +6354,33 @@ function stepBoss(dt){
     } else if (b.def.id === 'siren') {
       if (b.atk <= 0.9 && G.pulseWarn <= 0 && b.atk > 0) G.pulseWarn = b.atk;
       if (b.atk <= 0) {
-        b.atk = 8.5 * fuse; G.pulseWarn = 0;
-        /* Only punishes hoarding — bank little and often and it does
-           nothing. The ceiling scales with the unit rather than sitting at
-           act-1 money, where two wrecks at mult 4 tripped it by act 2, and
-           it drops each phase, so "little and often" gets stricter about
-           what little means. */
-        const ceiling = Math.max(2400, Math.round(b.maxHp * 0.2))
-                      * (1 - b.phase * 0.28);
-        if (G.pass >= 3) {
-          G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
-          toast('Bank wiped', 'red');
-          NHAudio.curse();
-        } else {
-          toast('Pulse — bank held', 'pink');
+        b.atk = 6.5 * fuse; G.pulseWarn = 0;
+        /* ---- the pulse attacks your weapon ----
+           It used to wipe a pending bank, and banking no longer exists, so
+           after the rebuild it reset your pass if you happened to be holding
+           three cars and did nothing otherwise — a slap, on the boss that
+           already had the least presence. The ceiling it computed was dead
+           code that nothing read.
+
+           Wreckage is the only thing that hurts anything in this game, so
+           that is what the signal takes: the pulse detonates every piece of
+           debris on the road, clearing the barricade you were building and
+           killing the line you were on. You answer it by timing your passes
+           between pulses, which is a real thing to learn. */
+        let cleared = 0;
+        for (const t of G.traffic) {
+          if (!t.wrecked || t.eaten) continue;
+          t.eaten = 1; cleared++;
+          for (let k = 0; k < 10; k++) {
+            const a = rnd(0, TAU), sp = rnd(90, 320);
+            spawn(t.x, t.y, Math.cos(a) * sp, Math.sin(a) * sp,
+                  rnd(0.2, 0.5), rnd(3, 7), '176,124,255', true, -5);
+          }
         }
-        G.shake = Math.max(G.shake, 14);
+        G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
+        toast(cleared ? 'PULSE — the road is swept' : 'PULSE', 'red');
+        NHAudio.curse();
+        G.shake = Math.max(G.shake, 20);
       }
     } else if (b.def.id === 'reaper') {
       if (b.atk <= 0) { b.atk = 4.4 * fuse; b.charge = 1.1; }
@@ -6618,7 +6647,7 @@ function stepWall(dt){
 function pursuitEvery(){
   const cleared = (G.run && G.run.cleared) || 0;
   const M = G.run && G.run.M;
-  return Math.max(3.4, (10.5 - cleared * 0.9) * ((M && M.wallSpeed) || 1));
+  return Math.max(2.8, (8.0 - cleared * 0.8) * ((M && M.wallSpeed) || 1));
 }
 
 /* Every kill path funnels here. One car taken is 110u; the third car of the
@@ -7301,7 +7330,7 @@ function stepPickups(dt){
   /* Four on the road was thin once the pursuit became the whole threat: a
      Boost is the escape verb and a Repair is the only heal, so both were
      rarer than the situations that need them. */
-  const want = Math.round(7 * (G.run ? G.run.M.pickupRate : 1));
+  const want = Math.round(5 * (G.run ? G.run.M.pickupRate : 1));
   while (G.pickups.length < want) addPickup(rint(34, 110));
 }
 

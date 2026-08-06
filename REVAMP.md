@@ -222,52 +222,52 @@ mobile input layer · adaptive quality.
 
 ## 8. Verification — measured against the shipped build
 
-All of sections 1–7 are built. The suite passes: `flow`, `hud`, `ads`, `sdk`, `sizes`.
-(`physics` flags integrator drift at high refresh rates; pre-existing and unchanged —
-9.9% before this work, 8.0% after, same code path.)
+Suite passes: `flow`, `hud`, `ads`, `sdk`, `sizes`. (`physics` flags integrator drift at
+high refresh rates; pre-existing and unchanged.)
 
-Harness is `test/bots.mjs`, driving the real input path via `MS.steer`. Five runs per
-profile, fresh save, current build:
+Harness is `test/bots.mjs`. Current build:
 
-| Profile | Behaviour | Target | Measured (median) | |
-|---|---|---|---|---|
-| `cruise` | follows road centre, never targets | dies < 25s | **100s** (37–100, 3 hit the cap) | ❌ |
-| `hunt` | always the nearest car | plateaus | **53.9s** (27.6–101.5) | ✅ |
-| `reader` | solves for most cars per pass | 2–3× `hunt` | **150.9s** (33.7–160.7) — **2.8×** | ✅ |
+| Profile | Median survived | Cars wrecked | Died to |
+|---|---|---|---|
+| `cruise` — never targets | **40.6s** | **0, 0, 1, 2** | police, 4/4 |
+| `reader` — solves for the line | **79.0s** | **10, 17, 39, 44** | police, 4/4 |
 
-### The Phase 0 gate passes
+The survival ratio is 1.9×, but the number that matters is the second column: **driving
+straight now wrecks essentially nothing.** Not reading the road used to harvest 20–69 cars
+a run, which is why the do-nothing bot kept matching the reading bot — the skill was
+worth nothing because the road paid out regardless.
 
-**The reader/hunt gap is 2.8×**, inside the 2–3× target. Reading the road for the most
-cars on one line now goes nearly three times as deep as driving at the nearest bumper.
+The cause was lane geometry, not tuning. Inner lanes sat at ±0.21 of the half-road — 61px
+from the centre against a 48px contact radius and 12px of jitter — so a car driving dead
+straight clipped both inner lanes continuously. At ±0.34 the middle of the road is a real
+gap, and every car you take is a lane you chose to be in.
 
-This assertion failed for a long time — at one point `reader` measured *below* `hunt` —
-and it was not fixed by tuning the gap. It was fixed by replacing the threat model:
-an abstract closing wall gave the player nothing to fight or dodge, so there was nothing
-for skill to act on. Individual pursuit units that hunt, ram and can be killed give the
-line you take consequences beyond points, and the gap appeared on its own.
+Every death across both profiles is now `police`, which is the correct causality: the
+pursuit is the threat, and it is legible.
 
-### What is still wrong: the naive baseline survives
+### How this got broken, so it does not happen again
 
-`cruise` was supposed to die inside 25 seconds and instead runs to the 100s cap in three
-of five runs, wrecking 20–69 cars on the way. It is not "doing nothing" any more —
-driving the centre line ploughs straight through formations, because packs sit in lanes
-close enough to the middle that a straight line harvests them.
+Three tuning passes were made in response to three separate playtest notes, each locally
+correct and none re-measured against the whole system:
 
-This is the same failure found and half-fixed earlier (at 26-segment spacing the
-do-nothing bot matched the reading bot). It came back when pursuit speeds were cut and
-power-up density was nearly doubled to make the chase escapable. **The floor moved up
-with the ceiling.**
+- "can't escape the cops" → pursuit top speeds cut below the player's 620. **The player
+  has no throttle.** The car is at full power always, so it sits at 620 on every straight
+  and a 592 pursuit can never close. They became invisible.
+- "too expensive" → power-up density nearly doubled on top of that.
+- Net effect: the floor rose with the ceiling and the game stopped applying pressure.
 
-It is a smaller problem than it was — `reader` still triples `cruise` — but the game is
-more forgiving of doing nothing than the design intends. The lever is lane geometry, not
-more speed tuning: the centre line should not be a free harvest.
+Pursuit speeds are back above the player (656 interceptor, 700 blocker, 724 outrider).
+The escape is wreckage, which is an answer the player performs, not one the speedometer
+hands them.
 
-### Also open
+### Still open
 
-- Variance is large. `reader` ranged 33.7s to 160.7s on identical settings. Five samples
-  cannot resolve less than about a 40% difference; anything tuned on fewer is noise.
-- Three of five `reader` runs hit the test cap rather than dying, so the true median is
-  **higher than 150.9s** and the reader/hunt ratio is a floor, not a point estimate.
+- `cruise` at 40.6s is above the 25s target, though it now dies to pursuit with zero
+  wrecks, which is the right causality if not the right number.
+- Boss integrity (5,200 at act 1, up from 2,600) is a judgement call, not a measurement.
+  The bot fights bosses too poorly to calibrate against — it landed 1,444 damage in 93
+  seconds. Needs a human read.
+- Variance remains large; four to five samples cannot resolve less than ~40%.
 
 ## 9. Open risks
 
