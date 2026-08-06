@@ -2204,7 +2204,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="5504454"</script>
+<script>window.__NH_BUILD="7e307cb"</script>
 <script>window.__NH_NO_ADS = true;</script>
 </head>
 <body>
@@ -6384,8 +6384,9 @@ function stepBoss(dt){
       G.passT = Math.max(0, G.passT - 1.2);
       /* the first boss is where casual runs were ending — soften the rams
          while the save is still learning the fight */
-      damage(Math.round((b.charge > 0 ? 26 : 18)
-           * ((Save.data.runs || 0) < 5 ? 0.6 : 1)), 'boss');
+      /* was 18-26, sized against a hundred-point bar. Against a five-mistake
+         budget that is the entire run in one bump. */
+      damage(b.charge > 0 ? 2 : 1, 'boss');
       hitstop(0.06, 24);
       NHAudio.hit(1.2);
     }
@@ -6431,7 +6432,10 @@ function stepHazards(dt){
       car.vx *= 0.72; car.vy *= 0.72;
       G.shake = Math.max(G.shake, 16);
       car.hitFlash = 1;
-      damage(12, 'strip');
+      /* was 12 — which against a five-mistake budget is not a hazard, it is
+         an instant loss. Measured, four of five reader runs ended on a strip
+         the moment the Blocker started laying them. */
+      damage(1, 'strip');
       NHAudio.hit(0.9);
       toast('Spike strip', 'red');
     }
@@ -8095,7 +8099,7 @@ function convoyHit(v, rel){
     car.vx *= 0.72; car.vy *= 0.72;
     G.shake = Math.max(G.shake, 20);
     hitstop(0.05, 18);
-    if (!G.power.shield) damage(Math.round(5 * (M.hullCost || 1) * rampCost()), 'traffic');
+    if (!G.power.shield) damage(1, 'traffic');
     NHAudio.hit(1.3);
     for (let i = 0; i < 16; i++) {
       const a = rnd(0, TAU), sp = rnd(120, 420);
@@ -8616,7 +8620,14 @@ function step(dt){
         const ah = G.track.at(p.idx + 4, pl.lat);
         tx = ah.x; ty = ah.y;
         p.blocking = 0.6;
-        if ((p.dropT = (p.dropT || 0) - dt) <= 0) { p.dropT = 1.5; dropHazard(p); }
+        /* A strip every 1.5s with no cap turned one Blocker into a minefield:
+           thirteen strips in twenty seconds, across a road you have to drive.
+           Three per blocking stint, spaced, and it has to earn the next one
+           by getting in front again. */
+        p.strips = p.strips || 0;
+        if ((p.dropT = (p.dropT || 0) - dt) <= 0 && p.strips < 3) {
+          p.dropT = 3.2; p.strips++; dropHazard(p);
+        }
       }
     } else if (A.standoff) {
       /* SPOTTER: hangs back at range and paints you. It will not close, so it
@@ -8748,7 +8759,7 @@ function step(dt){
           G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
           if (G.state !== 'play') return;
           G.heat = Math.max(0, G.heat - 0.25);
-          damage(10 + 3 * G.tier, 'police');
+          damage(1, 'police');
           hitstop(0.05, 20);
           NHAudio.hit(1);
           car.inv = 0.8;

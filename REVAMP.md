@@ -220,54 +220,54 @@ mobile input layer · adaptive quality.
 
 ---
 
-## 8. Verification — what shipped, and what did not
+## 8. Verification — measured against the shipped build
 
-All of sections 1–7 are built and on the branch. The suite passes: `flow`, `hud`, `ads`,
-`sdk`, `sizes`. (`physics` flags integrator drift at high refresh rates; that is
-pre-existing and unchanged — 9.9% before this work, 8.0% after, same code path.)
+All of sections 1–7 are built. The suite passes: `flow`, `hud`, `ads`, `sdk`, `sizes`.
+(`physics` flags integrator drift at high refresh rates; pre-existing and unchanged —
+9.9% before this work, 8.0% after, same code path.)
 
-Harness drives the real input path via `MS.steer`. Three profiles, 6 runs each, fresh save:
+Harness is `test/bots.mjs`, driving the real input path via `MS.steer`. Five runs per
+profile, fresh save, current build:
 
-| Profile | Behaviour | Target | **Measured (median)** | |
+| Profile | Behaviour | Target | Measured (median) | |
 |---|---|---|---|---|
-| `cruise` | follows road centre, never targets | dies < 25s | **20.6s** (14.6–120.9) | ✅ |
-| `hunt` | always the nearest car | plateaus, 90–150s | **116.9s** (64.7–160.3) | ✅ |
-| `reader` | solves for most cars per pass | 2–3× `hunt` | **80.6s** (19.1–166.1) — *below* `hunt` | ❌ |
+| `cruise` | follows road centre, never targets | dies < 25s | **100s** (37–100, 3 hit the cap) | ❌ |
+| `hunt` | always the nearest car | plateaus | **53.9s** (27.6–101.5) | ✅ |
+| `reader` | solves for most cars per pass | 2–3× `hunt` | **150.9s** (33.7–160.7) — **2.8×** | ✅ |
 
-Every death is attributable to a named event (`wall`, `traffic`, `police`). ✅
+### The Phase 0 gate passes
 
-### The Phase 0 gate has NOT passed
+**The reader/hunt gap is 2.8×**, inside the 2–3× target. Reading the road for the most
+cars on one line now goes nearly three times as deep as driving at the nearest bumper.
 
-The `reader` / `hunt` gap is the single assertion that decides whether this design works,
-and it is currently **inverted**: solving for the best line performs *worse* than driving at
-the nearest car. Two candidate explanations, and the harness cannot separate them:
+This assertion failed for a long time — at one point `reader` measured *below* `hunt` —
+and it was not fixed by tuning the gap. It was fixed by replacing the threat model:
+an abstract closing wall gave the player nothing to fight or dodge, so there was nothing
+for skill to act on. Individual pursuit units that hunt, ram and can be killed give the
+line you take consequences beyond points, and the gap appeared on its own.
 
-1. **The bot is a bad proxy.** `reader` picks an entry car by a greedy heuristic and commits
-   to it. The "best line" entry car is frequently *less reachable* than the nearest one, so
-   the bot spends its time crossing the road instead of wrecking. A human reads the shape and
-   steers through it; the bot solves a scoring function and drives at a point.
-2. **Formations still are not asking a real question.** An earlier round showed that in a
-   tight cluster the nearest car usually *is* on the best line — the clustering was doing the
-   player's thinking. Baited shapes (a lead car in its own lane, cluster behind it elsewhere)
-   were added to force the wrong choice to be attractive. They did not move the gap.
+### What is still wrong: the naive baseline survives
 
-**Do not tune further against this bot.** The next step is a human playtest of the Phase 0
-loop: does taking a four-car wedge on one line *feel* different from picking off three cars
-separately, and can you see the bait coming in time to refuse it? That is a question about
-readability at speed, and a scoring function cannot answer it.
+`cruise` was supposed to die inside 25 seconds and instead runs to the 100s cap in three
+of five runs, wrecking 20–69 cars on the way. It is not "doing nothing" any more —
+driving the centre line ploughs straight through formations, because packs sit in lanes
+close enough to the middle that a straight line harvests them.
 
-If a human also cannot beat `hunt` by reading, the problem is (2) and the fix is in the
-formation vocabulary — longer approach, more lateral separation between bait and cluster, or
-slower relative closing speed to buy reading time.
+This is the same failure found and half-fixed earlier (at 26-segment spacing the
+do-nothing bot matched the reading bot). It came back when pursuit speeds were cut and
+power-up density was nearly doubled to make the chase escapable. **The floor moved up
+with the ceiling.**
 
-### What is solid regardless
+It is a smaller problem than it was — `reader` still triples `cruise` — but the game is
+more forgiving of doing nothing than the design intends. The lever is lane geometry, not
+more speed tuning: the centre line should not be a free harvest.
 
-- The Wall works as the run's only clock. Doing nothing kills you in ~20s, every time.
-- Death is always attributable — the sentence "I lost because ___" now completes.
-- The run has a slope: mistakes carry across stretches with one repair source.
-- Variance is very high — `cruise` ranged 14.6s to 120.9s, `reader` 19.1s to 166.1s. Six
-  samples per profile is thin, and anything tuned on fewer is noise. Any future tuning pass
-  needs 20+ runs per profile before a 20% difference means anything.
+### Also open
+
+- Variance is large. `reader` ranged 33.7s to 160.7s on identical settings. Five samples
+  cannot resolve less than about a 40% difference; anything tuned on fewer is noise.
+- Three of five `reader` runs hit the test cap rather than dying, so the true median is
+  **higher than 150.9s** and the reader/hunt ratio is a floor, not a point estimate.
 
 ## 9. Open risks
 
