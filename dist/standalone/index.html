@@ -2204,7 +2204,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="6db5923"</script>
+<script>window.__NH_BUILD="5504454"</script>
 <script>window.__NH_NO_ADS = true;</script>
 </head>
 <body>
@@ -8632,10 +8632,18 @@ function step(dt){
     }
 
     let st = steerToward(p, tx, ty);
-    /* OUTRIDER weaves hard, which is what makes a one-pip unit hard to land */
+    /* ---- OUTRIDER: weave where it matters, not on the approach ----
+       A flat weave spent the bike's speed advantage on going sideways, so it
+       sat six hundred units back doing nothing and never became a threat at
+       all — the one archetype a playtest was always going to call harmless.
+       The weave now scales with how close it is: it runs a straight, fast
+       attack line to get to you, and only starts jinking once it is on you,
+       which is exactly where a one-pip unit needs to be hard to hit. */
     if (A.weave) {
+      const dd = hyp(p.x - car.x, p.y - car.y);
+      const near = clamp(1 - dd / 620, 0, 1);
       p.weavePh = (p.weavePh || 0) + dt * 3.4;
-      st = clamp(st + Math.sin(p.weavePh) * 0.55 * A.weave, -1, 1);
+      st = clamp(st + Math.sin(p.weavePh) * 0.55 * A.weave * near, -1, 1);
     }
     /* turn authority is per archetype: the heavy end cannot follow a line
        change, which is what makes cornering a real answer to a Tank */
@@ -8646,8 +8654,13 @@ function step(dt){
        to work to get back, and one that is on you is already at its ceiling.
        The chase gets a rhythm instead of being a constant. */
     const behind = -(Math.cos(car.a) * (p.x - car.x) + Math.sin(car.a) * (p.y - car.y));
+    /* a bike commits from much further out — that is its whole character */
+    const surgeAt = A.weave ? 200 : 520;
     p.surgeT = (p.surgeT || 0) - dt;
-    if (p.surgeT <= 0) { p.surgeT = rnd(2.6, 4.4); p.surgeOn = behind > 520 ? rnd(1.1, 1.8) : 0; }
+    if (p.surgeT <= 0) {
+      p.surgeT = A.weave ? rnd(1.4, 2.4) : rnd(2.6, 4.4);
+      p.surgeOn = behind > surgeAt ? rnd(1.1, 1.8) : 0;
+    }
     p.surgeOn = Math.max(0, (p.surgeOn || 0) - dt);
     if (p.surgeOn > 0 || A.ahead) p.boostT = Math.max(p.boostT, 0.2);
     p.drive(dt * G.worldSlow, st, 1);
