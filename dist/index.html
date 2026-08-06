@@ -2208,7 +2208,7 @@ body{
 }
 
 </style>
-<script>window.__NH_BUILD="f174d61"</script>
+<script>window.__NH_BUILD="6db5923"</script>
 </head>
 <body>
 <div id="stage">
@@ -3665,17 +3665,17 @@ Save.load();
    once, always fitted, and each one changes a verb rather than a number.
    ============================================================ */
 const GEAR = [
-  { id:'prow',       name:'Ram Prow',      price:2400,
+  { id:'prow',       name:'Ram Prow',      price:900,
     desc:'Wrecks pay +25% and cost a fifth less hull.' },
-  { id:'welder',     name:'Scrap Welder',  price:4200,
+  { id:'welder',     name:'Scrap Welder',  price:1500,
     desc:'Hull repairs itself whenever no chain is running.' },
-  { id:'turbine',    name:'Turbine Intake', price:7000,
+  { id:'turbine',    name:'Turbine Intake', price:2400,
     desc:'Grabbing a Boost adds two links to a live chain.' },
-  { id:'missile',    name:'Harpoon Rack',  price:9000,
+  { id:'missile',    name:'Harpoon Rack',  price:3200,
     desc:'Auto-fires every 9s: detonates the nearest car ahead, free.' },
-  { id:'shockplate', name:'Shock Plating', price:14000,
+  { id:'shockplate', name:'Shock Plating', price:4400,
     desc:'Every fifth link in a chain detonates everything around you.' },
-  { id:'blackbox',   name:'Black Box',     price:22000,
+  { id:'blackbox',   name:'Black Box',     price:6000,
     desc:'Start every district with a Ram Plate already fitted.' }
 ];
 const Hangar = {
@@ -3721,41 +3721,41 @@ const Hangar = {
    ============================================================ */
 const TREE = [
   /* ---- TIER A: power. Six purchases, and that is the entire list. ---- */
-  { id:'frame',    br:'power',  name:'Reinforced Frame', ranks:3, cost:[1800, 4200, 9000],
+  { id:'frame',    br:'power',  name:'Reinforced Frame', ranks:3, cost:[900, 1900, 3400],
     desc:'One more mistake per rank.' },
-  { id:'t_bumper', br:'power',  name:'Heavy Bumper',    ranks:1, cost:[7000],
+  { id:'t_bumper', br:'power',  name:'Heavy Bumper',    ranks:1, cost:[2200],
     desc:'Every car you take shoves them 15m further.' },
-  { id:'t_head',   br:'power',  name:'Pre-Draft',       ranks:1, cost:[14000],
+  { id:'t_head',   br:'power',  name:'Pre-Draft',       ranks:1, cost:[3600],
     desc:'Start every run with a perk already taken.' },
-  { id:'t_black',  br:'power',  name:'Black Box',       ranks:1, cost:[20000],
+  { id:'t_black',  br:'power',  name:'Black Box',       ranks:1, cost:[5200],
     desc:'Start every district with a Ram Plate fitted.' },
 
   /* ---- TIER B: choice. More agency is not more power, so this tier is
      unbounded and costs the difficulty curve nothing. ---- */
-  { id:'t_wide',   br:'choice', name:'Wide Net',        ranks:1, cost:[6000],
+  { id:'t_wide',   br:'choice', name:'Wide Net',        ranks:1, cost:[1600],
     desc:'Four perk cards on every offer instead of three.' },
-  { id:'t_reroll', br:'choice', name:'Second Opinion',  ranks:1, cost:[9000],
+  { id:'t_reroll', br:'choice', name:'Second Opinion',  ranks:1, cost:[2400],
     desc:'One perk reroll per run.' },
-  { id:'t_ban',    br:'choice', name:'Blacklist',       ranks:1, cost:[12000],
+  { id:'t_ban',    br:'choice', name:'Blacklist',       ranks:1, cost:[3200],
     desc:'Drop one perk out of the pool for good.' },
-  { id:'t_start',  br:'choice', name:'Local Knowledge', ranks:1, cost:[15000],
+  { id:'t_start',  br:'choice', name:'Local Knowledge', ranks:1, cost:[4000],
     desc:'Choose which city a run opens in.' },
 
   /* ---- TIER C: access. New verbs and new places, never bigger numbers.
      This is the tier that can keep shipping forever. ---- */
-  { id:'t_salvo',  br:'access', name:'Opening Salvo',   ranks:1, cost:[10000],
+  { id:'t_salvo',  br:'access', name:'Opening Salvo',   ranks:1, cost:[2800],
     desc:'Start every district with two rockets loaded.' },
-  { id:'t_chain',  br:'access', name:'Chain Reaction',  ranks:1, cost:[13000],
+  { id:'t_chain',  br:'access', name:'Chain Reaction',  ranks:1, cost:[3400],
     desc:'Explosions reach 30% further.' },
-  { id:'t_first',  br:'access', name:'First Blood',     ranks:1, cost:[5000],
+  { id:'t_first',  br:'access', name:'First Blood',     ranks:1, cost:[1400],
     desc:'The first car of every district opens the pass at two.' },
-  { id:'t_cage',   br:'access', name:'Safety Cage',     ranks:1, cost:[18000],
+  { id:'t_cage',   br:'access', name:'Safety Cage',     ranks:1, cost:[4600],
     desc:'Survive one run-ending mistake per run. Not the wall.' },
-  { id:'t_change', br:'access', name:'Loose Change',    ranks:3, cost:[1200, 3000, 7000],
+  { id:'t_change', br:'access', name:'Loose Change',    ranks:3, cost:[700, 1500, 2800],
     desc:'+8% coins per rank.' },
-  { id:'t_int',    br:'access', name:'Compound Interest',ranks:1, cost:[9000],
+  { id:'t_int',    br:'access', name:'Compound Interest',ranks:1, cost:[2400],
     desc:'The daily drop pays half again.' },
-  { id:'t_know',   br:'access', name:'Street Knowledge',ranks:1, cost:[8000],
+  { id:'t_know',   br:'access', name:'Street Knowledge',ranks:1, cost:[2000],
     desc:'+15% XP from everything.' }
 ];
 const Tree = {
@@ -4470,21 +4470,25 @@ const CARS = [
    choice used to, so removing it costs the player nothing. `read` states the
    fitted value, because a row of pips is not a spec. */
 const UPGRADES = [
-  { id:'engine', name:'Engine', base:1000, desc:'Top speed',
+  { id:'engine', name:'Engine', base:400, desc:'Top speed',
     read: l => Math.round(PLAYER.top * (1 + l * 0.05) * 0.52) + ' km/h' },
-  { id:'grip',   name:'Grip',   base:900,  desc:'Slide control',
+  { id:'grip',   name:'Grip',   base:360,  desc:'Slide control',
     read: l => (PLAYER.grip + l * 0.42).toFixed(1) + ' g' },
-  { id:'armor',  name:'Hull',   base:1400, desc:'Hull capacity',
-    read: l => (100 + l * 16) + ' hp' },
-  { id:'impact', name:'Impact', base:1600, desc:'Wreck payout',
+  { id:'armor',  name:'Plating', base:560, desc:'Mistakes you can take',
+    read: l => (5 + Math.floor(l / 2)) + ' mistakes' },
+  { id:'impact', name:'Impact', base:640, desc:'Wreck payout',
     read: l => '+' + Math.round(l * 10) + '%' },
-  { id:'nitro',  name:'Boost',  base:1100, desc:'Power-up duration',
+  { id:'nitro',  name:'Boost',  base:440, desc:'Power-up duration',
     read: l => '\u00d7' + (1 + l * 0.24).toFixed(2) },
-  { id:'payout', name:'Salvage', base:1800, desc:'Coins per run',
+  { id:'payout', name:'Salvage', base:720, desc:'Coins per run',
     read: l => '\u00d7' + (1 + l * 0.14).toFixed(2) }
 ];
 const UP_MAX = 5;
-const upCost = (u, lvl) => Math.round(u.base * Math.pow(1.85, lvl));
+/* Was base x 1.85^lvl, which put a single maxed track at ~24,000 and the six
+   of them at ~144,000 — priced against the old score-tracking coin curve,
+   where a good run paid six figures. Against depth-based coins at roughly a
+   thousand a run that is a hundred and fifty runs for the tuning alone. */
+const upCost = (u, lvl) => Math.round(u.base * Math.pow(1.6, lvl));
 
 /* the spec the physics actually reads: car + upgrades + crew folded together */
 function activeSpec(){
@@ -5871,7 +5875,11 @@ function newWorld(ai){
    wall's closing curve is authored against it being maxed. */
 function mistakeBudget(){
   const M = G.run && G.run.M;
-  return Math.max(1, Math.round(5 + Tree.rank('frame') + ((M && M.mistakes) || 0)
+  /* The Hull tuning track was still multiplying a hundred-point bar that no
+     longer exists, so five levels of it bought exactly nothing. Two levels
+     per mistake, so a maxed track is worth two. */
+  const tuned = Math.floor(((Save.data.up && Save.data.up.armor) || 0) / 2);
+  return Math.max(1, Math.round(5 + Tree.rank('frame') + tuned + ((M && M.mistakes) || 0)
                                 + (G.run ? G.run.hullBonus : 0)));
 }
 /* Zoom is bounded by width as well as height, otherwise a portrait phone
@@ -6056,7 +6064,7 @@ function addPolice(escort, forceArch){
     col: fac.body, col2: fac.trim,
     len: A.len, wid: A.wid, nose: A.nose, tail: A.tail, boxy: !!A.boxy,
     power: A.power, grip: A.grip,
-    top: A.top + 10 * Math.max(1, G.tier)
+    top: A.top + 6 * Math.max(1, G.tier)
   });
   const v = new Vehicle(spec, 'police');
   v.hp = A.hp; v.maxHp = A.hp;
@@ -6091,20 +6099,29 @@ function addPolice(escort, forceArch){
    tougher is a stat, not an enemy.
    ============================================================ */
 const PURSUIT = [
+  /* ---- speeds are set against the player's 620 ----
+     Every unit used to top out at or above it, so there was no such thing as
+     escaping: the only way a chase ever ended was killing the unit, and the
+     player had no verb for "get away". Chasers sit UNDER 620 now, so a clean
+     fast line pulls away and they close when you slow down — which is
+     exactly when you are ramming traffic. That is the trade the game wants:
+     the thing that keeps you alive is the thing that lets them catch you. */
   { id:'interceptor', name:'Interceptor', w:30, minAct:1,
-    hp:3, len:52, wid:24, nose:.60, tail:.72, top:640, power:600, grip:7.0, turn:1,
+    hp:3, len:52, wid:24, nose:.60, tail:.72, top:592, power:600, grip:7.0, turn:1,
     /* the baseline: closes and rams. Dodge it, or ram it back with a boost. */
     role:'Closes and rams.' },
 
   { id:'bull', name:'Bull', w:16, minAct:1,
-    hp:4, len:62, wid:30, nose:.95, tail:.80, top:600, power:660, grip:6.2, turn:0.72,
+    hp:4, len:62, wid:30, nose:.95, tail:.80, top:556, power:660, grip:6.2, turn:0.72,
     /* Cannot be cracked by ramming at ALL — not boosted, not plated. The only
        answer is wreckage. It is the unit that teaches the mechanic the whole
        design rests on, by refusing every other answer. */
     ramproof:true, role:'Ram-proof. Only wreckage stops it.' },
 
   { id:'blocker', name:'Blocker', w:16, minAct:1,
-    hp:3, len:66, wid:30, nose:.92, tail:.94, top:670, power:640, grip:7.4, turn:0.9,
+    /* the one unit that is genuinely faster, because overtaking you IS its
+       identity — but it is only faster while it is still behind */
+    hp:3, len:66, wid:30, nose:.92, tail:.94, top:648, power:640, grip:7.4, turn:0.9,
     boxy:true,
     /* Overtakes and gets IN FRONT, then sits across a lane and salts the road.
        The only pursuit that puts a threat where the camera actually looks,
@@ -6112,13 +6129,13 @@ const PURSUIT = [
     ahead:true, role:'Gets in front and blocks the lane.' },
 
   { id:'outrider', name:'Outrider', w:18, minAct:1,
-    hp:1, len:34, wid:14, nose:.42, tail:.52, top:720, power:520, grip:8.6, turn:1.5,
+    hp:1, len:34, wid:14, nose:.42, tail:.52, top:664, power:520, grip:8.6, turn:1.5,
     /* Fast, fragile, weaves hard. One hit and it is gone — a target of
        opportunity rather than a problem, if you can actually land it. */
     weave:1.9, role:'Fast and fragile. One hit.' },
 
   { id:'spotter', name:'Spotter', w:12, minAct:2,
-    hp:2, len:54, wid:25, nose:.55, tail:.85, top:610, power:560, grip:7.2, turn:1,
+    hp:2, len:54, wid:25, nose:.55, tail:.85, top:572, power:560, grip:7.2, turn:1,
     /* Hangs back and paints you. While it is alive every other unit closes
        faster, so it turns a brawl into a priority-target puzzle. */
     standoff:520, marks:true, role:'Paints you. The rest close faster.' },
@@ -7277,7 +7294,10 @@ function stepPickups(dt){
     p.t += dt;
     if (p.t >= p.life) G.pops.splice(i, 1);
   }
-  const want = Math.round(4 * (G.run ? G.run.M.pickupRate : 1));
+  /* Four on the road was thin once the pursuit became the whole threat: a
+     Boost is the escape verb and a Repair is the only heal, so both were
+     rarer than the situations that need them. */
+  const want = Math.round(7 * (G.run ? G.run.M.pickupRate : 1));
   while (G.pickups.length < want) addPickup(rint(34, 110));
 }
 
@@ -8623,7 +8643,16 @@ function step(dt){
     /* turn authority is per archetype: the heavy end cannot follow a line
        change, which is what makes cornering a real answer to a Tank */
     st *= (A.turn == null ? 1 : A.turn);
-    p.boostT = Math.max(p.boostT, A.heavy ? 0.05 : 0.2);
+    /* They used to hold a permanent boost, which is what made them
+       inescapable regardless of the top-speed table. It comes in bursts now,
+       and only when they have fallen behind — so a unit that loses you has
+       to work to get back, and one that is on you is already at its ceiling.
+       The chase gets a rhythm instead of being a constant. */
+    const behind = -(Math.cos(car.a) * (p.x - car.x) + Math.sin(car.a) * (p.y - car.y));
+    p.surgeT = (p.surgeT || 0) - dt;
+    if (p.surgeT <= 0) { p.surgeT = rnd(2.6, 4.4); p.surgeOn = behind > 520 ? rnd(1.1, 1.8) : 0; }
+    p.surgeOn = Math.max(0, (p.surgeOn || 0) - dt);
+    if (p.surgeOn > 0 || A.ahead) p.boostT = Math.max(p.boostT, 0.2);
     p.drive(dt * G.worldSlow, st, 1);
     barrier(p, loc);
 
@@ -8679,9 +8708,11 @@ function step(dt){
           G.shake = Math.max(G.shake, 24);
           hitstop(0.07, 26);
           NHAudio.hit(1.5);
-          if (!G.power.shield) damage(1, 'police');
+          /* Losing the line is the cost. Charging a mistake as well made one
+             misread worth two punishments, and the Bull exists to teach, not
+             to tax. */
           G.pass = 0; G.passT = 0; G.chain = 0; G.mult = 1;
-          car.inv = 0.5;
+          car.inv = 0.7;
           toast(Ar.name + ' shrugged it off — use the wreckage', 'red');
           if (G.state !== 'play') return;
         } else if (car.boost || G.power.shield > 0) {
@@ -11832,10 +11863,13 @@ function endRun(won){
   /* first time this deep is worth a real lump — the unlock ladder is the
      reason to come back, and it has to move on a run that went further even
      if that run scored badly */
-  const firstTime = reached > (Save.data.paidDepth || 0) ? (reached - (Save.data.paidDepth || 0)) * 260 : 0;
+  const firstTime = reached > (Save.data.paidDepth || 0) ? (reached - (Save.data.paidDepth || 0)) * 450 : 0;
   if (firstTime) Save.data.paidDepth = reached;
-  G.coinsRun = Math.floor((G.coinsRun + cleared * 120 + firstTime
-             + Math.min(G.score / 400, 900)) * G.spec.payout);
+  /* Sized against a real run rather than against the old score-tracking
+     curve: a median run now reaches stretch 2-3 and pays roughly 900, so the
+     first purchase lands on run two and Tier A finishes around run twenty. */
+  G.coinsRun = Math.floor((G.coinsRun + cleared * 260 + firstTime
+             + Math.min(G.score / 260, 1400) + 150) * G.spec.payout);
   Save.data.runs++;
   Save.flush();
   const rank = recordRun();
