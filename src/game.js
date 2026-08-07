@@ -3029,13 +3029,36 @@ function stepWall(dt){
      decision rather than a chore. */
   const M = G.run.M;
   G.spawnT = Math.max(0, (G.spawnT || 0) - dt);
-  if (G.spawnT === 0 && G.police.length < PURSUIT_MAX) {
+  if (G.spawnT === 0 && G.police.length < PURSUIT_MAX && !pursuitHeld()) {
     addPolice(G.police.length > 0);
     G.spawnT = pursuitEvery();
   }
   /* pushback is banked as spawn delay: wreckage in the road is what keeps
      them off you, so a good line literally buys quiet */
   G.wallGap = clamp(G.wallGap, 0, WALL_GAP_MAX);
+}
+
+/* ---- the new player's first district, kept honest ----
+   newRun() has set run.grace for a player with fewer than three runs behind
+   them since the day the pursuit went in, and the comment there promises
+   that district has "no pursuit in it, whatever the node or the contract
+   says". The flag only ever reached G.heat and G.tier — both of which choose
+   *which* unit arrives, never *whether* one does — so the promise was never
+   kept: pursuitEvery() opens at 8.0s and the very first thing that happens
+   to a new player is still the mugging the comment was written to prevent.
+
+   Measured on the cruise bot, which is the honest stand-in for someone still
+   working out that the arrows steer: four fresh runs ended at 23.6s, 29.7s,
+   30.2s and 37.8s, three of the four to a pursuit unit. CrazyGames score
+   conversion as the share of players who reach one minute, so that is the
+   metric dying here, on the first run, before the game has been understood.
+
+   Every spawn path has to read this or the hold leaks — the stage-2 top-up
+   in advanceStage() put a unit on the road regardless. Traffic, barriers and
+   the strips are all untouched, so the district can still be lost; what it
+   can no longer do is end before the player has learned the one input. */
+function pursuitHeld(){
+  return !!(G.run && G.run.grace);
 }
 
 /* seconds between units. Deliberately generous at the top of a run — the
@@ -8163,7 +8186,7 @@ function passGate(){
   /* the next stretch is already generated ahead of the car; what changes is
      the pressure inside it — the density target climbs with the stretch
      index, and the top-up in step() fills to it over the next few seconds */
-  if (G.stage >= 2 && G.police.length < 4) addPolice(true);
+  if (G.stage >= 2 && G.police.length < 4 && !pursuitHeld()) addPolice(true);
 }
 
 function clearDistrict(){
